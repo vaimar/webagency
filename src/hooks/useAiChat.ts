@@ -1,12 +1,16 @@
 import { useCallback, useState } from 'react';
-import { AiProvider, ChatMessage, fetchAiProviders, sendChatMessage } from '../services/api';
+import { AiProvider, ApiDiagnostics, ApiRequestError, ChatMessage, fetchAiProviders, sendChatMessage } from '../services/api';
 
 interface UseAiChatResult {
     messages: ChatMessage[];
     providers: AiProvider[];
     activeProvider: string;
     isLoading: boolean;
+    isLoadingProviders: boolean;
     error: string | null;
+    providersError: string | null;
+    providerDiagnostics: ApiDiagnostics | null;
+    lastChatDiagnostics: ApiDiagnostics | null;
     setActiveProvider: (provider: string) => void;
     send: (message: string) => Promise<void>;
     clearHistory: () => void;
@@ -18,17 +22,32 @@ export const useAiChat = (): UseAiChatResult => {
     const [providers, setProviders] = useState<AiProvider[]>([]);
     const [activeProvider, setActiveProvider] = useState<string>('');
     const [isLoading, setIsLoading] = useState(false);
+    const [isLoadingProviders, setIsLoadingProviders] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [providersError, setProvidersError] = useState<string | null>(null);
+    const [providerDiagnostics, setProviderDiagnostics] = useState<ApiDiagnostics | null>(null);
+    const [lastChatDiagnostics, setLastChatDiagnostics] = useState<ApiDiagnostics | null>(null);
 
     const loadProviders = useCallback(async () => {
+        setIsLoadingProviders(true);
+        setProvidersError(null);
+
         try {
             const result = await fetchAiProviders();
-            setProviders(result);
-            if (result.length > 0 && !activeProvider) {
-                setActiveProvider(result[0].name ?? result[0].id ?? '');
+            setProviders(result.providers);
+            setProviderDiagnostics(result.diagnostics);
+            if (result.providers.length > 0 && !activeProvider) {
+                setActiveProvider(result.providers[0].name ?? result.providers[0].id ?? '');
             }
-        } catch {
-            // providers are a nice-to-have; swallow errors silently
+        } catch (error) {
+            if (error instanceof ApiRequestError) {
+                setProvidersError(`Could not load providers: ${error.message}`);
+                setProviderDiagnostics(error.diagnostics);
+            } else {
+                setProvidersError('Could not load providers.');
+            }
+        } finally {
+            setIsLoadingProviders(false);
         }
     }, [activeProvider]);
 
@@ -46,21 +65,27 @@ export const useAiChat = (): UseAiChatResult => {
             setIsLoading(true);
 
             try {
-                const reply = await sendChatMessage({
+                const result = await sendChatMessage({
                     message: text.trim(),
                     provider: activeProvider || undefined,
                 });
 
+                setLastChatDiagnostics(result.diagnostics);
+
                 const assistantMessage: ChatMessage = {
                     role: 'assistant',
-                    content: reply,
+                    content: result.reply,
                     provider: activeProvider || undefined,
                     timestamp: new Date().toISOString(),
                 };
                 setMessages((prev) => [...prev, assistantMessage]);
-            } catch (err) {
-                const message = err instanceof Error ? err.message : 'Unknown error';
-                setError(`Could not reach the AI assistant: ${message}`);
+            } catch (error) {
+                if (error instanceof ApiRequestError) {
+                    setError(`Could not reach the AI assistant: ${error.message}`);
+                    setLastChatDiagnostics(error.diagnostics);
+                } else {
+                    setError('Could not reach the AI assistant.');
+                }
             } finally {
                 setIsLoading(false);
             }
@@ -73,6 +98,19 @@ export const useAiChat = (): UseAiChatResult => {
         setError(null);
     }, []);
 
-    return { messages, providers, activeProvider, isLoading, error, setActiveProvider, send, clearHistory, loadProviders };
+    return {
+        messages,
+        providers,
+        activeProvider,
+        isLoading,
+        isLoadingProviders,
+        error,
+        providersError,
+        providerDiagnostics,
+        lastChatDiagnostics,
+        setActiveProvider,
+        send,
+        clearHistory,
+        loadProviders,
+    };
 };
-

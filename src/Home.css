@@ -1,59 +1,68 @@
+/* Home page - legacy styles preserved for compatibility */
+/* Uses CSS variables defined in index.css */
+
 .container {
-    width: 80%;
+    width: 100%;
+    max-width: 1280px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 0 var(--space-6);
 }
 
 .header {
-    background-color: #007bff;
-    color: #fff;
-    padding: 20px;
+    background: var(--primary);
+    color: var(--text-inverse);
+    padding: var(--space-5);
     text-align: center;
 }
 
 .title {
     margin: 0;
-    font-size: 32px;
+    font-size: 2rem;
+    font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 .subtitle {
-    font-size: 24px;
+    font-size: 1.25rem;
+    opacity: 0.9;
 }
 
 .destination-list {
     list-style-type: none;
     padding: 0;
+    display: grid;
+    gap: var(--space-5);
 }
 
 .destination-item {
-    margin-bottom: 20px;
-    border: 1px solid #ccc;
-    padding: 15px;
-    border-radius: 10px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    background-color: #fff;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    margin-bottom: 0;
+    border: 1px solid var(--border);
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    background: var(--surface);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .destination-item:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-card-hover);
 }
 
 .destination-name {
-    font-weight: bold;
-    margin-bottom: 5px;
-    color: #333;
+    font-weight: 600;
+    margin-bottom: var(--space-1);
+    color: var(--text);
 }
 
 .price {
-    font-size: 18px;
-    color: #007bff;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--success);
 }
 
 .currency {
-    font-size: 16px;
-    color: #333;
+    font-size: 0.875rem;
+    color: var(--text-muted);
 }
 
 .footer {

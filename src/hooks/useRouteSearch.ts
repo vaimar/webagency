@@ -1,5 +1,12 @@
 import { useCallback, useState } from 'react';
-import { BackendFlight, fetchTripSuggestion, searchFlights, TripSuggestion } from '../services/api';
+import {
+    ApiDiagnostics,
+    ApiRequestError,
+    BackendFlight,
+    fetchTripSuggestion,
+    searchFlights,
+    TripSuggestion,
+} from '../services/api';
 import { MOCK_FLIGHT_DESTINATIONS } from '../data/mockDestinations';
 
 interface RouteSearchState {
@@ -16,6 +23,8 @@ interface UseRouteSearchResult {
     flightError: string | null;
     suggestionError: string | null;
     flightSource: 'live' | 'curated' | null;
+    flightDiagnostics: ApiDiagnostics | null;
+    suggestionDiagnostics: ApiDiagnostics | null;
     setOrigin: (value: string) => void;
     setDestination: (value: string) => void;
     searchRoute: () => Promise<void>;
@@ -40,6 +49,8 @@ export const useRouteSearch = (): UseRouteSearchResult => {
     const [flightError, setFlightError] = useState<string | null>(null);
     const [suggestionError, setSuggestionError] = useState<string | null>(null);
     const [flightSource, setFlightSource] = useState<'live' | 'curated' | null>(null);
+    const [flightDiagnostics, setFlightDiagnostics] = useState<ApiDiagnostics | null>(null);
+    const [suggestionDiagnostics, setSuggestionDiagnostics] = useState<ApiDiagnostics | null>(null);
 
     const setOrigin = useCallback((value: string) => setState((prev) => ({ ...prev, origin: value.toUpperCase() })), []);
     const setDestination = useCallback((value: string) => setState((prev) => ({ ...prev, destination: value.toUpperCase() })), []);
@@ -47,15 +58,27 @@ export const useRouteSearch = (): UseRouteSearchResult => {
     const searchRoute = useCallback(async () => {
         if (!state.origin || !state.destination) return;
 
-        // ── Flights ──────────────────────────────────────────────────
+        setTripSuggestion(null);
         setIsSearchingFlights(true);
         setFlightError(null);
+        setFlightDiagnostics(null);
+        setIsLoadingSuggestion(true);
+        setSuggestionError(null);
+        setSuggestionDiagnostics(null);
 
-        try {
-            const live = await searchFlights({ origin: state.origin, destination: state.destination });
-            setFlights(live);
+        const [flightResult, suggestionResult] = await Promise.allSettled([
+            searchFlights({ origin: state.origin, destination: state.destination }),
+            fetchTripSuggestion({ origin: state.origin, destination: state.destination }),
+        ]);
+
+        if (flightResult.status === 'fulfilled') {
+            const live = flightResult.value;
+            setFlights(live.flights);
             setFlightSource('live');
-        } catch {
+            setFlightDiagnostics(live.diagnostics);
+        } else {
+            const error = flightResult.reason;
+
             // Fall back to curated mock data filtered by destination
             const fallback = MOCK_FLIGHT_DESTINATIONS
                 .filter(
@@ -67,24 +90,34 @@ export const useRouteSearch = (): UseRouteSearchResult => {
 
             setFlights(fallback.length > 0 ? fallback : MOCK_FLIGHT_DESTINATIONS.map(mapMockToFlight));
             setFlightSource('curated');
-            setFlightError('Live flights unavailable — showing curated ideas instead.');
-        } finally {
-            setIsSearchingFlights(false);
+            setFlightError(
+                error instanceof Error
+                    ? `Live flights unavailable — showing curated ideas instead. ${error.message}`
+                    : 'Live flights unavailable — showing curated ideas instead.',
+            );
+            if (error instanceof ApiRequestError) {
+                setFlightDiagnostics(error.diagnostics);
+            }
         }
 
-        // ── Trip suggestion ───────────────────────────────────────────
-        setIsLoadingSuggestion(true);
-        setSuggestionError(null);
+        setIsSearchingFlights(false);
 
-        try {
-            const suggestion = await fetchTripSuggestion({ origin: state.origin, destination: state.destination });
-            setTripSuggestion(suggestion);
-        } catch (err) {
-            const message = err instanceof Error ? err.message : 'Unknown error';
-            setSuggestionError(`AI trip suggestion unavailable: ${message}`);
-        } finally {
-            setIsLoadingSuggestion(false);
+        if (suggestionResult.status === 'fulfilled') {
+            const result = suggestionResult.value;
+            setTripSuggestion(result.suggestion);
+            setSuggestionDiagnostics(result.diagnostics);
+        } else {
+            const error = suggestionResult.reason;
+
+            if (error instanceof ApiRequestError) {
+                setSuggestionError(`AI trip suggestion unavailable: ${error.message}`);
+                setSuggestionDiagnostics(error.diagnostics);
+            } else {
+                setSuggestionError('AI trip suggestion unavailable.');
+            }
         }
+
+        setIsLoadingSuggestion(false);
     }, [state.destination, state.origin]);
 
     const clearResults = useCallback(() => {
@@ -93,6 +126,8 @@ export const useRouteSearch = (): UseRouteSearchResult => {
         setFlightError(null);
         setSuggestionError(null);
         setFlightSource(null);
+        setFlightDiagnostics(null);
+        setSuggestionDiagnostics(null);
     }, []);
 
     return {
@@ -104,10 +139,11 @@ export const useRouteSearch = (): UseRouteSearchResult => {
         flightError,
         suggestionError,
         flightSource,
+        flightDiagnostics,
+        suggestionDiagnostics,
         setOrigin,
         setDestination,
         searchRoute,
         clearResults,
     };
 };
-

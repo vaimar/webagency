@@ -23,7 +23,6 @@ const BudgetInput: React.FC<BudgetInputProps> = ({ value, onChange }) => {
                 <strong className="budget-input__value">{formattedBudget}</strong>
             </div>
             <Slider
-                id="budget"
                 min={5}
                 max={5000}
                 step={25}

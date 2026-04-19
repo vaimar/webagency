@@ -1,14 +1,19 @@
-
+/* App-level overrides */
 .hero {
-  position: relative;
+    position: relative;
 }
 
 .hero-card--compact {
-  min-height: auto;
+    min-height: auto;
 }
 
 .flight-card__eyebrow,
 .eyebrow {
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+/* Ensure proper card hover states */
+.flight-card.card:hover {
+    transform: translateY(-3px);
 }

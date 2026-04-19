@@ -1,6 +1,7 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "TravelHub",
+  "name": "TravelHub - Find Flights & Plan Your Trip",
+  "description": "Search flights, get AI-powered trip recommendations, and plan your perfect vacation.",
   "icons": [
     {
       "src": "favicon.ico",
@@ -20,6 +21,6 @@
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "theme_color": "#0057b8",
+  "background_color": "#f5f7fa"
 }
