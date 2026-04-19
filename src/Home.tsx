@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from 'react';
-import FlightDestinationCard from './components/FlightDestinationCard';
 import { useFlightDestinations } from './hooks/useFlightDestinations';
 
 const Home: React.FC = () => {
@@ -91,10 +90,31 @@ const Home: React.FC = () => {
                 ) : destinations.length > 0 ? (
                     <div className="info-grid">
                         {destinations.map((destination) => (
-                            <FlightDestinationCard
+                            <article
                                 key={`${destination.origin}-${destination.destination}-${destination.departureDate}`}
-                                destination={destination}
-                            />
+                                className="card flight-card"
+                            >
+                                <div className="flight-card__eyebrow">
+                                    {destination.origin} → {destination.destination}
+                                </div>
+                                <div className="flight-card__price">
+                                    {destination.price.currency} {destination.price.total}
+                                </div>
+                                <h3>{destination.destination}</h3>
+                                <p className="muted-text">
+                                    Depart {destination.departureDate || 'Flexible dates'} · Return {destination.returnDate || 'Flexible dates'}
+                                </p>
+                                <dl className="flight-card__meta">
+                                    <div>
+                                        <dt>Fare type</dt>
+                                        <dd>{destination.type.replace(/-/g, ' ')}</dd>
+                                    </div>
+                                    <div>
+                                        <dt>Status</dt>
+                                        <dd>{destination.links.flightOffers ? 'Offer-ready' : 'Preview fare'}</dd>
+                                    </div>
+                                </dl>
+                            </article>
                         ))}
                     </div>
                 ) : (

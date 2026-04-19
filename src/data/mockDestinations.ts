@@ -1,6 +1,4 @@
-import { FlightDestination } from '../model/FlightDestination';
-
-export const MOCK_FLIGHT_DESTINATIONS: FlightDestination[] = [
+export const MOCK_FLIGHT_DESTINATIONS = [
     {
         type: 'flight-destination',
         origin: 'PAR',

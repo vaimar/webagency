@@ -1,12 +1,5 @@
 // TravelForm.js
 import React, { useMemo, useState } from 'react';
-import AccommodationInput from './components/AccommodationInput';
-import ActivitiesInput from './components/ActivitiesInput';
-import BudgetInput from './components/BudgetInput';
-import CountryInput from './components/CountryInput';
-import FavoriteActivitiesInput from './components/FavoriteActivitiesInput';
-import FoodPreferencesInput from './components/FoodPreferencesInput';
-import RestaurantTipsInput from './components/RestaurantTipsInput';
 import { COUNTRY_OPTIONS, DESTINATION_HIGHLIGHTS, PACE_OPTIONS, SEASON_OPTIONS } from './data/travelOptions';
 import { TravelPlan } from './model/TravelPlan';
 
@@ -96,7 +89,23 @@ const TravelForm: React.FC = () => {
                             </div>
                         </div>
 
-                        <CountryInput value={plan.destination} onChange={(value) => updatePlan('destination', value)} />
+                        <label className="field-group">
+                            <span className="field-group__label">Destination focus</span>
+                            <select
+                                className="text-input"
+                                value={plan.destination}
+                                onChange={(event) => updatePlan('destination', event.target.value)}
+                            >
+                                {COUNTRY_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                            <span className="field-group__hint">
+                                {COUNTRY_OPTIONS.find((option) => option.value === plan.destination)?.description}
+                            </span>
+                        </label>
 
                         <div className="filter-grid">
                             <label className="field-group">
@@ -145,7 +154,25 @@ const TravelForm: React.FC = () => {
                             </div>
                         </label>
 
-                        <BudgetInput value={plan.budget} onChange={(value) => updatePlan('budget', value)} />
+                        <label className="field-group budget-input-container">
+                            <div className="budget-input__header">
+                                <span className="field-group__label">Budget ceiling</span>
+                                <strong className="budget-input__value">{formatBudget(plan.budget)}</strong>
+                            </div>
+                            <input
+                                type="range"
+                                min={200}
+                                max={5000}
+                                step={25}
+                                value={plan.budget}
+                                onChange={(event) => updatePlan('budget', Number(event.target.value))}
+                            />
+                            <div className="budget-input__scale">
+                                <span>€200</span>
+                                <span>€5,000</span>
+                            </div>
+                            <span className="field-group__hint">Use this as the full-trip target budget.</span>
+                        </label>
                     </section>
 
                     <section className="stack-lg">
@@ -156,9 +183,70 @@ const TravelForm: React.FC = () => {
                             </div>
                         </div>
 
-                        <AccommodationInput value={plan.accommodation} onChange={(value) => updatePlan('accommodation', value)} />
-                        <FoodPreferencesInput value={plan.foodPreferences} onChange={(value) => updatePlan('foodPreferences', value)} />
-                        <RestaurantTipsInput value={plan.restaurantTips} onChange={(value) => updatePlan('restaurantTips', value)} />
+                        <fieldset className="field-group option-grid-fieldset">
+                            <legend className="field-group__label">Accommodation preferences</legend>
+                            <div className="option-grid">
+                                {[
+                                    { value: 'hotel', label: 'Hotel', description: 'Reliable comfort and central amenities.' },
+                                    { value: 'boutique', label: 'Boutique stay', description: 'Design-led spaces with local character.' },
+                                    { value: 'apartment', label: 'Apartment', description: 'Great for longer stays and neighborhood living.' },
+                                    { value: 'hostel', label: 'Hostel', description: 'Budget-friendly and social.' },
+                                ].map((option) => (
+                                    <button
+                                        key={option.value}
+                                        type="button"
+                                        className={plan.accommodation === option.value ? 'choice-card choice-card--selected' : 'choice-card'}
+                                        onClick={() => updatePlan('accommodation', option.value as TravelPlan['accommodation'])}
+                                    >
+                                        <span className="choice-card__title">{option.label}</span>
+                                        <span className="choice-card__description">{option.description}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </fieldset>
+
+                        <fieldset className="field-group option-grid-fieldset">
+                            <legend className="field-group__label">Food preferences</legend>
+                            <div className="checkbox-grid">
+                                {[
+                                    { value: 'vegetarian', label: 'Vegetarian' },
+                                    { value: 'vegan', label: 'Vegan' },
+                                    { value: 'seafood', label: 'Seafood lover' },
+                                    { value: 'street-food', label: 'Street food' },
+                                    { value: 'fine-dining', label: 'Fine dining' },
+                                    { value: 'local-specialties', label: 'Local specialties' },
+                                ].map((option) => {
+                                    const checked = plan.foodPreferences.includes(option.value);
+                                    return (
+                                        <label key={option.value} className={checked ? 'checkbox-chip checkbox-chip--checked' : 'checkbox-chip'}>
+                                            <input
+                                                type="checkbox"
+                                                checked={checked}
+                                                onChange={() =>
+                                                    updatePlan(
+                                                        'foodPreferences',
+                                                        checked
+                                                            ? plan.foodPreferences.filter((item) => item !== option.value)
+                                                            : [...plan.foodPreferences, option.value],
+                                                    )
+                                                }
+                                            />
+                                            <span>{option.label}</span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                        </fieldset>
+
+                        <label className="field-group">
+                            <span className="field-group__label">Dining notes</span>
+                            <textarea
+                                className="text-area"
+                                value={plan.restaurantTips}
+                                onChange={(event) => updatePlan('restaurantTips', event.target.value)}
+                                placeholder="Need reservations, late-night spots, or kid-friendly options?"
+                            />
+                        </label>
                     </section>
 
                     <section className="stack-lg">
@@ -169,8 +257,25 @@ const TravelForm: React.FC = () => {
                             </div>
                         </div>
 
-                        <ActivitiesInput value={plan.activities} onChange={(value) => updatePlan('activities', value)} />
-                        <FavoriteActivitiesInput value={plan.favoriteActivities} onChange={(value) => updatePlan('favoriteActivities', value)} />
+                        <label className="field-group">
+                            <span className="field-group__label">Activities to include</span>
+                            <textarea
+                                className="text-area"
+                                value={plan.activities}
+                                onChange={(event) => updatePlan('activities', event.target.value)}
+                                placeholder="Museums, food tours, surf lessons, hiking, coworking days..."
+                            />
+                        </label>
+
+                        <label className="field-group">
+                            <span className="field-group__label">Non-negotiable moments</span>
+                            <textarea
+                                className="text-area"
+                                value={plan.favoriteActivities}
+                                onChange={(event) => updatePlan('favoriteActivities', event.target.value)}
+                                placeholder="Golden-hour walk, scenic breakfast, one special dinner..."
+                            />
+                        </label>
 
                         <label className="field-group">
                             <span className="field-group__label">Extra notes</span>

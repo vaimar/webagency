@@ -1,8 +1,35 @@
 import { MOCK_FLIGHT_DESTINATIONS } from '../data/mockDestinations';
-import { FlightDestination, FlightSearchParams, FlightSearchResult } from '../model/FlightDestination';
 
 const AMADEUS_BASE_URL = 'https://test.api.amadeus.com/v1';
-const apiToken = (process.env.REACT_APP_AMADEUS_TOKEN ?? '').trim();
+const apiToken = (((process.env as { REACT_APP_AMADEUS_TOKEN?: string })?.REACT_APP_AMADEUS_TOKEN) ?? '').trim();
+
+export interface FlightDestination {
+    type: string;
+    origin: string;
+    destination: string;
+    departureDate: string;
+    returnDate: string;
+    price: {
+        total: string;
+        currency: string;
+    };
+    links: {
+        flightDates: string;
+        flightOffers: string;
+    };
+}
+
+export interface FlightSearchParams {
+    origin: string;
+    maxPrice: number;
+}
+
+export interface FlightSearchResult {
+    destinations: FlightDestination[];
+    source: 'live' | 'demo';
+    notice?: string;
+    fetchedAt: string;
+}
 
 interface RawFlightDestination {
     type?: string;
@@ -29,7 +56,7 @@ const normalizeDestination = (destination: FlightDestination, origin: string): F
 
 const buildDemoResult = (params: FlightSearchParams, notice = fallbackNotice): FlightSearchResult => {
     const origin = params.origin.toUpperCase();
-    const destinations = MOCK_FLIGHT_DESTINATIONS
+    const destinations = (MOCK_FLIGHT_DESTINATIONS as FlightDestination[])
         .filter((item) => Number(item.price.total) <= params.maxPrice)
         .map((item) => normalizeDestination(item, origin));
 
@@ -60,19 +87,18 @@ const mapApiDestination = (item: RawFlightDestination, origin: string): FlightDe
 export const isLiveFlightApiConfigured = (): boolean => apiToken.length > 0;
 
 export const fetchFlightDestinations = async (params: FlightSearchParams): Promise<FlightSearchResult> => {
-    const origin = params.origin.trim().toUpperCase();
-
-    if (!origin) {
-        return buildDemoResult({ ...params, origin: 'PAR' }, 'Origin is required, so sample fares for PAR are shown instead.');
-    }
+    const normalizedParams: FlightSearchParams = {
+        origin: params.origin.trim().toUpperCase() || 'PAR',
+        maxPrice: params.maxPrice,
+    };
 
     if (!isLiveFlightApiConfigured()) {
-        return buildDemoResult({ ...params, origin });
+        return buildDemoResult(normalizedParams);
     }
 
     try {
         const response = await fetch(
-            `${AMADEUS_BASE_URL}/shopping/flight-destinations?origin=${origin}&maxPrice=${params.maxPrice}`,
+            `${AMADEUS_BASE_URL}/shopping/flight-destinations?origin=${normalizedParams.origin}&maxPrice=${normalizedParams.maxPrice}`,
             {
                 headers: {
                     Authorization: `Bearer ${apiToken}`,
@@ -81,14 +107,20 @@ export const fetchFlightDestinations = async (params: FlightSearchParams): Promi
         );
 
         if (!response.ok) {
-            return buildDemoResult({ ...params, origin }, `Live fares failed (${response.status}). ${fallbackNotice}`);
+            return buildDemoResult(
+                normalizedParams,
+                `Live fares failed (${response.status}). ${fallbackNotice}`,
+            );
         }
 
         const payload = (await response.json()) as { data?: RawFlightDestination[] };
-        const destinations = (payload.data ?? []).map((item) => mapApiDestination(item, origin));
+        const destinations = (payload.data ?? []).map((item) => mapApiDestination(item, normalizedParams.origin));
 
         if (destinations.length === 0) {
-            return buildDemoResult({ ...params, origin }, 'No live fares matched your filters, so curated suggestions are shown instead.');
+            return buildDemoResult(
+                normalizedParams,
+                'No live fares matched your filters, so curated suggestions are shown instead.',
+            );
         }
 
         return {
@@ -98,7 +130,9 @@ export const fetchFlightDestinations = async (params: FlightSearchParams): Promi
         };
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        return buildDemoResult({ ...params, origin }, `Live fares are temporarily unavailable (${message}). ${fallbackNotice}`);
+        return buildDemoResult(
+            normalizedParams,
+            `Live fares are temporarily unavailable (${message}). ${fallbackNotice}`,
+        );
     }
 };
-
