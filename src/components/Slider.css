@@ -1,0 +1,43 @@
+.flex {
+    display: flex;
+}
+
+.items-center {
+    align-items: center;
+}
+
+.w-full {
+    width: 100%;
+}
+
+.h-2 {
+    height: 2px;
+}
+
+.bg-gray-800 {
+    background-color: #2d3748;
+}
+
+.rounded-full {
+    border-radius: 9999px;
+}
+
+.bg-gradient-to-r {
+    background-image: linear-gradient(to right, #f6e05e, #f56565);
+}
+
+.from-yellow-500 {
+    --gradient-from: #f6e05e;
+}
+
+.to-red-500 {
+    --gradient-to: #f56565;
+}
+
+.cursor-grabbing {
+    cursor: grabbing;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}

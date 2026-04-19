@@ -1,0 +1,68 @@
+.container {
+    width: 80%;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.header {
+    background-color: #007bff;
+    color: #fff;
+    padding: 20px;
+    text-align: center;
+}
+
+.title {
+    margin: 0;
+    font-size: 32px;
+}
+
+.subtitle {
+    font-size: 24px;
+}
+
+.destination-list {
+    list-style-type: none;
+    padding: 0;
+}
+
+.destination-item {
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    background-color: #fff;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.destination-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.destination-name {
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.price {
+    font-size: 18px;
+    color: #007bff;
+}
+
+.currency {
+    font-size: 16px;
+    color: #333;
+}
+
+.footer {
+    background-color: #f8f9fa;
+    color: #333;
+    padding: 20px;
+    text-align: center;
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+}

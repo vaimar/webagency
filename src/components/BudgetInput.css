@@ -1,0 +1,50 @@
+/* BudgetInput.css */
+
+.budget-input-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 20px;
+    border-radius: 20px;
+    background: rgba(37, 99, 235, 0.05);
+    border: 1px solid rgba(37, 99, 235, 0.12);
+    font-family: 'Roboto', sans-serif; /* Use the Google font */
+}
+
+.budget-input-container {
+    padding: 20px;
+    border-radius: 20px;
+    background: rgba(37, 99, 235, 0.05);
+    border: 1px solid rgba(37, 99, 235, 0.12);
+}
+
+.budget-slider {
+    width: 100%;
+    padding: 12px 0;
+}
+
+.budget-slider-track {
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(37, 99, 235, 0.12);
+}
+
+.budget-slider-track.budget-slider-track-0 {
+    background: linear-gradient(90deg, #2563eb, #4f46e5);
+}
+
+.budget-slider-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2px solid #2563eb;
+    box-shadow: 0 10px 18px rgba(37, 99, 235, 0.2);
+    cursor: grab;
+    margin-top: -7px;
+}
+
+.budget-slider-thumb:focus-visible {
+    outline: 3px solid rgba(37, 99, 235, 0.2);
+}

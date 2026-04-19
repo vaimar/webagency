@@ -1,0 +1,16 @@
+.custom-slider {
+    width: 100%;
+}
+
+.custom-slider-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background-color: #007bff;
+    cursor: pointer;
+}
+
+.custom-slider-track {
+    height: 2px;
+    background-color: #ccc;
+}

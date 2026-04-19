@@ -1,70 +1,55 @@
-# Getting Started with Create React App
+# Webagency
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This is a refactored React + TypeScript travel app built on Create React App. The project now has a clearer architecture, typed models, reusable planner fields, cached fare discovery, and safer handling of external flight data.
 
-## Available Scripts
+## What changed
 
-In the project directory, you can run:
+- Replaced duplicated page rendering with a routed app shell in `src/App.tsx` and `src/Main.tsx`
+- Removed the old browser-side OAuth flow with hardcoded secrets
+- Added typed flight models, a data service, mock fallback data, and a reusable `useFlightDestinations` hook
+- Rebuilt `src/TravelForm.tsx` into a structured planner with live summary output
+- Reworked the visual design into a shared stylesheet in `src/index.css`
+- Replaced the placeholder test with assertions for the real UI
 
-### `yarn start`
+## App sections
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- `Overview` — explains the refreshed product and directs users into the useful flows
+- `Discover fares` — lets users filter route ideas by origin and budget, with local cache support
+- `Travel planner` — collects preferences for destination, pace, accommodation, food, and activities
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Project structure
 
-### `yarn test`
+```text
+src/
+  components/        Reusable UI elements and planner inputs
+  data/              Mock fares and planner option data
+  hooks/             Shared React hooks
+  model/             TypeScript models
+  services/          External-data integration layer
+  App.tsx            Top-level routing
+  Main.tsx           Shared application shell
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Live flight data
 
-### `yarn build`
+The app no longer embeds Amadeus client credentials in the browser. For live fare discovery, provide a bearer token with:
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+```bash
+REACT_APP_AMADEUS_TOKEN=your_token_here
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+If that variable is missing or the request fails, the app automatically falls back to curated demo fares so the UI remains usable.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## Scripts
 
-### `yarn eject`
+```bash
+npm start
+npm test -- --watch=false
+npm run build
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## Notes
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `yarn build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- The project still uses Create React App for compatibility with the existing setup.
+- Cache data is persisted in `localStorage` under `webagency.cache`.
+- If you later add a backend or proxy, `src/services/flightService.ts` is the place to wire in a more secure live-data strategy.
