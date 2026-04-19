@@ -4,6 +4,7 @@ export type TravelSeason = 'spring' | 'summer' | 'autumn' | 'winter';
 
 export interface TravelPlan {
     destination: string;
+    city: string;
     budget: number;
     duration: number;
     accommodation: AccommodationType;
@@ -15,4 +16,3 @@ export interface TravelPlan {
     pace: TravelPace;
     season: TravelSeason;
 }
-

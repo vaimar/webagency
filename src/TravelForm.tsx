@@ -1,12 +1,15 @@
 // TravelForm.js
-import { faCalendar, faCheck, faCompass, faHotel, faMapMarkerAlt, faSave, faUndo, faUtensils, faWallet } from '@fortawesome/free-solid-svg-icons';
+import { faCalendar, faCheck, faCompass, faHotel, faMapMarkerAlt, faMagic, faStar, faUndo, faUtensils, faWallet } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import React, { useMemo, useState } from 'react';
-import { COUNTRY_OPTIONS, DESTINATION_HIGHLIGHTS, PACE_OPTIONS, SEASON_OPTIONS } from './data/travelOptions';
+import React, { useMemo, useRef, useState } from 'react';
+import { TripGuide, TripGuideLoading, RequestDiagnostics } from './components/TripGuide';
+import { COUNTRY_OPTIONS, DESTINATION_HIGHLIGHTS, PACE_OPTIONS, SEASON_OPTIONS, getCitiesForCountry, CityOption } from './data/travelOptions';
 import { TravelPlan } from './model/TravelPlan';
+import { ApiDiagnostics, ApiRequestError, planTrip, TripSuggestion } from './services/api';
 
 const initialPlan: TravelPlan = {
     destination: 'portugal',
+    city: 'lisbon',
     budget: 1600,
     duration: 7,
     accommodation: 'boutique',
@@ -33,7 +36,11 @@ const formatBudget = (value: number): string => {
 
 const TravelForm: React.FC = () => {
     const [plan, setPlan] = useState<TravelPlan>(initialPlan);
-    const [submittedAt, setSubmittedAt] = useState<string>('');
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [tripResult, setTripResult] = useState<TripSuggestion | null>(null);
+    const [resultDiagnostics, setResultDiagnostics] = useState<ApiDiagnostics | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const resultRef = useRef<HTMLDivElement>(null);
 
     const updatePlan = <Key extends keyof TravelPlan>(key: Key, value: TravelPlan[Key]) => {
         setPlan((currentPlan) => ({
@@ -42,7 +49,16 @@ const TravelForm: React.FC = () => {
         }));
     };
 
+    const handleCountryChange = (country: string) => {
+        const cities = getCitiesForCountry(country);
+        const defaultCity = cities.find((c) => c.popular)?.value ?? cities[0]?.value ?? '';
+        setPlan((prev) => ({ ...prev, destination: country, city: defaultCity }));
+    };
+
+    const cities = useMemo(() => getCitiesForCountry(plan.destination), [plan.destination]);
+    const selectedCity = cities.find((c) => c.value === plan.city);
     const destinationLabel = getLabel(plan.destination, COUNTRY_OPTIONS);
+    const cityLabel = selectedCity?.label ?? plan.city;
     const paceLabel = getLabel(plan.pace, PACE_OPTIONS);
     const seasonLabel = getLabel(plan.season, SEASON_OPTIONS);
     const budgetPerDay = Math.round(plan.budget / Math.max(plan.duration, 1));
@@ -52,20 +68,54 @@ const TravelForm: React.FC = () => {
     );
 
     const summaryItems = [
-        `${destinationLabel} with a ${paceLabel.toLowerCase()} pace`,
+        `${cityLabel}, ${destinationLabel} with a ${paceLabel.toLowerCase()} pace`,
         `${plan.duration} days with about ${formatBudget(budgetPerDay)} per day`,
         `${plan.accommodation} stay style`,
         `${plan.foodPreferences.length > 0 ? plan.foodPreferences.length : 'No'} food priorities captured`,
     ];
 
-    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    const handleGenerate = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        setSubmittedAt(new Date().toISOString());
+        setIsGenerating(true);
+        setError(null);
+        setTripResult(null);
+        setResultDiagnostics(null);
+
+        try {
+            const result = await planTrip({
+                destination: `${cityLabel}, ${destinationLabel.replace(/^[^\s]+\s/, '')}`,
+                budget: plan.budget,
+                duration: plan.duration,
+                accommodation: plan.accommodation,
+                foodPreferences: plan.foodPreferences,
+                restaurantTips: plan.restaurantTips,
+                activities: plan.activities,
+                favoriteActivities: plan.favoriteActivities,
+                notes: plan.notes,
+                pace: plan.pace,
+                season: plan.season,
+            });
+            setTripResult(result.suggestion);
+            setResultDiagnostics(result.diagnostics);
+            // Scroll to results
+            setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+        } catch (err) {
+            if (err instanceof ApiRequestError) {
+                setError(err.message);
+                setResultDiagnostics(err.diagnostics);
+            } else {
+                setError(err instanceof Error ? err.message : 'Failed to generate trip plan');
+            }
+        } finally {
+            setIsGenerating(false);
+        }
     };
 
     const handleReset = () => {
         setPlan(initialPlan);
-        setSubmittedAt('');
+        setTripResult(null);
+        setError(null);
+        setResultDiagnostics(null);
     };
 
     return (
@@ -75,18 +125,18 @@ const TravelForm: React.FC = () => {
                 <div className="hero-card__content">
                     <p className="eyebrow eyebrow--light">
                         <FontAwesomeIcon icon={faCompass} style={{ marginRight: '8px' }} />
-                        Trip Planner
+                        AI Trip Planner
                     </p>
-                    <h1>Create your perfect trip itinerary</h1>
+                    <h1>Tell us your dream trip</h1>
                     <p className="hero-card__lede">
-                        Tell us your preferences and we'll help you build a personalized travel brief. 
-                        Perfect for planning solo trips, romantic getaways, or family vacations.
+                        Share your preferences and our AI will craft a complete personalized travel guide —
+                        restaurants, activities, neighborhoods, accommodation, and a day-by-day itinerary tailored just for you.
                     </p>
                 </div>
             </section>
 
             <div className="planner-layout">
-                <form className="card section-card stack-xl" onSubmit={handleSubmit}>
+                <form className="card section-card stack-xl" onSubmit={handleGenerate}>
                     {/* Destination & Dates Section */}
                     <section className="stack-lg">
                         <div className="section-card__header section-card__header--plain">
@@ -100,11 +150,11 @@ const TravelForm: React.FC = () => {
                         </div>
 
                         <label className="field-group">
-                            <span className="field-group__label">Where do you want to go?</span>
+                            <span className="field-group__label">Country</span>
                             <select
                                 className="text-input text-input--large"
                                 value={plan.destination}
-                                onChange={(event) => updatePlan('destination', event.target.value)}
+                                onChange={(event) => handleCountryChange(event.target.value)}
                             >
                                 {COUNTRY_OPTIONS.map((option) => (
                                     <option key={option.value} value={option.value}>
@@ -115,6 +165,27 @@ const TravelForm: React.FC = () => {
                             <span className="field-group__hint">
                                 {COUNTRY_OPTIONS.find((option) => option.value === plan.destination)?.description}
                             </span>
+                        </label>
+
+                        <label className="field-group">
+                            <span className="field-group__label">City</span>
+                            <select
+                                className="text-input text-input--large"
+                                value={plan.city}
+                                onChange={(event) => updatePlan('city', event.target.value)}
+                            >
+                                {cities.map((city: CityOption) => (
+                                    <option key={city.value} value={city.value}>
+                                        {city.label}{city.popular ? ' ⭐' : ''}
+                                    </option>
+                                ))}
+                            </select>
+                            {selectedCity?.tip && (
+                                <span className="field-group__hint city-tip">
+                                    <FontAwesomeIcon icon={faStar} style={{ marginRight: '4px', color: 'var(--warning)' }} />
+                                    <strong>Insider tip:</strong> {selectedCity.tip}
+                                </span>
+                            )}
                         </label>
 
                         <div className="filter-grid">
@@ -321,11 +392,11 @@ const TravelForm: React.FC = () => {
                     </section>
 
                     <div className="button-row">
-                        <button type="submit" className="button button--large">
-                            <FontAwesomeIcon icon={faSave} />
-                            Save Trip Brief
+                        <button type="submit" className="button button--large" disabled={isGenerating}>
+                            <FontAwesomeIcon icon={faMagic} />
+                            {isGenerating ? 'Generating your trip...' : 'Generate AI Trip Plan'}
                         </button>
-                        <button type="button" className="button button--secondary button--large" onClick={handleReset}>
+                        <button type="button" className="button button--secondary button--large" onClick={handleReset} disabled={isGenerating}>
                             <FontAwesomeIcon icon={faUndo} />
                             Reset
                         </button>
@@ -336,11 +407,11 @@ const TravelForm: React.FC = () => {
                 <aside className="card planner-summary stack-lg">
                     <div>
                         <p className="eyebrow">
-                            {submittedAt ? '✅ Saved Brief' : '📋 Live Preview'}
+                            {tripResult ? '✅ Trip Generated' : isGenerating ? '⏳ Generating...' : '📋 Live Preview'}
                         </p>
                         <h2>{destinationLabel}</h2>
                         <p className="muted-text">
-                            {submittedAt ? 'Your trip brief is ready to share!' : 'Updates as you edit the form.'}
+                            {tripResult ? 'Your personalized trip guide is ready below!' : isGenerating ? 'AI is crafting your travel guide...' : 'Fill in your preferences and hit Generate.'}
                         </p>
                     </div>
 
@@ -395,6 +466,34 @@ const TravelForm: React.FC = () => {
                         </div>
                     )}
                 </aside>
+            </div>
+
+            {/* Results Section */}
+            <div ref={resultRef}>
+                {isGenerating && (
+                    <TripGuideLoading title={`Crafting your ${plan.duration}-day ${destinationLabel} adventure...`} />
+                )}
+
+                {error && !isGenerating && (
+                    <section className="card section-card stack-lg">
+                        <div className="section-card__header">
+                            <div>
+                                <p className="eyebrow">✨ AI Trip Plan</p>
+                                <h2>Something went wrong</h2>
+                            </div>
+                        </div>
+                        <div className="notice-banner notice-banner--error">{error}</div>
+                        <RequestDiagnostics title="Request details" diagnostics={resultDiagnostics} />
+                    </section>
+                )}
+
+                {tripResult && !isGenerating && (
+                    <TripGuide
+                        trip={tripResult}
+                        diagnostics={resultDiagnostics}
+                        heroTitle={`Your ${plan.duration}-Day ${destinationLabel} Adventure`}
+                    />
+                )}
             </div>
         </div>
     );

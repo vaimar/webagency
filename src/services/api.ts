@@ -9,7 +9,7 @@ const parseTimeoutMs = (value: string | undefined, fallback: number): number => 
 };
 
 const REQUEST_TIMEOUT_MS = parseTimeoutMs(process.env.REACT_APP_REQUEST_TIMEOUT_MS, 5_000);
-const AI_REQUEST_TIMEOUT_MS = parseTimeoutMs(process.env.REACT_APP_AI_REQUEST_TIMEOUT_MS, 30_000);
+const AI_REQUEST_TIMEOUT_MS = parseTimeoutMs(process.env.REACT_APP_AI_REQUEST_TIMEOUT_MS, 45_000);
 
 const buildApiUrl = (path: string, query?: Record<string, string>): string => {
     const endpoint = `${API_BASE}${path}`;
@@ -375,3 +375,42 @@ export const fetchTripSuggestion = async (params: TripSuggestParams): Promise<Tr
     };
 };
 
+// ─── Trip plan (personalized) ─────────────────────────────────────────────────
+
+export interface TripPlanParams {
+    destination: string;
+    budget: number;
+    duration: number;
+    accommodation: string;
+    foodPreferences: string[];
+    restaurantTips: string;
+    activities: string;
+    favoriteActivities: string;
+    notes: string;
+    pace: string;
+    season: string;
+}
+
+export const planTrip = async (params: TripPlanParams): Promise<TripSuggestionResult> => {
+    const url = buildApiUrl('/trip/plan');
+
+    const { response, diagnostics } = await fetchWithDiagnostics(
+        url,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(params),
+        },
+        AI_REQUEST_TIMEOUT_MS,
+    );
+    await ensureOk(response, diagnostics, 'Trip plan failed');
+
+    const data = (await response.json()) as TripSuggestion;
+    return {
+        suggestion: {
+            ...data,
+            destination: params.destination,
+        },
+        diagnostics,
+    };
+};

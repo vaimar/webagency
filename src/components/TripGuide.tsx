@@ -1,11 +1,21 @@
+import { faExternalLinkAlt } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useState } from 'react';
 import { AccommodationOption, Activity, ApiDiagnostics, DayPlan, Neighborhood, Restaurant, TripSuggestion } from '../services/api';
+import { accommodationUrls, activityUrls, placeUrls } from '../services/affiliates';
 
 /* ─── Helpers ──────────────────────────────────────────────────────────────── */
 
 const categoryEmoji: Record<string, string> = {
     culture: '🏛️', adventure: '🧗', food: '🍽️', nightlife: '🌙', nature: '🌿', shopping: '🛍️',
 };
+
+
+const ExternalLink: React.FC<{ href: string; label: string; className?: string }> = ({ href, label, className }) => (
+    <a href={href} target="_blank" rel="noopener noreferrer" className={className ?? 'trip-external-link'}>
+        {label} <FontAwesomeIcon icon={faExternalLinkAlt} style={{ fontSize: '0.65rem', marginLeft: '4px' }} />
+    </a>
+);
 
 const formatDiagnosticsTime = (value?: string): string => {
     if (!value) return '—';
@@ -58,7 +68,12 @@ const OverviewTab: React.FC<{ trip: TripSuggestion }> = ({ trip }) => (
             <div className="stack-md">
                 <h3>🏘️ Neighborhoods to Explore</h3>
                 <div className="trip-neighborhoods">{trip.neighborhoods.map((n: Neighborhood) => (
-                    <div key={n.name} className="trip-neighborhood card"><h4>{n.name}</h4><p className="trip-neighborhood__vibe">{n.vibe}</p><span className="tag">{n.bestFor}</span></div>
+                    <div key={n.name} className="trip-neighborhood card">
+                        <h4>{n.name}</h4><p className="trip-neighborhood__vibe">{n.vibe}</p><span className="tag">{n.bestFor}</span>
+                        <div className="trip-booking-links" style={{ marginTop: '8px' }}>
+                            <ExternalLink href={placeUrls(n.name, trip.destination).googleMaps} label="Explore on Maps" />
+                        </div>
+                    </div>
                 ))}</div>
             </div>
         )}
@@ -81,19 +96,29 @@ const OverviewTab: React.FC<{ trip: TripSuggestion }> = ({ trip }) => (
     </div>
 );
 
-const RestaurantsTab: React.FC<{ restaurants: Restaurant[] }> = ({ restaurants }) => (
-    <div className="trip-tab-content"><div className="trip-restaurants">{restaurants.map((r, i) => (
+const RestaurantsTab: React.FC<{ restaurants: Restaurant[]; destination?: string }> = ({ restaurants, destination }) => (
+    <div className="trip-tab-content"><div className="trip-restaurants">{restaurants.map((r, i) => {
+        const urls = placeUrls(r.name, destination);
+        return (
         <article key={i} className="trip-restaurant card card--hoverable">
             <div className="trip-restaurant__header"><h4>{r.name}</h4><span className="trip-restaurant__price">{r.priceRange}</span></div>
             <span className="tag">{r.cuisine}</span>
             <div className="trip-restaurant__musttry"><strong>Must try:</strong> {r.mustTry}</div>
             {r.tip && <p className="trip-restaurant__tip">💡 {r.tip}</p>}
+            <div className="trip-booking-links">
+                <ExternalLink href={urls.googleMaps} label="View on Maps" />
+                <ExternalLink href={urls.tripadvisor} label="Tripadvisor" />
+                <ExternalLink href={urls.googleSearch('reservation')} label="Reserve" />
+            </div>
         </article>
-    ))}</div></div>
+        );
+    })}</div></div>
 );
 
-const ActivitiesTab: React.FC<{ activities: Activity[] }> = ({ activities }) => (
-    <div className="trip-tab-content"><div className="trip-activities">{activities.map((a, i) => (
+const ActivitiesTab: React.FC<{ activities: Activity[]; destination?: string }> = ({ activities, destination }) => (
+    <div className="trip-tab-content"><div className="trip-activities">{activities.map((a, i) => {
+        const urls = activityUrls(a.name, destination);
+        return (
         <article key={i} className="trip-activity card card--hoverable">
             <div className="trip-activity__header">
                 <span className="trip-activity__emoji">{categoryEmoji[a.category] ?? '🎯'}</span>
@@ -101,19 +126,34 @@ const ActivitiesTab: React.FC<{ activities: Activity[] }> = ({ activities }) => 
             </div>
             <p>{a.description}</p>
             <span className="tag">{a.category}</span>
+            <div className="trip-booking-links">
+                <ExternalLink href={urls.googleMaps} label="View on Maps" />
+                <ExternalLink href={urls.getYourGuide} label="GetYourGuide" />
+                <ExternalLink href={urls.viator} label="Viator" />
+                <ExternalLink href={urls.tripadvisor} label="Reviews" />
+            </div>
         </article>
-    ))}</div></div>
+        );
+    })}</div></div>
 );
 
-const StayTab: React.FC<{ accommodation: AccommodationOption[] }> = ({ accommodation }) => (
-    <div className="trip-tab-content"><div className="trip-accommodation">{accommodation.map((a, i) => (
+const StayTab: React.FC<{ accommodation: AccommodationOption[]; destination?: string }> = ({ accommodation, destination }) => (
+    <div className="trip-tab-content"><div className="trip-accommodation">{accommodation.map((a, i) => {
+        const urls = accommodationUrls(a.area, destination);
+        return (
         <article key={i} className="trip-accommodation-card card card--hoverable">
             <div className="trip-accommodation-card__type">{a.type === 'Budget' ? '🏠' : a.type === 'Luxury' ? '🏰' : '🏨'} {a.type}</div>
             <h4>{a.area}</h4>
             <div className="trip-accommodation-card__price">{a.pricePerNight}<span> / night</span></div>
             {a.tip && <p className="trip-accommodation-card__tip">💡 {a.tip}</p>}
+            <div className="trip-booking-links">
+                <ExternalLink href={urls.booking} label="Booking.com" />
+                <ExternalLink href={urls.airbnb} label="Airbnb" />
+                <ExternalLink href={urls.hostelworld} label="Hostelworld" />
+            </div>
         </article>
-    ))}</div></div>
+        );
+    })}</div></div>
 );
 
 const ItineraryTab: React.FC<{ days: DayPlan[] }> = ({ days }) => (
@@ -201,9 +241,9 @@ export const TripGuide: React.FC<TripGuideProps> = ({ trip, diagnostics, heroTit
             )}
             <div className="trip-guide__body">
                 {activeTab === 'overview' && <OverviewTab trip={trip} />}
-                {activeTab === 'restaurants' && hasRestaurants && <RestaurantsTab restaurants={trip.restaurants!} />}
-                {activeTab === 'activities' && hasActivities && <ActivitiesTab activities={trip.activities!} />}
-                {activeTab === 'stay' && hasStay && <StayTab accommodation={trip.accommodation!} />}
+                {activeTab === 'restaurants' && hasRestaurants && <RestaurantsTab restaurants={trip.restaurants!} destination={trip.destination} />}
+                {activeTab === 'activities' && hasActivities && <ActivitiesTab activities={trip.activities!} destination={trip.destination} />}
+                {activeTab === 'stay' && hasStay && <StayTab accommodation={trip.accommodation!} destination={trip.destination} />}
                 {activeTab === 'itinerary' && hasItinerary && <ItineraryTab days={trip.dayItinerary!} />}
             </div>
             {diagnostics && <RequestDiagnostics title="AI request details" diagnostics={diagnostics} />}
