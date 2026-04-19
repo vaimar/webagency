@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 
 const productHighlights = [
     'A proper route-based shell instead of duplicated page rendering.',
-    'Typed flight search with cache persistence and safe demo fallback.',
+    'Curated destination discovery with cache persistence and room for future integrations.',
     'A guided planner that turns travel preferences into a usable brief.',
 ];
 

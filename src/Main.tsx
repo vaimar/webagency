@@ -5,6 +5,7 @@ const navigationItems = [
 	{ to: '/', label: 'Overview' },
 	{ to: '/discover', label: 'Discover fares' },
 	{ to: '/planner', label: 'Travel planner' },
+	{ to: '/assistant', label: 'AI assistant' },
 ];
 
 const Main: React.FC = () => {
@@ -46,7 +47,7 @@ const Main: React.FC = () => {
 			<footer className="site-footer">
 				<div className="page-container site-footer__content">
 					<p>Refactored into a typed, cache-aware React app with a cleaner UX.</p>
-					<p className="muted-text">Live fares are optional; the planner remains fully useful offline.</p>
+					<p className="muted-text">Curated discovery data keeps the planner useful now and flexible for future APIs.</p>
 				</div>
 			</footer>
 		</div>

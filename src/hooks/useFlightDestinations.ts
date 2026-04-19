@@ -9,7 +9,7 @@ interface UseFlightDestinationsResult extends FlightSearchResult {
 
 const emptyResult: FlightSearchResult = {
     destinations: [],
-    source: 'demo',
+    source: 'curated',
     fetchedAt: '',
 };
 

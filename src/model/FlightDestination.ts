@@ -21,7 +21,7 @@ export interface FlightSearchParams {
 
 export interface FlightSearchResult {
     destinations: FlightDestination[];
-    source: 'live' | 'demo';
+    source: 'curated';
     notice?: string;
     fetchedAt: string;
 }

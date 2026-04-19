@@ -1,129 +1,227 @@
-import React, { useMemo, useState } from 'react';
-import { useFlightDestinations } from './hooks/useFlightDestinations';
+import React from 'react';
+import { useRouteSearch } from './hooks/useRouteSearch';
+import { BackendFlight } from './services/api';
+
+const formatPrice = (flight: BackendFlight): string => {
+    const amount = typeof flight.price === 'number'
+        ? flight.price.toFixed(2)
+        : flight.price;
+    return `${flight.currency ?? 'EUR'} ${amount}`;
+};
+
+const formatTime = (value?: string): string => {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (isNaN(date.getTime())) return value;
+    return new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+};
 
 const Home: React.FC = () => {
-    const [origin, setOrigin] = useState<string>('PAR');
-    const [maxPrice, setMaxPrice] = useState<number>(220);
-    const { destinations, fetchedAt, isLoading, notice, refresh, source } = useFlightDestinations({ origin, maxPrice });
+    const {
+        state,
+        flights,
+        tripSuggestion,
+        isSearchingFlights,
+        isLoadingSuggestion,
+        flightError,
+        suggestionError,
+        flightSource,
+        setOrigin,
+        setDestination,
+        searchRoute,
+        clearResults,
+    } = useRouteSearch();
 
-    const formattedTimestamp = useMemo(() => {
-        if (!fetchedAt) {
-            return 'Fetching...';
-        }
-
-        return new Intl.DateTimeFormat('en', {
-            dateStyle: 'medium',
-            timeStyle: 'short',
-        }).format(new Date(fetchedAt));
-    }, [fetchedAt]);
+    const hasResults = flights.length > 0 || tripSuggestion !== null;
 
     return (
         <div className="stack-xl">
             <section className="hero card hero-card hero-card--compact">
                 <div className="hero-card__content">
                     <p className="eyebrow">Discover fares</p>
-                    <h1>Browse destination ideas without fighting the UI.</h1>
+                    <h1>Search a real route, get an AI trip brief.</h1>
                     <p className="hero-card__lede">
-                        Search by origin airport and budget cap. Results are cached locally, and the app falls back to
-                        curated sample fares if live access is not configured.
+                        Enter an origin and destination. The backend checks live Ryanair fares and asks the AI
+                        for a destination brief — all in one go.
                     </p>
                 </div>
 
                 <div className="hero-card__panel">
-                    <p className="eyebrow">Current mode</p>
-                    <strong>{source === 'live' ? 'Live Amadeus fares' : 'Curated demo fares'}</strong>
-                    <p className="muted-text">Updated {formattedTimestamp}</p>
+                    <p className="eyebrow">Data source</p>
+                    {flightSource === 'live' ? (
+                        <strong>Live Ryanair fares</strong>
+                    ) : flightSource === 'curated' ? (
+                        <strong>Curated fallback ideas</strong>
+                    ) : (
+                        <strong>Enter a route to start</strong>
+                    )}
+                    <p className="muted-text">AI trip brief via backend on port 9090</p>
                 </div>
             </section>
 
             <section className="card section-card stack-lg">
                 <div className="section-card__header">
                     <div>
-                        <p className="eyebrow">Filters</p>
-                        <h2>Dial in the shortlist</h2>
+                        <p className="eyebrow">Route</p>
+                        <h2>Where are you flying?</h2>
                     </div>
-                    <button type="button" className="button button--secondary" onClick={() => void refresh()}>
-                        Refresh
-                    </button>
+                    {hasResults && (
+                        <button type="button" className="button button--secondary" onClick={clearResults}>
+                            Clear
+                        </button>
+                    )}
                 </div>
 
                 <div className="filter-grid">
                     <label className="field-group">
                         <span className="field-group__label">Origin airport</span>
                         <input
-                            value={origin}
-                            maxLength={3}
+                            value={state.origin}
+                            maxLength={4}
                             className="text-input"
-                            onChange={(event) => setOrigin(event.target.value.toUpperCase())}
-                            placeholder="PAR"
+                            placeholder="DUB"
+                            onChange={(event) => setOrigin(event.target.value)}
                         />
                     </label>
 
                     <label className="field-group">
-                        <span className="field-group__label">Maximum fare</span>
+                        <span className="field-group__label">Destination airport</span>
                         <input
-                            type="number"
-                            min={50}
-                            step={10}
-                            value={maxPrice}
+                            value={state.destination}
+                            maxLength={4}
                             className="text-input"
-                            onChange={(event) => setMaxPrice(Number(event.target.value) || 50)}
+                            placeholder="STN"
+                            onChange={(event) => setDestination(event.target.value)}
                         />
                     </label>
                 </div>
 
-                {notice ? <div className="notice-banner">{notice}</div> : null}
-            </section>
-
-            <section className="stack-lg">
-                <div className="section-card__header section-card__header--plain">
-                    <div>
-                        <p className="eyebrow">Results</p>
-                        <h2>{isLoading ? 'Loading fares…' : `${destinations.length} destinations under your budget`}</h2>
-                    </div>
+                <div className="button-row">
+                    <button
+                        type="button"
+                        className="button"
+                        disabled={isSearchingFlights || isLoadingSuggestion}
+                        onClick={() => void searchRoute()}
+                    >
+                        {isSearchingFlights || isLoadingSuggestion ? 'Searching…' : 'Search route'}
+                    </button>
                 </div>
 
-                {isLoading ? (
-                    <div className="card empty-state">
-                        <p>Loading route ideas and checking the cache…</p>
-                    </div>
-                ) : destinations.length > 0 ? (
-                    <div className="info-grid">
-                        {destinations.map((destination) => (
-                            <article
-                                key={`${destination.origin}-${destination.destination}-${destination.departureDate}`}
-                                className="card flight-card"
-                            >
-                                <div className="flight-card__eyebrow">
-                                    {destination.origin} → {destination.destination}
-                                </div>
-                                <div className="flight-card__price">
-                                    {destination.price.currency} {destination.price.total}
-                                </div>
-                                <h3>{destination.destination}</h3>
-                                <p className="muted-text">
-                                    Depart {destination.departureDate || 'Flexible dates'} · Return {destination.returnDate || 'Flexible dates'}
-                                </p>
-                                <dl className="flight-card__meta">
-                                    <div>
-                                        <dt>Fare type</dt>
-                                        <dd>{destination.type.replace(/-/g, ' ')}</dd>
-                                    </div>
-                                    <div>
-                                        <dt>Status</dt>
-                                        <dd>{destination.links.flightOffers ? 'Offer-ready' : 'Preview fare'}</dd>
-                                    </div>
-                                </dl>
-                            </article>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="card empty-state">
-                        <h3>No destinations match those filters.</h3>
-                        <p>Try increasing your fare cap or changing the origin airport code.</p>
-                    </div>
-                )}
+                {flightError ? <div className="notice-banner">{flightError}</div> : null}
             </section>
+
+            {/* AI Trip Suggestion */}
+            {(isLoadingSuggestion || tripSuggestion || suggestionError) && (
+                <section className="card section-card stack-lg">
+                    <div>
+                        <p className="eyebrow">AI trip brief</p>
+                        <h2>
+                            {isLoadingSuggestion
+                                ? 'Generating your brief…'
+                                : tripSuggestion
+                                ? `${tripSuggestion.origin} → ${tripSuggestion.destination}`
+                                : 'Trip brief'}
+                        </h2>
+                    </div>
+
+                    {isLoadingSuggestion ? (
+                        <div className="empty-state muted-text">
+                            <p>Asking the AI for destination ideas…</p>
+                        </div>
+                    ) : suggestionError ? (
+                        <div className="notice-banner">{suggestionError}</div>
+                    ) : tripSuggestion ? (
+                        <div className="stack-lg">
+                            <p className="ai-suggestion-text">{tripSuggestion.suggestion ?? tripSuggestion.rawText}</p>
+
+                            {tripSuggestion.highlights && tripSuggestion.highlights.length > 0 && (
+                                <div className="stack-sm">
+                                    <h3>Highlights</h3>
+                                    <div className="tag-list">
+                                        {tripSuggestion.highlights.map((h) => (
+                                            <span key={h} className="tag">{h}</span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="info-grid">
+                                {tripSuggestion.estimatedBudget && (
+                                    <div className="card info-card">
+                                        <h2>Estimated budget</h2>
+                                        <p>{tripSuggestion.estimatedBudget}</p>
+                                    </div>
+                                )}
+                                {tripSuggestion.bestTimeToVisit && (
+                                    <div className="card info-card">
+                                        <h2>Best time to visit</h2>
+                                        <p>{tripSuggestion.bestTimeToVisit}</p>
+                                    </div>
+                                )}
+                                {tripSuggestion.accommodation && (
+                                    <div className="card info-card">
+                                        <h2>Where to stay</h2>
+                                        <p>{tripSuggestion.accommodation}</p>
+                                    </div>
+                                )}
+                                {tripSuggestion.food && (
+                                    <div className="card info-card">
+                                        <h2>What to eat</h2>
+                                        <p>{tripSuggestion.food}</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ) : null}
+                </section>
+            )}
+
+            {/* Flights */}
+            {(isSearchingFlights || flights.length > 0) && (
+                <section className="stack-lg">
+                    <div className="section-card__header section-card__header--plain">
+                        <div>
+                            <p className="eyebrow">Flights</p>
+                            <h2>
+                                {isSearchingFlights
+                                    ? 'Searching flights…'
+                                    : `${flights.length} result${flights.length !== 1 ? 's' : ''} for ${state.origin} → ${state.destination}`}
+                            </h2>
+                        </div>
+                    </div>
+
+                    {isSearchingFlights ? (
+                        <div className="card empty-state">
+                            <p>Checking live Ryanair availability…</p>
+                        </div>
+                    ) : (
+                        <div className="info-grid">
+                            {flights.map((flight, index) => (
+                                <article key={`${flight.flightNumber ?? index}-${flight.departureTime ?? flight.departureDate}`} className="card flight-card">
+                                    <div className="flight-card__eyebrow">
+                                        {flight.origin} → {flight.destination}
+                                        {flight.airline ? ` · ${flight.airline}` : ''}
+                                        {flight.flightNumber ? ` · ${flight.flightNumber}` : ''}
+                                    </div>
+                                    <div className="flight-card__price">{formatPrice(flight)}</div>
+                                    <h3>{flight.destination}</h3>
+                                    <p className="muted-text">
+                                        Depart {formatTime(flight.departureTime ?? flight.departureDate)}
+                                        {(flight.arrivalTime ?? flight.returnDate) ? ` · Arrive ${formatTime(flight.arrivalTime ?? flight.returnDate)}` : ''}
+                                    </p>
+                                </article>
+                            ))}
+                        </div>
+                    )}
+                </section>
+            )}
+
+            {!hasResults && !isSearchingFlights && !isLoadingSuggestion && (
+                <div className="card empty-state">
+                    <h3>Enter an origin and destination above.</h3>
+                    <p>The app will fetch real Ryanair fares and generate an AI trip brief for your route.</p>
+                </div>
+            )}
         </div>
     );
 };

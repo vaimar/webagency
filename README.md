@@ -30,15 +30,11 @@ src/
   Main.tsx           Shared application shell
 ```
 
-## Live flight data
+## Flight discovery data
 
-The app no longer embeds Amadeus client credentials in the browser. For live fare discovery, provide a bearer token with:
+The app currently uses curated destination data instead of relying on a specific third-party flight API. That keeps the project stable and easy to evolve while external provider choices are still open.
 
-```bash
-REACT_APP_AMADEUS_TOKEN=your_token_here
-```
-
-If that variable is missing or the request fails, the app automatically falls back to curated demo fares so the UI remains usable.
+If you later decide to connect a backend or alternate vendor, `src/services/flightService.ts` is the single place to plug that in.
 
 ## Scripts
 
@@ -52,4 +48,4 @@ npm run build
 
 - The project still uses Create React App for compatibility with the existing setup.
 - Cache data is persisted in `localStorage` under `webagency.cache`.
-- If you later add a backend or proxy, `src/services/flightService.ts` is the place to wire in a more secure live-data strategy.
+- `src/services/flightService.ts` is intentionally provider-neutral now, so swapping in a future API should be straightforward.

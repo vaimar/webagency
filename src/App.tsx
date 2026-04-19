@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import About from './About';
 import './App.css';
+import Assistant from './Assistant';
 import { CacheProvider } from './CacheContext';
 import Home from './Home';
 import Main from './Main';
@@ -16,6 +17,7 @@ const App: React.FC = () => {
                         <Route index element={<About />} />
                         <Route path="discover" element={<Home />} />
                         <Route path="planner" element={<TravelForm />} />
+                        <Route path="assistant" element={<Assistant />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
                     </Route>
                 </Routes>
