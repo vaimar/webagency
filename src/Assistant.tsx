@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { FormEvent, useEffect, useRef, useState } from 'react';
 import { useAiChat } from './hooks/useAiChat';
 import { useBackendHealth } from './hooks/useBackendHealth';
-import { ApiDiagnostics } from './services/api';
+import { API_BASE, ApiDiagnostics } from './services/api';
 
 const formatDiagnosticsTime = (value?: string): string => {
     if (!value) return '—';
@@ -54,6 +54,7 @@ const quickQuestions = [
 ];
 
 const Assistant: React.FC = () => {
+    const apiTarget = API_BASE || window.location.origin;
     const { status: backendStatus, backendState, diagnostics: healthDiagnostics, lastCheckedAt, refresh } = useBackendHealth();
     const {
         messages,
@@ -171,7 +172,7 @@ const Assistant: React.FC = () => {
                 <div className="notice-banner notice-banner--error">
                     <FontAwesomeIcon icon={faCircle} style={{ fontSize: '0.6rem' }} />
                     <span>
-                        <strong>Backend Offline</strong> — The AI service on port 9090 is not reachable.
+                        <strong>Backend Offline</strong> — The API service is not reachable at {apiTarget}.
                         Please start your backend server and click Refresh.
                     </span>
                 </div>

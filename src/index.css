@@ -1098,6 +1098,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .notice-banner {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: var(--space-3);
     padding: var(--space-4);
     font-size: 0.9rem;
@@ -1835,7 +1836,179 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 /* Responsive */
+@media (max-width: 1024px) {
+    .planner-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .planner-summary {
+        position: static;
+        top: auto;
+    }
+
+    .hero-card__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .hero-card__panel {
+        min-width: 0;
+        width: 100%;
+    }
+}
+
 @media (max-width: 768px) {
+    .page-container {
+        padding: 0 var(--space-4);
+    }
+
+    .site-main {
+        padding: var(--space-6) 0 var(--space-10);
+    }
+
+    .site-header__content {
+        height: auto;
+        min-height: 72px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-3);
+        padding: var(--space-3) 0;
+    }
+
+    .site-nav {
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 2px;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .site-nav__link {
+        flex: 0 0 auto;
+        padding: var(--space-2) var(--space-3);
+        font-size: 0.85rem;
+    }
+
+    .brand-mark__subtitle {
+        display: none;
+    }
+
+    .hero-card,
+    .hero-card--compact {
+        padding: var(--space-6) var(--space-4);
+    }
+
+    .hero-card h1 {
+        font-size: 1.65rem;
+        line-height: 1.25;
+    }
+
+    .hero-card__lede {
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+
+    .search-box {
+        padding: var(--space-4);
+    }
+
+    .search-box__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .search-box__grid .button {
+        width: 100%;
+        min-height: 48px;
+    }
+
+    .section-card {
+        padding: var(--space-5);
+    }
+
+    .section-card__header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .chat-thread {
+        max-height: 420px;
+        padding: var(--space-3);
+    }
+
+    .chat-bubble {
+        max-width: 92%;
+    }
+
+    .chat-input-row {
+        flex-direction: column;
+    }
+
+    .chat-input-row .button {
+        width: 100%;
+    }
+
+    .trip-guide__hero {
+        padding: var(--space-6) var(--space-4);
+    }
+
+    .trip-guide__hero h2 {
+        font-size: 1.35rem;
+    }
+
+    .trip-guide__summary {
+        font-size: 0.95rem;
+    }
+
+    .trip-guide__body {
+        padding: var(--space-4);
+    }
+
+    .trip-tab {
+        padding: var(--space-3) var(--space-4);
+        font-size: 0.85rem;
+    }
+
+    .trip-day__header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .trip-neighborhoods {
+        grid-template-columns: 1fr;
+    }
+
+    .trip-restaurants,
+    .trip-activities,
+    .trip-accommodation,
+    .trip-loading__grid,
+    .trip-quickfacts,
+    .stats-grid,
+    .timeline-grid,
+    .info-grid,
+    .filter-grid,
+    .option-grid,
+    .checkbox-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .trip-booking-links {
+        gap: 6px;
+    }
+
+    .trip-external-link {
+        font-size: 0.75rem;
+        padding: 6px 10px;
+    }
+
+    .footer-bottom {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-3);
+    }
+
+    .footer-badges {
+        flex-wrap: wrap;
+        gap: var(--space-2);
+    }
+
     .trip-day__timeline {
         grid-template-columns: 1fr;
     }
@@ -1850,3 +2023,50 @@ input[type="range"]::-webkit-slider-thumb:hover {
         grid-template-columns: 1fr;
     }
 }
+
+@media (max-width: 480px) {
+    .page-container {
+        padding: 0 var(--space-3);
+    }
+
+    .button,
+    .button--large {
+        width: 100%;
+    }
+
+    .button-row {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .empty-state {
+        padding: var(--space-8) var(--space-4);
+    }
+
+    .trip-accommodation-card,
+    .trip-activity,
+    .trip-restaurant,
+    .flight-card {
+        padding: var(--space-4);
+    }
+
+    .flight-card__header,
+    .trip-restaurant__header {
+        flex-direction: column;
+        gap: var(--space-2);
+    }
+
+    .flight-card__route {
+        font-size: 0.9rem;
+        flex-wrap: wrap;
+    }
+
+    .trip-day {
+        padding: var(--space-4);
+    }
+
+    .trip-day__slot {
+        padding: var(--space-3);
+    }
+}
+

@@ -25,6 +25,11 @@ const getFlightDate = (flight: BackendFlight): string => {
     return dep ? new Date(dep).toISOString().slice(0, 10) : '';
 };
 
+const getFlightLinks = (flight: BackendFlight) => {
+    const date = getFlightDate(flight);
+    return flightUrls(flight.origin, flight.destination, date);
+};
+
 const Home: React.FC = () => {
     const {
         state, flights, tripSuggestion, isSearchingFlights, isLoadingSuggestion,
@@ -103,9 +108,16 @@ const Home: React.FC = () => {
                                     <h3 style={{ fontSize: '1rem' }}>{flight.flightNumber ? `Flight ${flight.flightNumber}` : flight.destination}</h3>
                                     <p className="muted-text" style={{ fontSize: '0.875rem' }}>Depart: {formatTime(flight.departureTime ?? flight.departureDate)}{(flight.arrivalTime ?? flight.returnDate) && <><br />Arrive: {formatTime(flight.arrivalTime ?? flight.returnDate)}</>}</p>
                                     <div className="trip-booking-links" style={{ marginTop: 'auto' }}>
-                                        <a href={buildBookingUrl(flight)} target="_blank" rel="noopener noreferrer" className="trip-external-link">Google Flights <FontAwesomeIcon icon={faExternalLinkAlt} style={{ marginLeft: '4px', fontSize: '0.65rem' }} /></a>
-                                        <a href={buildSkyscannerUrl(flight)} target="_blank" rel="noopener noreferrer" className="trip-external-link">Skyscanner <FontAwesomeIcon icon={faExternalLinkAlt} style={{ marginLeft: '4px', fontSize: '0.65rem' }} /></a>
-                                        <a href={buildKiwiUrl(flight)} target="_blank" rel="noopener noreferrer" className="trip-external-link">Kiwi <FontAwesomeIcon icon={faExternalLinkAlt} style={{ marginLeft: '4px', fontSize: '0.65rem' }} /></a>
+                                        {(() => {
+                                            const links = getFlightLinks(flight);
+                                            return (
+                                                <>
+                                                    <a href={links.googleFlights} target="_blank" rel="noopener noreferrer" className="trip-external-link">Google Flights <FontAwesomeIcon icon={faExternalLinkAlt} style={{ marginLeft: '4px', fontSize: '0.65rem' }} /></a>
+                                                    <a href={links.skyscanner} target="_blank" rel="noopener noreferrer" className="trip-external-link">Skyscanner <FontAwesomeIcon icon={faExternalLinkAlt} style={{ marginLeft: '4px', fontSize: '0.65rem' }} /></a>
+                                                    <a href={links.kiwi} target="_blank" rel="noopener noreferrer" className="trip-external-link">Kiwi <FontAwesomeIcon icon={faExternalLinkAlt} style={{ marginLeft: '4px', fontSize: '0.65rem' }} /></a>
+                                                </>
+                                            );
+                                        })()}
                                     </div>
                                 </article>
                             ))}</div>

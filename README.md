@@ -44,6 +44,31 @@ npm test -- --watch=false
 npm run build
 ```
 
+## Deploy in 5 minutes (no infra)
+
+### Fastest: Netlify Drop
+
+1. Build the app locally:
+
+```bash
+npm run build
+```
+
+2. Open https://app.netlify.com/drop and drag the `build/` folder.
+3. Netlify gives you a live URL instantly.
+
+For SPA routes (`/assistant`, `/planner`), this repo includes `public/_redirects`.
+
+### Connect backend later
+
+If your backend is hosted on another URL, create `.env.production` from `.env.production.example` and set:
+
+```bash
+REACT_APP_API_BASE=https://your-backend-url
+```
+
+Then rebuild and redeploy.
+
 ## Notes
 
 - The project still uses Create React App for compatibility with the existing setup.
