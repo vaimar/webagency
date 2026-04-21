@@ -69,6 +69,32 @@ REACT_APP_API_BASE=https://your-backend-url
 
 Then rebuild and redeploy.
 
+## Continuous Deploy (GitHub -> Netlify)
+
+This repo includes a workflow at `.github/workflows/netlify-deploy.yml`.
+
+### One-time setup
+
+1. Add a GitHub repository secret named `NETLIFY_AUTH_TOKEN`.
+2. Push to `main`.
+3. GitHub Actions builds and deploys automatically to `https://travelhub-vaimar.netlify.app`.
+
+### API wiring
+
+The production build uses:
+
+```bash
+REACT_APP_API_BASE=https://slumber-production.up.railway.app
+```
+
+Backend CORS should include your Netlify domain.
+
+## Custom domain (optional)
+
+1. Netlify project -> `Domain management` -> `Add a domain`.
+2. Add the DNS records Netlify shows at your domain registrar.
+3. Once SSL is active, add your custom origin to backend `ALLOWED_ORIGINS` on Railway.
+
 ## Notes
 
 - The project still uses Create React App for compatibility with the existing setup.
