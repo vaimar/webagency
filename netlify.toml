@@ -1,23 +1,18 @@
 [build]
   command = "npm run build"
   publish = "build"
+  edge_functions = "netlify/edge-functions"
 
 [build.environment]
   NODE_VERSION = "20"
   CI = "false"
 
 # SPA fallback — all routes serve index.html
+# /api/* and /actuator/* are handled by the edge-function proxy (api-proxy.js)
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-
-# Proxy /api/* to Railway backend — avoids CORS entirely
-[[redirects]]
-  from = "/api/*"
-  to = "https://slumber-production.up.railway.app/api/:splat"
-  status = 200
-  force = true
 
 # Security & performance headers
 [[headers]]
