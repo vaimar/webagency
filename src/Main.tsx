@@ -1,14 +1,8 @@
-import { faCompass, faComments, faHome, faPlane } from '@fortawesome/free-solid-svg-icons';
+import { faCompass, faComments, faHome, faPlane, faUser } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-
-const navigationItems = [
-	{ to: '/', label: 'Home', icon: faHome },
-	{ to: '/discover', label: 'Flights', icon: faPlane },
-	{ to: '/planner', label: 'Trip Planner', icon: faCompass },
-	{ to: '/assistant', label: 'AI Assistant', icon: faComments },
-];
+import { useProfile } from './ProfileContext';
 
 const footerSections = [
 	{
@@ -30,6 +24,8 @@ const footerSections = [
 ];
 
 const Main: React.FC = () => {
+	const { account, isAuthenticated } = useProfile();
+
 	return (
 		<div className="app-shell">
 			<header className="site-header">
@@ -43,11 +39,16 @@ const Main: React.FC = () => {
 					</NavLink>
 
 					<nav className="site-nav" aria-label="Primary navigation">
-						{navigationItems.map((item) => (
+						{[
+							{ to: '/',          label: 'Home',         icon: faHome,     end: true  },
+							{ to: '/discover',  label: 'Flights',      icon: faPlane,    end: false },
+							{ to: '/planner',   label: 'Trip Planner', icon: faCompass,  end: false },
+							{ to: '/assistant', label: 'AI Assistant', icon: faComments, end: false },
+						].map((item) => (
 							<NavLink
 								key={item.to}
 								to={item.to}
-								end={item.to === '/'}
+								end={item.end}
 								className={({ isActive }) =>
 									isActive ? 'site-nav__link site-nav__link--active' : 'site-nav__link'
 								}
@@ -56,6 +57,17 @@ const Main: React.FC = () => {
 								<span>{item.label}</span>
 							</NavLink>
 						))}
+
+						{/* Profile / Sign-in link */}
+						<NavLink
+							to="/profile"
+							className={({ isActive }) =>
+								isActive ? 'site-nav__link site-nav__link--active' : 'site-nav__link'
+							}
+						>
+							<FontAwesomeIcon icon={faUser} className="site-nav__icon" />
+							<span>{isAuthenticated ? (account?.username ?? 'Profile') : 'Sign in'}</span>
+						</NavLink>
 					</nav>
 				</div>
 			</header>
@@ -98,4 +110,3 @@ const Main: React.FC = () => {
 };
 
 export default Main;
-

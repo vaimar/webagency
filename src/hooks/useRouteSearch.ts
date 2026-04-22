@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import {
     ApiDiagnostics,
     ApiRequestError,
-    BackendFlight,
+    FlightAvailable,
     fetchTripSuggestion,
     searchFlights,
     TripSuggestion,
@@ -16,7 +16,7 @@ interface RouteSearchState {
 
 interface UseRouteSearchResult {
     state: RouteSearchState;
-    flights: BackendFlight[];
+    flights: FlightAvailable[];
     tripSuggestion: TripSuggestion | null;
     isSearchingFlights: boolean;
     isLoadingSuggestion: boolean;
@@ -28,21 +28,42 @@ interface UseRouteSearchResult {
     setOrigin: (value: string) => void;
     setDestination: (value: string) => void;
     searchRoute: () => Promise<void>;
+    retrySuggestion: () => Promise<void>;
     clearResults: () => void;
 }
 
-const mapMockToFlight = (item: typeof MOCK_FLIGHT_DESTINATIONS[number]): BackendFlight => ({
+const mapMockToFlight = (item: typeof MOCK_FLIGHT_DESTINATIONS[number]): FlightAvailable => ({
     origin: item.origin,
     destination: item.destination,
     departureDate: item.departureDate,
-    returnDate: item.returnDate,
+    // Mock data stores return date — map to canonical arrivalDate
+    arrivalDate: item.returnDate,
+    returnDate: item.returnDate,  // keep for legacy consumers
     price: item.price.total,
     currency: item.price.currency,
 });
 
+const buildSuggestionErrorMessage = (error: ApiRequestError): string => {
+    const status = error.diagnostics.status;
+
+    if (status === 429) {
+        return 'AI trip suggestions are rate limited right now. Please try again shortly.';
+    }
+
+    if (status !== null && status >= 500) {
+        return 'AI trip suggestions are temporarily unavailable from the backend. Please try again in a minute.';
+    }
+
+    if (error.message.toLowerCase().includes('timed out')) {
+        return 'AI trip suggestion timed out. Please try again.';
+    }
+
+    return 'AI trip suggestion unavailable. Please retry.';
+};
+
 export const useRouteSearch = (): UseRouteSearchResult => {
     const [state, setState] = useState<RouteSearchState>({ origin: 'DUB', destination: 'STN' });
-    const [flights, setFlights] = useState<BackendFlight[]>([]);
+    const [flights, setFlights] = useState<FlightAvailable[]>([]);
     const [tripSuggestion, setTripSuggestion] = useState<TripSuggestion | null>(null);
     const [isSearchingFlights, setIsSearchingFlights] = useState(false);
     const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
@@ -110,7 +131,7 @@ export const useRouteSearch = (): UseRouteSearchResult => {
             const error = suggestionResult.reason;
 
             if (error instanceof ApiRequestError) {
-                setSuggestionError(`AI trip suggestion unavailable: ${error.message}`);
+                setSuggestionError(buildSuggestionErrorMessage(error));
                 setSuggestionDiagnostics(error.diagnostics);
             } else {
                 setSuggestionError('AI trip suggestion unavailable.');
@@ -130,6 +151,31 @@ export const useRouteSearch = (): UseRouteSearchResult => {
         setSuggestionDiagnostics(null);
     }, []);
 
+    /** Retry only the AI suggestion without re-fetching flights */
+    const retrySuggestion = useCallback(async () => {
+        if (!state.origin || !state.destination) return;
+
+        setTripSuggestion(null);
+        setSuggestionError(null);
+        setSuggestionDiagnostics(null);
+        setIsLoadingSuggestion(true);
+
+        try {
+            const result = await fetchTripSuggestion({ origin: state.origin, destination: state.destination });
+            setTripSuggestion(result.suggestion);
+            setSuggestionDiagnostics(result.diagnostics);
+        } catch (error) {
+            if (error instanceof ApiRequestError) {
+                setSuggestionError(buildSuggestionErrorMessage(error));
+                setSuggestionDiagnostics(error.diagnostics);
+            } else {
+                setSuggestionError('AI trip suggestion unavailable.');
+            }
+        } finally {
+            setIsLoadingSuggestion(false);
+        }
+    }, [state.origin, state.destination]);
+
     return {
         state,
         flights,
@@ -144,6 +190,7 @@ export const useRouteSearch = (): UseRouteSearchResult => {
         setOrigin,
         setDestination,
         searchRoute,
+        retrySuggestion,
         clearResults,
     };
 };

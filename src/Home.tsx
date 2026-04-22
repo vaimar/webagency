@@ -3,12 +3,12 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React from 'react';
 import { RequestDiagnostics, TripGuide, TripGuideLoading } from './components/TripGuide';
 import { useRouteSearch } from './hooks/useRouteSearch';
-import { BackendFlight } from './services/api';
+import { FlightAvailable } from './services/api';
 import { flightUrls } from './services/affiliates';
 
 /* ─── Helpers ──────────────────────────────────────────────────────────────── */
 
-const formatPrice = (flight: BackendFlight): string => {
+const formatPrice = (flight: FlightAvailable): string => {
     const amount = typeof flight.price === 'number' ? flight.price.toFixed(2) : flight.price;
     return `€${amount}`;
 };
@@ -20,21 +20,26 @@ const formatTime = (value?: string): string => {
     return new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 };
 
-const getFlightDate = (flight: BackendFlight): string => {
-    const dep = flight.departureTime ?? flight.departureDate ?? '';
+const getFlightDate = (flight: FlightAvailable): string => {
+    // Prefer canonical departureDate (ISO date-time), fall back to legacy departureTime
+    const dep = flight.departureDate ?? flight.departureTime ?? '';
     return dep ? new Date(dep).toISOString().slice(0, 10) : '';
 };
 
-const getFlightLinks = (flight: BackendFlight) => {
+const getFlightLinks = (flight: FlightAvailable) => {
     const date = getFlightDate(flight);
     return flightUrls(flight.origin, flight.destination, date);
 };
+
+/** Canonical arrival: arrivalDate (new spec) → arrivalTime → returnDate (legacy) */
+const getFlightArrival = (flight: FlightAvailable): string | undefined =>
+    flight.arrivalDate ?? flight.arrivalTime ?? flight.returnDate;
 
 const Home: React.FC = () => {
     const {
         state, flights, tripSuggestion, isSearchingFlights, isLoadingSuggestion,
         flightError, suggestionError, flightSource, flightDiagnostics, suggestionDiagnostics,
-        setOrigin, setDestination, searchRoute, clearResults,
+        setOrigin, setDestination, searchRoute, retrySuggestion, clearResults,
     } = useRouteSearch();
 
     const hasResults = flights.length > 0 || tripSuggestion !== null;
@@ -82,6 +87,11 @@ const Home: React.FC = () => {
                 <section className="card section-card stack-lg">
                     <div className="section-card__header"><div><p className="eyebrow">✨ AI Trip Brief</p><h2>Destination Guide</h2></div></div>
                     <div className="notice-banner notice-banner--error">{suggestionError}</div>
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                        <button type="button" className="button button--secondary button--small" onClick={() => void retrySuggestion()}>
+                            🔄 Retry AI suggestion
+                        </button>
+                    </div>
                     <RequestDiagnostics title="Request details" diagnostics={suggestionDiagnostics} />
                 </section>
             )}
@@ -106,7 +116,7 @@ const Home: React.FC = () => {
                                     <div className="flight-card__header"><div className="flight-card__route"><span>{flight.origin}</span><FontAwesomeIcon icon={faExchangeAlt} className="flight-card__route-icon" /><span>{flight.destination}</span></div>{flight.flightNumber && <span className="tag tag--success" style={{ fontSize: '0.7rem' }}>{flight.airline ?? 'Ryanair'}</span>}</div>
                                     <div><div className="flight-card__price">{formatPrice(flight)}</div><span className="flight-card__price-label">per person</span></div>
                                     <h3 style={{ fontSize: '1rem' }}>{flight.flightNumber ? `Flight ${flight.flightNumber}` : flight.destination}</h3>
-                                    <p className="muted-text" style={{ fontSize: '0.875rem' }}>Depart: {formatTime(flight.departureTime ?? flight.departureDate)}{(flight.arrivalTime ?? flight.returnDate) && <><br />Arrive: {formatTime(flight.arrivalTime ?? flight.returnDate)}</>}</p>
+                                    <p className="muted-text" style={{ fontSize: '0.875rem' }}>Depart: {formatTime(flight.departureDate ?? flight.departureTime)}{getFlightArrival(flight) && <><br />Arrive: {formatTime(getFlightArrival(flight))}</>}</p>
                                     <div className="trip-booking-links" style={{ marginTop: 'auto' }}>
                                         {(() => {
                                             const links = getFlightLinks(flight);

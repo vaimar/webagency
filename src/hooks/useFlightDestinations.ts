@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useCache } from '../CacheContext';
+import { CACHE_TTL, useCache } from '../CacheContext';
 import { fetchFlightDestinations, FlightSearchParams, FlightSearchResult } from '../services/flightService';
 
 interface UseFlightDestinationsResult extends FlightSearchResult {
@@ -43,7 +43,7 @@ export const useFlightDestinations = (params: FlightSearchParams): UseFlightDest
             }
 
             const nextResult = await fetchFlightDestinations(normalizedParams);
-            updateCache(cacheKey, nextResult);
+            updateCache(cacheKey, nextResult, CACHE_TTL.FLIGHT_DESTINATIONS);
             setResult(nextResult);
             setIsLoading(false);
         },

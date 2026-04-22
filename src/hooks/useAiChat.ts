@@ -76,6 +76,9 @@ export const useAiChat = (): UseAiChatResult => {
                     role: 'assistant',
                     content: result.reply,
                     provider: activeProvider || undefined,
+                    resolvedProvider: result.resolvedProvider,
+                    fallback: result.fallback,
+                    cached: result.cached,
                     timestamp: new Date().toISOString(),
                 };
                 setMessages((prev) => [...prev, assistantMessage]);
