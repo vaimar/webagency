@@ -11,6 +11,15 @@ const parseTimeoutMs = (value: string | undefined, fallback: number): number => 
 const REQUEST_TIMEOUT_MS = parseTimeoutMs(process.env.REACT_APP_REQUEST_TIMEOUT_MS, 5_000);
 const AI_REQUEST_TIMEOUT_MS = parseTimeoutMs(process.env.REACT_APP_AI_REQUEST_TIMEOUT_MS, 45_000);
 
+/**
+ * Reads the XSRF-TOKEN cookie set by Spring Security and returns it as a
+ * header map so CSRF-protected endpoints (POST/PUT/DELETE) don't get 403'd.
+ */
+const getCsrfHeaders = (): Record<string, string> => {
+    const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
+    return match ? { 'X-XSRF-TOKEN': decodeURIComponent(match[1]) } : {};
+};
+
 const buildApiUrl = (path: string, query?: Record<string, string>): string => {
     const endpoint = `${API_BASE}${path}`;
     if (!query) return endpoint;
@@ -370,7 +379,7 @@ export const sendChatMessage = async (params: ChatParams): Promise<ChatResult> =
         url,
         {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
             body: JSON.stringify({ message: params.message, provider: params.provider }),
         },
         AI_REQUEST_TIMEOUT_MS,
@@ -488,7 +497,7 @@ export const planTrip = async (params: TripPlanParams): Promise<TripSuggestionRe
         url,
         {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
             body: JSON.stringify(params),
         },
         AI_REQUEST_TIMEOUT_MS,
@@ -523,7 +532,7 @@ export const generateItinerary = async (params: TripItineraryRequest): Promise<T
         url,
         {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
             body: JSON.stringify(params),
         },
         AI_REQUEST_TIMEOUT_MS,
@@ -543,7 +552,7 @@ export const registerAccount = async (request: RegisterAccountRequest): Promise<
     const url = buildApiUrl('/api/accounts/register');
     const { response, diagnostics } = await fetchWithDiagnostics(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
         body: JSON.stringify(request),
     });
     await ensureOk(response, diagnostics, 'Registration failed');
@@ -554,9 +563,9 @@ export const loginAccount = async (request: LoginRequest): Promise<LoginResponse
     const url = buildApiUrl('/api/accounts/login');
     const { response, diagnostics } = await fetchWithDiagnostics(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
         body: JSON.stringify(request),
-        credentials: 'include', // send/receive JSESSIONID cookie
+        credentials: 'include',
     });
     await ensureOk(response, diagnostics, 'Login failed');
     return (await response.json()) as LoginResponse;
@@ -580,7 +589,7 @@ export const updatePreferences = async (request: UpdateUserProfileRequest): Prom
     const url = buildApiUrl('/api/accounts/preferences');
     const { response, diagnostics } = await fetchWithDiagnostics(url, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
         body: JSON.stringify(request),
         credentials: 'include',
     });
