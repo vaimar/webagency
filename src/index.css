@@ -1856,39 +1856,116 @@ input[type="range"]::-webkit-slider-thumb:hover {
     }
 }
 
+/* Touch-friendly tap targets */
+.button,
+.site-nav__link,
+.trip-tab,
+.checkbox-chip,
+.choice-card {
+    min-height: 44px;
+}
+
+/* Prevent tap highlight on interactive elements */
+button,
+a,
+[role="button"] {
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* ─── Mobile Bottom Navigation ─────────────────────────────────────────────── */
+
+.mobile-bottom-nav {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .mobile-bottom-nav {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 200;
+        background: var(--bg-white);
+        border-top: 1px solid var(--border);
+        box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .mobile-bottom-nav__item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        padding: var(--space-2) var(--space-1);
+        color: var(--text-muted);
+        text-decoration: none;
+        transition: color var(--transition-fast);
+        min-height: 56px;
+    }
+
+    .mobile-bottom-nav__item--active {
+        color: var(--primary);
+    }
+
+    .mobile-bottom-nav__icon {
+        font-size: 1.2rem;
+    }
+
+    .mobile-bottom-nav__label {
+        font-size: 0.65rem;
+        font-weight: 600;
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 56px;
+    }
+}
+
 @media (max-width: 768px) {
     .page-container {
         padding: 0 var(--space-4);
     }
 
+    /* Extra bottom padding to clear the fixed bottom nav */
     .site-main {
-        padding: var(--space-6) 0 var(--space-10);
+        padding: var(--space-6) 0 calc(var(--space-10) + 56px + env(safe-area-inset-bottom));
     }
 
+    .site-footer {
+        padding-bottom: calc(var(--space-8) + 56px + env(safe-area-inset-bottom));
+    }
+
+    /* Header: compact brand-only row on mobile (nav moved to bottom) */
     .site-header__content {
-        height: auto;
-        min-height: 72px;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: var(--space-3);
-        padding: var(--space-3) 0;
+        height: 60px;
+        min-height: 60px;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0;
+        padding: 0;
     }
 
+    /* Hide desktop nav on mobile – bottom nav takes over */
     .site-nav {
-        width: 100%;
-        overflow-x: auto;
-        padding-bottom: 2px;
-        -webkit-overflow-scrolling: touch;
-    }
-
-    .site-nav__link {
-        flex: 0 0 auto;
-        padding: var(--space-2) var(--space-3);
-        font-size: 0.85rem;
+        display: none;
     }
 
     .brand-mark__subtitle {
         display: none;
+    }
+
+    .brand-mark__logo {
+        width: 36px;
+        height: 36px;
+    }
+
+    .brand-mark__title {
+        font-size: 1.1rem;
     }
 
     .hero-card,
@@ -1989,6 +2066,37 @@ input[type="range"]::-webkit-slider-thumb:hover {
         grid-template-columns: 1fr;
     }
 
+    /* 2-column stats on mobile */
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-4);
+    }
+
+    .stat-item__value {
+        font-size: 1.5rem;
+    }
+
+    /* trust section: wrap and center */
+    .trust-section {
+        flex-wrap: wrap;
+        gap: var(--space-5);
+        justify-content: center;
+        padding: var(--space-6) var(--space-4);
+    }
+
+    .trust-item {
+        flex-direction: column;
+        text-align: center;
+        gap: var(--space-2);
+        flex: 1 1 40%;
+    }
+
+    /* footer: 2-col on mobile */
+    .site-footer__content {
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-6);
+    }
+
     .trip-booking-links {
         gap: 6px;
     }
@@ -2029,14 +2137,20 @@ input[type="range"]::-webkit-slider-thumb:hover {
         padding: 0 var(--space-3);
     }
 
-    .button,
-    .button--large {
+    /* Keep buttons natural width in rows, only go full-width for isolated buttons */
+    .button--full,
+    .hero-card__actions .button,
+    .search-box__grid .button {
         width: 100%;
     }
 
     .button-row {
         width: 100%;
         flex-direction: column;
+    }
+
+    .button-row .button {
+        width: 100%;
     }
 
     .empty-state {
@@ -2067,6 +2181,45 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
     .trip-day__slot {
         padding: var(--space-3);
+    }
+
+    /* Footer: single column on smallest screens */
+    .site-footer__content {
+        grid-template-columns: 1fr;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    /* Hero card: tighter on small phones */
+    .hero-card h1 {
+        font-size: 1.4rem;
+    }
+
+    /* Section card: no padding */
+    .section-card {
+        padding: var(--space-4) var(--space-3);
+    }
+
+    /* Planner summary */
+    .planner-summary {
+        padding: var(--space-4);
+    }
+
+    /* Chat on small screens */
+    .chat-thread {
+        max-height: 55dvh;
+    }
+}
+
+@media (max-width: 360px) {
+    .mobile-bottom-nav__label {
+        display: none;
+    }
+
+    .mobile-bottom-nav__item {
+        padding: var(--space-2) var(--space-1);
     }
 }
 

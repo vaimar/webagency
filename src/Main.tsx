@@ -23,6 +23,13 @@ const footerSections = [
 	},
 ];
 
+const navItems = [
+	{ to: '/',          label: 'Home',         icon: faHome,     end: true  },
+	{ to: '/discover',  label: 'Flights',      icon: faPlane,    end: false },
+	{ to: '/planner',   label: 'Planner',      icon: faCompass,  end: false },
+	{ to: '/assistant', label: 'Assistant',    icon: faComments, end: false },
+];
+
 const Main: React.FC = () => {
 	const { account, isAuthenticated } = useProfile();
 
@@ -39,12 +46,7 @@ const Main: React.FC = () => {
 					</NavLink>
 
 					<nav className="site-nav" aria-label="Primary navigation">
-						{[
-							{ to: '/',          label: 'Home',         icon: faHome,     end: true  },
-							{ to: '/discover',  label: 'Flights',      icon: faPlane,    end: false },
-							{ to: '/planner',   label: 'Trip Planner', icon: faCompass,  end: false },
-							{ to: '/assistant', label: 'AI Assistant', icon: faComments, end: false },
-						].map((item) => (
+						{navItems.map((item) => (
 							<NavLink
 								key={item.to}
 								to={item.to}
@@ -105,6 +107,34 @@ const Main: React.FC = () => {
 					</div>
 				</div>
 			</footer>
+
+			{/* Mobile bottom navigation */}
+			<nav className="mobile-bottom-nav" aria-label="Mobile navigation">
+				{navItems.map((item) => (
+					<NavLink
+						key={item.to}
+						to={item.to}
+						end={item.end}
+						className={({ isActive }) =>
+							isActive ? 'mobile-bottom-nav__item mobile-bottom-nav__item--active' : 'mobile-bottom-nav__item'
+						}
+					>
+						<FontAwesomeIcon icon={item.icon} className="mobile-bottom-nav__icon" />
+						<span className="mobile-bottom-nav__label">{item.label}</span>
+					</NavLink>
+				))}
+				<NavLink
+					to="/profile"
+					className={({ isActive }) =>
+						isActive ? 'mobile-bottom-nav__item mobile-bottom-nav__item--active' : 'mobile-bottom-nav__item'
+					}
+				>
+					<FontAwesomeIcon icon={faUser} className="mobile-bottom-nav__icon" />
+					<span className="mobile-bottom-nav__label">
+						{isAuthenticated ? (account?.username ?? 'Profile') : 'Sign in'}
+					</span>
+				</NavLink>
+			</nav>
 		</div>
 	);
 };
