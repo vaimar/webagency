@@ -16,9 +16,10 @@ const RAILWAY_BASE = "https://slumber-production.up.railway.app";
 
 export default async (request, context) => {
   const url = new URL(request.url);
+  const backendPath = url.pathname === "/api/accounts/logout" ? "/logout" : url.pathname;
 
   // Build target URL on Railway — preserve path and query string
-  const target = `${RAILWAY_BASE}${url.pathname}${url.search}`;
+  const target = `${RAILWAY_BASE}${backendPath}${url.search}`;
 
   // Copy request headers but strip browser-specific ones that would trigger
   // CORS rejection on the backend.
@@ -38,6 +39,7 @@ export default async (request, context) => {
       body: hasBody ? request.body : undefined,
       // Edge functions support streaming, so we can pass the body directly
       duplex: hasBody ? "half" : undefined,
+      redirect: url.pathname === "/api/accounts/logout" ? "manual" : "follow",
     });
   } catch (err) {
     return new Response(
@@ -51,6 +53,15 @@ export default async (request, context) => {
   responseHeaders.set("Access-Control-Allow-Origin", "*");
   responseHeaders.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   responseHeaders.set("Access-Control-Allow-Headers", "Content-Type, X-XSRF-TOKEN, Authorization");
+
+  if (url.pathname === "/api/accounts/logout") {
+    responseHeaders.set("Content-Type", "application/json");
+    return new Response(JSON.stringify({ message: "Logout successful" }), {
+      status: upstream.status >= 200 && upstream.status < 400 ? 200 : upstream.status,
+      statusText: upstream.statusText,
+      headers: responseHeaders,
+    });
+  }
 
   return new Response(upstream.body, {
     status: upstream.status,

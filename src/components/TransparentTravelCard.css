@@ -1,0 +1,211 @@
+.transparent-travel-card {
+    --ttc-bg: #f8fbff;
+    --ttc-border: #d7e6f5;
+    --ttc-text: #102033;
+    --ttc-muted: #526273;
+    --ttc-accent: #2b7bbb;
+    --ttc-good: #2f8f68;
+    --ttc-warning: #c47a1b;
+    background: linear-gradient(180deg, #ffffff 0%, var(--ttc-bg) 100%);
+    border: 1px solid var(--ttc-border);
+    border-radius: 18px;
+    box-shadow: 0 12px 28px rgba(16, 32, 51, 0.08);
+    color: var(--ttc-text);
+    padding: 1rem;
+    display: grid;
+    gap: 0.9rem;
+}
+
+.transparent-travel-card__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    align-items: flex-start;
+}
+
+.transparent-travel-card__badge {
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: var(--ttc-accent);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.transparent-travel-card__badge::before {
+    content: '🛡';
+    font-size: 0.8rem;
+}
+
+.transparent-travel-card__route {
+    margin: 0.25rem 0 0;
+    font-size: 1.05rem;
+}
+
+.transparent-travel-card__trust {
+    font-size: 0.76rem;
+    color: var(--ttc-muted);
+    background: #ecf5ff;
+    border: 1px solid #cbe4fb;
+    border-radius: 999px;
+    padding: 0.3rem 0.6rem;
+}
+
+.transparent-travel-card__price-block {
+    background: #ffffff;
+    border: 1px solid #e1ecf8;
+    border-radius: 14px;
+    padding: 0.85rem;
+}
+
+.transparent-travel-card__label {
+    margin: 0;
+    color: var(--ttc-muted);
+    font-size: 0.8rem;
+}
+
+.transparent-travel-card__price {
+    margin: 0.1rem 0 0.4rem;
+    font-size: clamp(1.8rem, 3vw, 2.4rem);
+    line-height: 1;
+    font-weight: 800;
+    color: #0b233b;
+}
+
+.transparent-travel-card__subtotal {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px dashed #d9e7f5;
+    padding-top: 0.55rem;
+    font-size: 0.92rem;
+}
+
+.transparent-travel-card__subtotal strong {
+    font-size: 1rem;
+    color: var(--ttc-good);
+}
+
+.transparent-travel-card__delta,
+.transparent-travel-card__note {
+    margin: 0.45rem 0 0;
+    font-size: 0.8rem;
+    color: var(--ttc-muted);
+}
+
+.transparent-travel-card__delta {
+    color: var(--ttc-warning);
+    font-weight: 600;
+}
+
+.transparent-travel-card__details {
+    background: #ffffff;
+    border: 1px solid #e4eef9;
+    border-radius: 14px;
+    padding: 0.4rem 0.7rem;
+}
+
+.transparent-travel-card__details summary {
+    cursor: pointer;
+    font-weight: 700;
+    color: #17395d;
+    padding: 0.4rem 0;
+}
+
+.transparent-travel-card__details summary:focus-visible {
+    outline: 2px solid #67a9e6;
+    outline-offset: 3px;
+    border-radius: 6px;
+}
+
+.transparent-travel-card__fees {
+    list-style: none;
+    margin: 0.3rem 0 0.2rem;
+    padding: 0;
+    display: grid;
+    gap: 0.6rem;
+}
+
+.transparent-travel-card__fee-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.6rem;
+    align-items: flex-start;
+    padding-top: 0.5rem;
+    border-top: 1px solid #edf3fb;
+}
+
+.transparent-travel-card__fee-row:first-child {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.transparent-travel-card__fee-title {
+    margin: 0;
+    font-size: 0.92rem;
+    font-weight: 600;
+}
+
+.transparent-travel-card__fee-description {
+    margin: 0.2rem 0 0;
+    color: var(--ttc-muted);
+    font-size: 0.78rem;
+}
+
+.transparent-travel-card__fee-meta {
+    text-align: right;
+    display: grid;
+    gap: 0.18rem;
+}
+
+.transparent-travel-card__frequency {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    color: #1e5a90;
+    background: #e8f3ff;
+    border: 1px solid #cde4fb;
+    border-radius: 999px;
+    padding: 0.12rem 0.45rem;
+}
+
+.transparent-travel-card__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.transparent-travel-card__action-link {
+    text-decoration: none;
+    border-radius: 999px;
+    border: 1px solid #cae2f8;
+    background: #f2f9ff;
+    color: #135084;
+    font-weight: 600;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+}
+
+.transparent-travel-card__action-link:hover {
+    background: #e6f3ff;
+}
+
+@media (max-width: 480px) {
+    .transparent-travel-card {
+        padding: 0.85rem;
+    }
+
+    .transparent-travel-card__header,
+    .transparent-travel-card__subtotal,
+    .transparent-travel-card__fee-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .transparent-travel-card__fee-meta {
+        text-align: left;
+    }
+}
+

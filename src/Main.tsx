@@ -31,19 +31,41 @@ const navItems = [
 ];
 
 const Main: React.FC = () => {
-	const { account, isAuthenticated } = useProfile();
+	const { account, isAuthenticated, syncState, toast, dismissToast } = useProfile();
+	const syncLabel = syncState === 'synced'
+		? 'Base sync'
+		: syncState === 'syncing'
+			? 'Sync...'
+			: syncState === 'error'
+				? 'Sync error'
+				: 'Anonymous';
 
 	return (
 		<div className="app-shell">
+			{toast && (
+				<div className={`global-toast global-toast--${toast.type}`} role="status" aria-live="polite">
+					<div className="global-toast__content">
+						<strong>{toast.type === 'success' ? 'Synchronisation réussie' : toast.type === 'error' ? 'Erreur de synchronisation' : 'Information'}</strong>
+						<span>{toast.message}</span>
+					</div>
+					<button type="button" className="global-toast__close" onClick={dismissToast} aria-label="Fermer la notification">×</button>
+				</div>
+			)}
 			<header className="site-header">
 				<div className="page-container site-header__content">
-					<NavLink to="/" className="brand-mark">
-						<img src="/logo.png" alt="TravelHub" className="brand-mark__logo" />
-						<div className="brand-mark__text">
-							<div className="brand-mark__title">TravelHub</div>
-							<div className="brand-mark__subtitle">Find your next adventure</div>
-						</div>
-					</NavLink>
+					<div className="site-header__brand-group">
+						<NavLink to="/" className="brand-mark">
+							<img src="/logo.png" alt="TravelHub" className="brand-mark__logo" />
+							<div className="brand-mark__text">
+								<div className="brand-mark__title">TravelHub</div>
+								<div className="brand-mark__subtitle">Find your next adventure</div>
+							</div>
+						</NavLink>
+						<span className={`header-sync-badge header-sync-badge--${syncState}`}>
+							<span className="header-sync-badge__dot" />
+							{syncLabel}
+						</span>
+					</div>
 
 					<nav className="site-nav" aria-label="Primary navigation">
 						{navItems.map((item) => (
@@ -69,6 +91,7 @@ const Main: React.FC = () => {
 						>
 							<FontAwesomeIcon icon={faUser} className="site-nav__icon" />
 							<span>{isAuthenticated ? (account?.username ?? 'Profile') : 'Sign in'}</span>
+							{isAuthenticated && <span className={`site-nav__status site-nav__status--${syncState}`}>{syncLabel}</span>}
 						</NavLink>
 					</nav>
 				</div>

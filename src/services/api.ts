@@ -124,6 +124,25 @@ const ensureOk = async (response: Response, diagnostics: ApiDiagnostics, fallbac
 
 // ─── Flights — FlightAvailable (canonical) + BackendFlight alias ──────────────
 
+export type DataConfidence = 'live' | 'mixed' | 'estimated';
+
+/**
+ * OpenAPI: AntiCauchemarAnalysis
+ * Travel-friction analysis combining real cost and logistics context.
+ */
+export interface AntiCauchemarAnalysis {
+    ticketPrice?: number;
+    airportShuttleEstimate?: number;
+    cabinBagEstimate?: number;
+    realCost?: number;
+    flightDurationMinutes?: number;
+    transferToCenterMinutes?: number;
+    totalTravelTimeMinutes?: number;
+    currency?: string;
+    logisticVerdict?: string;
+    dataConfidence?: DataConfidence;
+}
+
 /**
  * Canonical flight shape from /api/flights (OpenAPI: FlightAvailable).
  * Legacy fields (flightNumber, airline, departureTime, arrivalTime, returnDate)
@@ -140,6 +159,7 @@ export interface FlightAvailable {
     price: number | string;
     currency?: string;
     fetchDate?: string;
+    antiCauchemar?: AntiCauchemarAnalysis;
     // Legacy / Ryanair live-flight fields — may be absent on cached flights
     flightNumber?: string;
     airline?: string;
@@ -201,6 +221,7 @@ export interface TripSuggestion {
     origin: string;
     destination: string;
     cheapestFlight?: FlightAvailable;
+    antiCauchemar?: AntiCauchemarAnalysis;
     availableFlightDates?: string;
     summary?: string;
     bestTimeToVisit?: string;
@@ -258,6 +279,28 @@ export interface DayPlan {
     afternoon: string;
     evening: string;
 }
+
+export interface FlightSearchResult {
+    flightNumber?: string;
+    airline?: string;
+    departureAirport?: string;
+    arrivalAirport?: string;
+    scheduledDeparture?: string;
+    scheduledArrival?: string;
+    flightStatus?: string;
+    estimatedTicketPrice?: number;
+    antiCauchemar?: AntiCauchemarAnalysis;
+}
+
+export interface HotelResult {
+    xid?: string;
+    name?: string;
+    latitude?: number;
+    longitude?: number;
+    kinds?: string;
+}
+
+export type GenericJsonObject = Record<string, unknown>;
 
 // ─── Accounts ─────────────────────────────────────────────────────────────────
 
@@ -484,10 +527,10 @@ export interface TripPlanParams {
     activities?: string;
     favoriteActivities?: string;
     notes?: string;
-    pace?: string;
+    pace?: TravelPace;
     season?: string;
-    preferredTransport?: string;
-    provider?: string;
+    preferredTransport?: PreferredTransport;
+    provider?: AiProviderName;
 }
 
 export const planTrip = async (params: TripPlanParams): Promise<TripSuggestionResult> => {
@@ -499,6 +542,7 @@ export const planTrip = async (params: TripPlanParams): Promise<TripSuggestionRe
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
             body: JSON.stringify(params),
+            credentials: 'include',
         },
         AI_REQUEST_TIMEOUT_MS,
     );
@@ -534,6 +578,7 @@ export const generateItinerary = async (params: TripItineraryRequest): Promise<T
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
             body: JSON.stringify(params),
+            credentials: 'include',
         },
         AI_REQUEST_TIMEOUT_MS,
     );
@@ -569,6 +614,23 @@ export const loginAccount = async (request: LoginRequest): Promise<LoginResponse
     });
     await ensureOk(response, diagnostics, 'Login failed');
     return (await response.json()) as LoginResponse;
+};
+
+export const logoutAccount = async (): Promise<{ message?: string }> => {
+    const url = buildApiUrl('/api/accounts/logout');
+    const { response, diagnostics } = await fetchWithDiagnostics(url, {
+        method: 'POST',
+        headers: { ...getCsrfHeaders() },
+        credentials: 'include',
+    });
+    await ensureOk(response, diagnostics, 'Logout failed');
+
+    const contentType = response.headers.get('content-type') ?? '';
+    if (!contentType.includes('application/json')) {
+        return { message: 'Logout successful' };
+    }
+
+    return (await response.json()) as { message?: string };
 };
 
 export const getProfile = async (): Promise<Account> => {

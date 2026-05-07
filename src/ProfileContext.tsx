@@ -1,6 +1,7 @@
 import React, {
     ReactNode,
     createContext,
+    useEffect,
     useCallback,
     useContext,
     useMemo,
@@ -8,6 +9,7 @@ import React, {
 } from 'react';
 import {
     Account,
+    ApiRequestError,
     AiProviderName,
     LoginRequest,
     PreferredTransport,
@@ -15,8 +17,10 @@ import {
     TravelPace,
     UpdateUserProfileRequest,
     UserProfile,
+    getProfile,
     getPreferences,
     loginAccount,
+    logoutAccount,
     registerAccount,
     updatePreferences,
 } from './services/api';
@@ -31,19 +35,42 @@ export const ANONYMOUS_PROFILE: UserProfile = {
     preferredAiProvider: null,
 };
 
+const ONBOARDING_STORAGE_KEY = 'travelhub:onboarding-active';
+const ONBOARDING_STEP_STORAGE_KEY = 'travelhub:onboarding-step';
+
+export type SyncState = 'anonymous' | 'syncing' | 'synced' | 'error';
+export interface GlobalToast {
+    type: 'success' | 'error' | 'info';
+    message: string;
+}
+
 // ─── Context shape ────────────────────────────────────────────────────────────
 
 export interface ProfileContextType {
     /** Current effective profile — anonymous defaults or the loaded user profile */
     profile: UserProfile;
     account: Account | null;
+    flow: 'idle' | 'checking-session' | 'signing-in' | 'registering' | 'loading-profile' | 'saving-preferences' | 'authenticated' | 'anonymous' | 'error';
+    syncState: SyncState;
     isAuthenticated: boolean;
     isLoading: boolean;
+    isBootstrapping: boolean;
+    isSavingPreferences: boolean;
+    isOnboardingActive: boolean;
+    onboardingStep: number;
     error: string | null;
+    statusMessage: string | null;
+    successMessage: string | null;
+    toast: GlobalToast | null;
     login: (request: LoginRequest) => Promise<void>;
     register: (request: RegisterAccountRequest) => Promise<void>;
-    logout: () => void;
+    logout: () => Promise<void>;
     savePreferences: (request: UpdateUserProfileRequest) => Promise<void>;
+    refreshSession: () => Promise<void>;
+    setOnboardingStep: (step: number) => void;
+    completeOnboarding: () => void;
+    skipOnboarding: () => void;
+    dismissToast: () => void;
 }
 
 const ProfileContext = createContext<ProfileContextType | undefined>(undefined);
@@ -55,68 +82,307 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
     const [profile, setProfile] = useState<UserProfile>(ANONYMOUS_PROFILE);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [statusMessage, setStatusMessage] = useState<string | null>(null);
+    const [toast, setToast] = useState<GlobalToast | null>(null);
+    const [flow, setFlow] = useState<ProfileContextType['flow']>('checking-session');
+    const [syncState, setSyncState] = useState<SyncState>('syncing');
+    const [hasCheckedSession, setHasCheckedSession] = useState(false);
+    const [isOnboardingActive, setIsOnboardingActive] = useState<boolean>(() => {
+        if (typeof window === 'undefined') return false;
+        return window.sessionStorage.getItem(ONBOARDING_STORAGE_KEY) === '1';
+    });
+    const [onboardingStep, setOnboardingStepState] = useState<number>(() => {
+        if (typeof window === 'undefined') return 1;
+        const raw = Number.parseInt(window.sessionStorage.getItem(ONBOARDING_STEP_STORAGE_KEY) ?? '1', 10);
+        return Number.isFinite(raw) && raw >= 1 && raw <= 3 ? raw : 1;
+    });
 
     const isAuthenticated = account !== null;
+    const isBootstrapping = !hasCheckedSession;
+    const isSavingPreferences = flow === 'saving-preferences';
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        if (isOnboardingActive) {
+            window.sessionStorage.setItem(ONBOARDING_STORAGE_KEY, '1');
+            window.sessionStorage.setItem(ONBOARDING_STEP_STORAGE_KEY, String(onboardingStep));
+        } else {
+            window.sessionStorage.removeItem(ONBOARDING_STORAGE_KEY);
+            window.sessionStorage.removeItem(ONBOARDING_STEP_STORAGE_KEY);
+        }
+    }, [isOnboardingActive, onboardingStep]);
+
+    useEffect(() => {
+        if (!toast) return undefined;
+
+        const timeout = window.setTimeout(() => setToast(null), 4500);
+        return () => window.clearTimeout(timeout);
+    }, [toast]);
+
+    const mergeWithAnonymousDefaults = useCallback(
+        (nextProfile?: UserProfile | null): UserProfile => ({
+            ...ANONYMOUS_PROFILE,
+            ...(nextProfile ?? {}),
+        }),
+        [],
+    );
+
+    const getReadableError = useCallback((err: unknown, fallback: string): string => {
+        if (err instanceof ApiRequestError) {
+            if (err.diagnostics.status === 401) return 'Identifiants invalides ou session expirée.';
+            if (err.diagnostics.status === 409) return 'Ce nom d’utilisateur existe déjà.';
+            if (err.diagnostics.status === 400) return 'Les informations envoyées sont invalides.';
+            return err.message;
+        }
+
+        return err instanceof Error ? err.message : fallback;
+    }, []);
+
+    const loadAuthenticatedSession = useCallback(async (success?: string) => {
+        setFlow('loading-profile');
+        setSyncState('syncing');
+        setStatusMessage('Vérification du compte et chargement du profil depuis la base…');
+
+        const verifiedAccount = await getProfile();
+        const prefs = await getPreferences();
+
+        setAccount(verifiedAccount);
+        setProfile(mergeWithAnonymousDefaults(prefs));
+        setFlow('authenticated');
+        setSyncState('synced');
+        setStatusMessage(null);
+        if (success) setSuccessMessage(success);
+    }, [mergeWithAnonymousDefaults]);
+
+    const refreshSession = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
+        setSuccessMessage(null);
+        setFlow('checking-session');
+        setSyncState('syncing');
+        setStatusMessage('Vérification de votre session sécurisée…');
+
+        try {
+            await loadAuthenticatedSession();
+        } catch (err) {
+            setAccount(null);
+            setProfile(ANONYMOUS_PROFILE);
+
+            if (err instanceof ApiRequestError && (err.diagnostics.status === 401 || err.diagnostics.status === 404)) {
+                setFlow('anonymous');
+                setSyncState('anonymous');
+                setStatusMessage(null);
+                setError(null);
+                setIsOnboardingActive(false);
+                setOnboardingStepState(1);
+            } else {
+                setFlow('error');
+                setSyncState('error');
+                setStatusMessage(null);
+                const message = getReadableError(err, 'Impossible de vérifier la session actuelle.');
+                setError(message);
+                setToast({ type: 'error', message });
+            }
+        } finally {
+            setIsLoading(false);
+            setHasCheckedSession(true);
+        }
+    }, [getReadableError, loadAuthenticatedSession]);
+
+    useEffect(() => {
+        void refreshSession();
+    }, [refreshSession]);
 
     const login = useCallback(async (request: LoginRequest) => {
         setIsLoading(true);
         setError(null);
+        setSuccessMessage(null);
+        setFlow('signing-in');
+        setSyncState('syncing');
+        setStatusMessage('Connexion sécurisée en cours…');
         try {
-            const response = await loginAccount(request);
-            setAccount({ username: response.username ?? request.username });
-            // Load the user's stored preferences after login
-            try {
-                const prefs = await getPreferences();
-                setProfile(prefs);
-            } catch {
-                // If prefs endpoint fails, keep anonymous defaults — not fatal
-            }
+            await loginAccount(request);
+            setIsOnboardingActive(false);
+            setOnboardingStepState(1);
+            await loadAuthenticatedSession('Connexion réussie — profil chargé depuis la base de données.');
+            setToast({ type: 'success', message: 'Compte connecté et synchronisé avec la base.' });
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Login failed');
+            setAccount(null);
+            setProfile(ANONYMOUS_PROFILE);
+            setFlow('error');
+            setSyncState('error');
+            setStatusMessage(null);
+            const message = getReadableError(err, 'Échec de la connexion.');
+            setError(message);
+            setToast({ type: 'error', message });
             throw err;
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [getReadableError, loadAuthenticatedSession]);
 
     const register = useCallback(async (request: RegisterAccountRequest) => {
         setIsLoading(true);
         setError(null);
+        setSuccessMessage(null);
+        setFlow('registering');
+        setSyncState('syncing');
+        setStatusMessage('Création du compte dans la base de données…');
         try {
-            const created = await registerAccount(request);
-            setAccount(created);
-            setProfile(ANONYMOUS_PROFILE); // start with clean defaults
+            await registerAccount(request);
+            setFlow('signing-in');
+            setStatusMessage('Connexion automatique et préparation de votre profil…');
+            await loginAccount({ username: request.username, password: request.password });
+            setIsOnboardingActive(true);
+            setOnboardingStepState(1);
+            await loadAuthenticatedSession('Compte créé, connecté et synchronisé avec la base de données.');
+            setToast({ type: 'success', message: 'Compte créé et prêt pour l’onboarding.' });
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Registration failed');
+            setAccount(null);
+            setProfile(ANONYMOUS_PROFILE);
+            setFlow('error');
+            setSyncState('error');
+            setStatusMessage(null);
+            const message = getReadableError(err, 'Échec de la création du compte.');
+            setError(message);
+            setToast({ type: 'error', message });
             throw err;
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [getReadableError, loadAuthenticatedSession]);
 
-    const logout = useCallback(() => {
-        setAccount(null);
-        setProfile(ANONYMOUS_PROFILE);
+    const logout = useCallback(async () => {
+        setIsLoading(true);
         setError(null);
-    }, []);
+        setSuccessMessage(null);
+        setFlow('checking-session');
+        setSyncState('syncing');
+        setStatusMessage('Déconnexion sécurisée et fermeture de session…');
+
+        try {
+            await logoutAccount();
+            setToast({ type: 'success', message: 'Déconnexion confirmée côté serveur.' });
+        } catch (err) {
+            if (!(err instanceof ApiRequestError) || (err.diagnostics.status !== 401 && err.diagnostics.status !== 204)) {
+                const message = getReadableError(err, 'Échec de la déconnexion serveur.');
+                setError(message);
+                setToast({ type: 'error', message });
+                throw err;
+            }
+        } finally {
+            setAccount(null);
+            setProfile(ANONYMOUS_PROFILE);
+            setError(null);
+            setStatusMessage(null);
+            setSuccessMessage('Session fermée.');
+            setFlow('anonymous');
+            setSyncState('anonymous');
+            setIsOnboardingActive(false);
+            setOnboardingStepState(1);
+            setIsLoading(false);
+        }
+    }, [getReadableError]);
 
     const savePreferences = useCallback(async (request: UpdateUserProfileRequest) => {
         setIsLoading(true);
         setError(null);
+        setSuccessMessage(null);
+        setFlow('saving-preferences');
+        setSyncState('syncing');
+        setStatusMessage('Enregistrement de vos préférences en base…');
         try {
             const updated = await updatePreferences(request);
-            setProfile(updated);
+            setProfile(mergeWithAnonymousDefaults(updated));
+            setStatusMessage(null);
+            setSuccessMessage('Préférences enregistrées dans la base de données.');
+            setFlow(isAuthenticated ? 'authenticated' : 'anonymous');
+            setSyncState(isAuthenticated ? 'synced' : 'anonymous');
+            setToast({ type: 'success', message: 'Synchronisation réussie avec la base de données.' });
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to save preferences');
+            setStatusMessage(null);
+            setFlow('error');
+            setSyncState('error');
+            const message = getReadableError(err, 'Impossible d’enregistrer les préférences.');
+            setError(message);
+            setToast({ type: 'error', message });
             throw err;
         } finally {
             setIsLoading(false);
         }
+    }, [getReadableError, isAuthenticated, mergeWithAnonymousDefaults]);
+
+    const setOnboardingStep = useCallback((step: number) => {
+        setOnboardingStepState(Math.min(3, Math.max(1, step)));
     }, []);
 
+    const completeOnboarding = useCallback(() => {
+        setIsOnboardingActive(false);
+        setOnboardingStepState(1);
+        setSuccessMessage('Onboarding terminé — votre profil est prêt et synchronisé.');
+    }, []);
+
+    const skipOnboarding = useCallback(() => {
+        setIsOnboardingActive(false);
+        setOnboardingStepState(1);
+        setSuccessMessage('Onboarding ignoré — vous pourrez compléter votre profil à tout moment.');
+    }, []);
+
+    const dismissToast = useCallback(() => setToast(null), []);
+
     const value = useMemo<ProfileContextType>(
-        () => ({ profile, account, isAuthenticated, isLoading, error, login, register, logout, savePreferences }),
-        [profile, account, isAuthenticated, isLoading, error, login, register, logout, savePreferences],
+        () => ({
+            profile,
+            account,
+            flow,
+            syncState,
+            isAuthenticated,
+            isLoading,
+            isBootstrapping,
+            isSavingPreferences,
+            isOnboardingActive,
+            onboardingStep,
+            error,
+            statusMessage,
+            successMessage,
+            toast,
+            login,
+            register,
+            logout,
+            savePreferences,
+            refreshSession,
+            setOnboardingStep,
+            completeOnboarding,
+            skipOnboarding,
+            dismissToast,
+        }),
+        [
+            profile,
+            account,
+            flow,
+            syncState,
+            isAuthenticated,
+            isLoading,
+            isBootstrapping,
+            isSavingPreferences,
+            isOnboardingActive,
+            onboardingStep,
+            error,
+            statusMessage,
+            successMessage,
+            toast,
+            login,
+            register,
+            logout,
+            savePreferences,
+            refreshSession,
+            setOnboardingStep,
+            completeOnboarding,
+            skipOnboarding,
+            dismissToast,
+        ],
     );
 
     return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>;

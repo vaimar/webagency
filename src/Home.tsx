@@ -8,13 +8,34 @@ import { flightUrls } from './services/affiliates';
 
 /* ─── Helpers ──────────────────────────────────────────────────────────────── */
 
-const formatPrice = (flight: FlightAvailable): string => {
-    const amount = typeof flight.price === 'number' ? flight.price.toFixed(2) : flight.price;
+const ESTIMATION_LABEL = 'Estimation basée sur les 24h précédentes';
+
+const formatPrice = (price: number | string): string => {
+    const amount = typeof price === 'number' ? price.toFixed(2) : price;
     return `€${amount}`;
+};
+
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const ISO_DATE_PREFIX_RE = /^(\d{4}-\d{2}-\d{2})/;
+
+const extractDatePart = (value?: string): string => {
+    if (!value) return '';
+    if (DATE_ONLY_RE.test(value)) return value;
+    const match = value.match(ISO_DATE_PREFIX_RE);
+    if (match) return match[1];
+    return '';
 };
 
 const formatTime = (value?: string): string => {
     if (!value) return '—';
+
+    // Keep date-only payloads timezone-safe (avoid off-by-one day shifts).
+    if (DATE_ONLY_RE.test(value)) {
+        const [year, month, day] = value.split('-').map((part) => Number.parseInt(part, 10));
+        const utcDate = new Date(Date.UTC(year, month - 1, day));
+        return new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeZone: 'UTC' }).format(utcDate);
+    }
+
     const date = new Date(value);
     if (isNaN(date.getTime())) return value;
     return new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
@@ -23,12 +44,47 @@ const formatTime = (value?: string): string => {
 const getFlightDate = (flight: FlightAvailable): string => {
     // Prefer canonical departureDate (ISO date-time), fall back to legacy departureTime
     const dep = flight.departureDate ?? flight.departureTime ?? '';
-    return dep ? new Date(dep).toISOString().slice(0, 10) : '';
+    return extractDatePart(dep);
 };
 
 const getFlightLinks = (flight: FlightAvailable) => {
     const date = getFlightDate(flight);
     return flightUrls(flight.origin, flight.destination, date);
+};
+
+const isValidRedirectUrl = (value: string): boolean => {
+    try {
+        const url = new URL(value);
+        return ['http:', 'https:'].includes(url.protocol) && Boolean(url.hostname);
+    } catch {
+        return false;
+    }
+};
+
+const isWithin24Hours = (value?: string): boolean => {
+    if (!value) return false;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return false;
+    return Date.now() - date.getTime() <= 24 * 60 * 60 * 1000;
+};
+
+const getFlightPriceDisplay = (
+    flight: FlightAvailable,
+    flightSource: 'live' | 'curated' | null,
+    flightDiagnosticsOk: boolean,
+) => {
+    const links = getFlightLinks(flight);
+    const validLinks = [links.googleFlights, links.skyscanner, links.kiwi].filter(isValidRedirectUrl);
+    const hasVerifiedRedirect = validLinks.length > 0;
+    const hasActiveBookingApi = flightSource === 'live' && flightDiagnosticsOk;
+    const isFreshRealtime = isWithin24Hours(flight.fetchDate) || !flight.fetchDate;
+    const isRealtimeVerified = hasVerifiedRedirect && hasActiveBookingApi && isFreshRealtime;
+
+    return {
+        links: validLinks,
+        showExactPrice: isRealtimeVerified,
+        label: isRealtimeVerified ? formatPrice(flight.price) : ESTIMATION_LABEL,
+    };
 };
 
 /** Canonical arrival: arrivalDate (new spec) → arrivalTime → returnDate (legacy) */
@@ -111,26 +167,28 @@ const Home: React.FC = () => {
                         <div className="card empty-state"><div className="loading-pulse"><FontAwesomeIcon icon={faPlane} className="empty-state__icon" /><p>Checking live availability...</p></div></div>
                     ) : (
                         <>
-                            <div className="info-grid">{flights.map((flight, index) => (
-                                <article key={`${flight.flightNumber ?? index}-${flight.departureTime ?? flight.departureDate}`} className="card card--hoverable flight-card">
-                                    <div className="flight-card__header"><div className="flight-card__route"><span>{flight.origin}</span><FontAwesomeIcon icon={faExchangeAlt} className="flight-card__route-icon" /><span>{flight.destination}</span></div>{flight.flightNumber && <span className="tag tag--success" style={{ fontSize: '0.7rem' }}>{flight.airline ?? 'Ryanair'}</span>}</div>
-                                    <div><div className="flight-card__price">{formatPrice(flight)}</div><span className="flight-card__price-label">per person</span></div>
-                                    <h3 style={{ fontSize: '1rem' }}>{flight.flightNumber ? `Flight ${flight.flightNumber}` : flight.destination}</h3>
-                                    <p className="muted-text" style={{ fontSize: '0.875rem' }}>Depart: {formatTime(flight.departureDate ?? flight.departureTime)}{getFlightArrival(flight) && <><br />Arrive: {formatTime(getFlightArrival(flight))}</>}</p>
-                                    <div className="trip-booking-links" style={{ marginTop: 'auto' }}>
-                                        {(() => {
-                                            const links = getFlightLinks(flight);
-                                            return (
-                                                <>
-                                                    <a href={links.googleFlights} target="_blank" rel="noopener noreferrer" className="trip-external-link">Google Flights <FontAwesomeIcon icon={faExternalLinkAlt} style={{ marginLeft: '4px', fontSize: '0.65rem' }} /></a>
-                                                    <a href={links.skyscanner} target="_blank" rel="noopener noreferrer" className="trip-external-link">Skyscanner <FontAwesomeIcon icon={faExternalLinkAlt} style={{ marginLeft: '4px', fontSize: '0.65rem' }} /></a>
-                                                    <a href={links.kiwi} target="_blank" rel="noopener noreferrer" className="trip-external-link">Kiwi <FontAwesomeIcon icon={faExternalLinkAlt} style={{ marginLeft: '4px', fontSize: '0.65rem' }} /></a>
-                                                </>
-                                            );
-                                        })()}
-                                    </div>
-                                </article>
-                            ))}</div>
+                            <div className="info-grid">{flights.map((flight, index) => {
+                                const priceDisplay = getFlightPriceDisplay(flight, flightSource, Boolean(flightDiagnostics?.ok));
+                                const [googleFlights, skyscanner, kiwi] = priceDisplay.links;
+
+                                return (
+                                    <article key={`${flight.flightNumber ?? index}-${flight.departureTime ?? flight.departureDate}`} className="card card--hoverable flight-card">
+                                        <div className="flight-card__header"><div className="flight-card__route"><span>{flight.origin}</span><FontAwesomeIcon icon={faExchangeAlt} className="flight-card__route-icon" /><span>{flight.destination}</span></div>{flight.flightNumber && <span className="tag tag--success" style={{ fontSize: '0.7rem' }}>{flight.airline ?? 'Ryanair'}</span>}</div>
+                                        <div>
+                                            <div className="flight-card__price">{priceDisplay.label}</div>
+                                            <span className="flight-card__price-label">{priceDisplay.showExactPrice ? 'per person' : 'prix non vérifiable en temps réel'}</span>
+                                        </div>
+                                        <h3 style={{ fontSize: '1rem' }}>{flight.flightNumber ? `Flight ${flight.flightNumber}` : flight.destination}</h3>
+                                        <p className="muted-text" style={{ fontSize: '0.875rem' }}>Depart: {formatTime(flight.departureDate ?? flight.departureTime)}{getFlightArrival(flight) && <><br />Arrive: {formatTime(getFlightArrival(flight))}</>}</p>
+                                        <div className="trip-booking-links" style={{ marginTop: 'auto' }}>
+                                            {googleFlights && <a href={googleFlights} target="_blank" rel="noopener noreferrer" className="trip-external-link">Google Flights <FontAwesomeIcon icon={faExternalLinkAlt} style={{ marginLeft: '4px', fontSize: '0.65rem' }} /></a>}
+                                            {skyscanner && <a href={skyscanner} target="_blank" rel="noopener noreferrer" className="trip-external-link">Skyscanner <FontAwesomeIcon icon={faExternalLinkAlt} style={{ marginLeft: '4px', fontSize: '0.65rem' }} /></a>}
+                                            {kiwi && <a href={kiwi} target="_blank" rel="noopener noreferrer" className="trip-external-link">Kiwi <FontAwesomeIcon icon={faExternalLinkAlt} style={{ marginLeft: '4px', fontSize: '0.65rem' }} /></a>}
+                                            {priceDisplay.links.length === 0 && <span className="muted-text" style={{ fontSize: '0.8rem' }}>Aucun lien de réservation vérifié.</span>}
+                                        </div>
+                                    </article>
+                                );
+                            })}</div>
                             <RequestDiagnostics title="Flight request details" diagnostics={flightDiagnostics} />
                         </>
                     )}
