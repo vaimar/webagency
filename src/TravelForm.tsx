@@ -13,7 +13,7 @@ import { ApiDiagnostics, ApiRequestError, planTrip, TripSuggestion } from './ser
 type FormPhase = 'destination' | 'preferences' | 'generating' | 'result';
 
 const TravelForm: React.FC = () => {
-    const { profile, isAuthenticated, savePreferences } = useProfile();
+    const { profile, isAuthenticated, savePreferences, showToast } = useProfile();
     const [destination, setDestination] = useState('');
     const [days, setDays] = useState(5);
     const [phase, setPhase] = useState<FormPhase>('destination');
@@ -78,8 +78,11 @@ const TravelForm: React.FC = () => {
             if (err instanceof ApiRequestError) {
                 setError(err.message);
                 setResultDiagnostics(err.diagnostics);
+                showToast({ type: 'error', title: 'Planner error', message: err.message }, 'planner-generate-error');
             } else {
-                setError(err instanceof Error ? err.message : 'Failed to generate trip plan');
+                const message = err instanceof Error ? err.message : 'Failed to generate trip plan';
+                setError(message);
+                showToast({ type: 'error', title: 'Planner error', message }, 'planner-generate-error-generic');
             }
             setPhase('destination');
         }

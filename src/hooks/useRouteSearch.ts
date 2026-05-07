@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { useProfile } from '../ProfileContext';
 import {
     ApiDiagnostics,
     ApiRequestError,
@@ -62,6 +63,7 @@ const buildSuggestionErrorMessage = (error: ApiRequestError): string => {
 };
 
 export const useRouteSearch = (): UseRouteSearchResult => {
+    const { showToast } = useProfile();
     const [state, setState] = useState<RouteSearchState>({ origin: 'DUB', destination: 'STN' });
     const [flights, setFlights] = useState<FlightAvailable[]>([]);
     const [tripSuggestion, setTripSuggestion] = useState<TripSuggestion | null>(null);
@@ -131,15 +133,19 @@ export const useRouteSearch = (): UseRouteSearchResult => {
             const error = suggestionResult.reason;
 
             if (error instanceof ApiRequestError) {
-                setSuggestionError(buildSuggestionErrorMessage(error));
+                const message = buildSuggestionErrorMessage(error);
+                setSuggestionError(message);
                 setSuggestionDiagnostics(error.diagnostics);
+                showToast({ type: 'error', title: 'AI trip suggestion error', message }, 'trip-suggestion-error');
             } else {
-                setSuggestionError('AI trip suggestion unavailable.');
+                const message = 'AI trip suggestion unavailable.';
+                setSuggestionError(message);
+                showToast({ type: 'error', title: 'AI trip suggestion error', message }, 'trip-suggestion-error-generic');
             }
         }
 
         setIsLoadingSuggestion(false);
-    }, [state.destination, state.origin]);
+    }, [showToast, state.destination, state.origin]);
 
     const clearResults = useCallback(() => {
         setFlights([]);
@@ -166,15 +172,19 @@ export const useRouteSearch = (): UseRouteSearchResult => {
             setSuggestionDiagnostics(result.diagnostics);
         } catch (error) {
             if (error instanceof ApiRequestError) {
-                setSuggestionError(buildSuggestionErrorMessage(error));
+                const message = buildSuggestionErrorMessage(error);
+                setSuggestionError(message);
                 setSuggestionDiagnostics(error.diagnostics);
+                showToast({ type: 'error', title: 'AI trip suggestion error', message }, 'trip-suggestion-retry-error');
             } else {
-                setSuggestionError('AI trip suggestion unavailable.');
+                const message = 'AI trip suggestion unavailable.';
+                setSuggestionError(message);
+                showToast({ type: 'error', title: 'AI trip suggestion error', message }, 'trip-suggestion-retry-error-generic');
             }
         } finally {
             setIsLoadingSuggestion(false);
         }
-    }, [state.origin, state.destination]);
+    }, [showToast, state.origin, state.destination]);
 
     return {
         state,

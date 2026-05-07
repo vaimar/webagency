@@ -45,7 +45,7 @@ const Main: React.FC = () => {
 			{toast && (
 				<div className={`global-toast global-toast--${toast.type}`} role="status" aria-live="polite">
 					<div className="global-toast__content">
-						<strong>{toast.type === 'success' ? 'Synchronisation réussie' : toast.type === 'error' ? 'Erreur de synchronisation' : 'Information'}</strong>
+						<strong>{toast.title ?? (toast.type === 'success' ? 'Action réussie' : toast.type === 'error' ? 'Une erreur est survenue' : 'Information')}</strong>
 						<span>{toast.message}</span>
 					</div>
 					<button type="button" className="global-toast__close" onClick={dismissToast} aria-label="Fermer la notification">×</button>

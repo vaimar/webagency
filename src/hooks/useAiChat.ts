@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { useProfile } from '../ProfileContext';
 import { AiProvider, ApiDiagnostics, ApiRequestError, ChatMessage, fetchAiProviders, sendChatMessage } from '../services/api';
 
 interface UseAiChatResult {
@@ -18,6 +19,7 @@ interface UseAiChatResult {
 }
 
 export const useAiChat = (): UseAiChatResult => {
+    const { showToast } = useProfile();
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [providers, setProviders] = useState<AiProvider[]>([]);
     const [activeProvider, setActiveProvider] = useState<string>('');
@@ -41,15 +43,19 @@ export const useAiChat = (): UseAiChatResult => {
             }
         } catch (error) {
             if (error instanceof ApiRequestError) {
-                setProvidersError(`Could not load providers: ${error.message}`);
+                const message = `Could not load providers: ${error.message}`;
+                setProvidersError(message);
                 setProviderDiagnostics(error.diagnostics);
+                showToast({ type: 'error', title: 'AI provider error', message }, 'ai-providers-error');
             } else {
-                setProvidersError('Could not load providers.');
+                const message = 'Could not load providers.';
+                setProvidersError(message);
+                showToast({ type: 'error', title: 'AI provider error', message }, 'ai-providers-error-generic');
             }
         } finally {
             setIsLoadingProviders(false);
         }
-    }, [activeProvider]);
+    }, [activeProvider, showToast]);
 
     const send = useCallback(
         async (text: string) => {
@@ -84,16 +90,20 @@ export const useAiChat = (): UseAiChatResult => {
                 setMessages((prev) => [...prev, assistantMessage]);
             } catch (error) {
                 if (error instanceof ApiRequestError) {
-                    setError(`Could not reach the AI assistant: ${error.message}`);
+                    const message = `Could not reach the AI assistant: ${error.message}`;
+                    setError(message);
                     setLastChatDiagnostics(error.diagnostics);
+                    showToast({ type: 'error', title: 'AI assistant error', message }, 'ai-chat-error');
                 } else {
-                    setError('Could not reach the AI assistant.');
+                    const message = 'Could not reach the AI assistant.';
+                    setError(message);
+                    showToast({ type: 'error', title: 'AI assistant error', message }, 'ai-chat-error-generic');
                 }
             } finally {
                 setIsLoading(false);
             }
         },
-        [activeProvider],
+        [activeProvider, showToast],
     );
 
     const clearHistory = useCallback(() => {
