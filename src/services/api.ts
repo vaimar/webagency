@@ -1,7 +1,20 @@
-const configuredApiBase = (process.env.REACT_APP_API_BASE ?? '').trim();
+export const API_BASE = 'https://slumber-production.up.railway.app';
 
-// Empty API_BASE means same-origin requests (uses CRA proxy in development).
-export const API_BASE = configuredApiBase.replace(/\/$/, '');
+const DEV_AUTH_DEBUG = process.env.NODE_ENV !== 'production';
+const AUTH_DEBUG_PATHS = new Set(['/api/accounts/login', '/api/accounts/profile']);
+const AUTH_FAILURE_STATUSES = new Set([401, 403]);
+
+export interface AuthFailureEvent {
+    status: number;
+    url: string;
+    message: string;
+}
+
+let authFailureHandler: ((event: AuthFailureEvent) => void) | null = null;
+
+export const setAuthFailureHandler = (handler: ((event: AuthFailureEvent) => void) | null): void => {
+    authFailureHandler = handler;
+};
 
 const parseTimeoutMs = (value: string | undefined, fallback: number): number => {
     const parsed = Number.parseInt((value ?? '').trim(), 10);
@@ -10,15 +23,6 @@ const parseTimeoutMs = (value: string | undefined, fallback: number): number => 
 
 const REQUEST_TIMEOUT_MS = parseTimeoutMs(process.env.REACT_APP_REQUEST_TIMEOUT_MS, 5_000);
 const AI_REQUEST_TIMEOUT_MS = parseTimeoutMs(process.env.REACT_APP_AI_REQUEST_TIMEOUT_MS, 45_000);
-
-/**
- * Reads the XSRF-TOKEN cookie set by Spring Security and returns it as a
- * header map so CSRF-protected endpoints (POST/PUT/DELETE) don't get 403'd.
- */
-const getCsrfHeaders = (): Record<string, string> => {
-    const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
-    return match ? { 'X-XSRF-TOKEN': decodeURIComponent(match[1]) } : {};
-};
 
 const buildApiUrl = (path: string, query?: Record<string, string>): string => {
     const endpoint = `${API_BASE}${path}`;
@@ -67,21 +71,67 @@ const createDiagnostics = (
     ...overrides,
 });
 
+const shouldDebugAuth = (url: string): boolean => {
+    try {
+        const { pathname } = new URL(url);
+        return AUTH_DEBUG_PATHS.has(pathname);
+    } catch {
+        return false;
+    }
+};
+
+const debugAuthRequest = (url: string, init?: RequestInit): void => {
+    if (!DEV_AUTH_DEBUG || !shouldDebugAuth(url)) return;
+
+    console.debug('[auth-debug] request', {
+        requestUrl: url,
+        credentials: init?.credentials ?? 'same-origin',
+    });
+};
+
+const debugAuthResponse = (url: string, responseOrStatus: Response | number): void => {
+    if (!DEV_AUTH_DEBUG || !shouldDebugAuth(url)) return;
+
+    console.debug('[auth-debug] response', {
+        requestUrl: url,
+        credentials: 'include',
+        status: typeof responseOrStatus === 'number' ? responseOrStatus : responseOrStatus.status,
+    });
+};
+
+interface FetchWithDiagnosticsOptions {
+    timeoutMs?: number;
+    requiresAuth?: boolean;
+}
+
 const fetchWithDiagnostics = async (
     url: string,
     init?: RequestInit,
-    timeoutMs: number = REQUEST_TIMEOUT_MS,
+    options?: FetchWithDiagnosticsOptions,
 ): Promise<{ response: Response; diagnostics: ApiDiagnostics }> => {
     const method = init?.method ?? 'GET';
     const startedAt = Date.now();
+    const timeoutMs = options?.timeoutMs ?? REQUEST_TIMEOUT_MS;
     const timeoutController = new AbortController();
     const timeoutId = setTimeout(() => timeoutController.abort(), timeoutMs);
 
     try {
+        debugAuthRequest(url, init);
+
         const response = await fetch(url, {
             ...init,
             signal: init?.signal ?? timeoutController.signal,
         });
+
+        debugAuthResponse(url, response);
+
+        if (options?.requiresAuth && AUTH_FAILURE_STATUSES.has(response.status) && authFailureHandler) {
+            authFailureHandler({
+                status: response.status,
+                url,
+                message: response.status === 403 ? 'Session expired, please sign in again.' : 'Authentication required. Please sign in again.',
+            });
+        }
 
         const diagnostics = createDiagnostics(url, method, startedAt, {
             ok: response.ok,
@@ -91,6 +141,7 @@ const fetchWithDiagnostics = async (
 
         return { response, diagnostics };
     } catch (error) {
+        debugAuthResponse(url, 0);
         const message = !init?.signal && timeoutController.signal.aborted
             ? `Request timed out after ${timeoutMs} ms`
             : error instanceof Error
@@ -398,7 +449,7 @@ export const checkBackendHealth = async (): Promise<HealthCheckResult> => {
 
 export const fetchAiProviders = async (): Promise<ProvidersResult> => {
     const url = buildApiUrl('/api/ai/providers');
-    const { response, diagnostics } = await fetchWithDiagnostics(url, undefined, AI_REQUEST_TIMEOUT_MS);
+    const { response, diagnostics } = await fetchWithDiagnostics(url, undefined, { timeoutMs: AI_REQUEST_TIMEOUT_MS });
     await ensureOk(response, diagnostics, 'Failed to fetch providers');
     const data = (await response.json()) as { providers?: AiProvider[] } | AiProvider[];
 
@@ -422,10 +473,10 @@ export const sendChatMessage = async (params: ChatParams): Promise<ChatResult> =
         url,
         {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message: params.message, provider: params.provider }),
         },
-        AI_REQUEST_TIMEOUT_MS,
+        { timeoutMs: AI_REQUEST_TIMEOUT_MS },
     );
     await ensureOk(response, diagnostics, 'Chat failed');
 
@@ -489,7 +540,7 @@ export const fetchTripSuggestion = async (params: TripSuggestParams): Promise<Tr
     if (params.provider) query.provider = params.provider;
 
     const url = buildApiUrl('/api/trips/suggestions', query);
-    const { response, diagnostics } = await fetchWithDiagnostics(url, undefined, AI_REQUEST_TIMEOUT_MS);
+    const { response, diagnostics } = await fetchWithDiagnostics(url, undefined, { timeoutMs: AI_REQUEST_TIMEOUT_MS });
     await ensureOk(response, diagnostics, 'Trip suggest failed');
 
     const contentType = response.headers.get('content-type') ?? '';
@@ -540,11 +591,11 @@ export const planTrip = async (params: TripPlanParams): Promise<TripSuggestionRe
         url,
         {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(params),
             credentials: 'include',
         },
-        AI_REQUEST_TIMEOUT_MS,
+        { timeoutMs: AI_REQUEST_TIMEOUT_MS, requiresAuth: true },
     );
     await ensureOk(response, diagnostics, 'Trip plan failed');
 
@@ -576,11 +627,11 @@ export const generateItinerary = async (params: TripItineraryRequest): Promise<T
         url,
         {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(params),
             credentials: 'include',
         },
-        AI_REQUEST_TIMEOUT_MS,
+        { timeoutMs: AI_REQUEST_TIMEOUT_MS, requiresAuth: true },
     );
     await ensureOk(response, diagnostics, 'Itinerary generation failed');
 
@@ -597,7 +648,7 @@ export const registerAccount = async (request: RegisterAccountRequest): Promise<
     const url = buildApiUrl('/api/accounts/register');
     const { response, diagnostics } = await fetchWithDiagnostics(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(request),
     });
     await ensureOk(response, diagnostics, 'Registration failed');
@@ -608,7 +659,7 @@ export const loginAccount = async (request: LoginRequest): Promise<LoginResponse
     const url = buildApiUrl('/api/accounts/login');
     const { response, diagnostics } = await fetchWithDiagnostics(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(request),
         credentials: 'include',
     });
@@ -618,11 +669,20 @@ export const loginAccount = async (request: LoginRequest): Promise<LoginResponse
 
 export const logoutAccount = async (): Promise<{ message?: string }> => {
     const url = buildApiUrl('/api/accounts/logout');
-    const { response, diagnostics } = await fetchWithDiagnostics(url, {
+    let { response, diagnostics } = await fetchWithDiagnostics(url, {
         method: 'POST',
-        headers: { ...getCsrfHeaders() },
         credentials: 'include',
     });
+
+    if (response.status === 404) {
+        const fallback = await fetchWithDiagnostics(`${API_BASE}/logout`, {
+            method: 'POST',
+            credentials: 'include',
+        });
+        response = fallback.response;
+        diagnostics = fallback.diagnostics;
+    }
+
     await ensureOk(response, diagnostics, 'Logout failed');
 
     const contentType = response.headers.get('content-type') ?? '';
@@ -635,14 +695,14 @@ export const logoutAccount = async (): Promise<{ message?: string }> => {
 
 export const getProfile = async (): Promise<Account> => {
     const url = buildApiUrl('/api/accounts/profile');
-    const { response, diagnostics } = await fetchWithDiagnostics(url, { credentials: 'include' });
+    const { response, diagnostics } = await fetchWithDiagnostics(url, { credentials: 'include' }, { requiresAuth: true });
     await ensureOk(response, diagnostics, 'Failed to load profile');
     return (await response.json()) as Account;
 };
 
 export const getPreferences = async (): Promise<UserProfile> => {
     const url = buildApiUrl('/api/accounts/preferences');
-    const { response, diagnostics } = await fetchWithDiagnostics(url, { credentials: 'include' });
+    const { response, diagnostics } = await fetchWithDiagnostics(url, { credentials: 'include' }, { requiresAuth: true });
     await ensureOk(response, diagnostics, 'Failed to load preferences');
     return (await response.json()) as UserProfile;
 };
@@ -651,10 +711,10 @@ export const updatePreferences = async (request: UpdateUserProfileRequest): Prom
     const url = buildApiUrl('/api/accounts/preferences');
     const { response, diagnostics } = await fetchWithDiagnostics(url, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(request),
         credentials: 'include',
-    });
+    }, { requiresAuth: true });
     await ensureOk(response, diagnostics, 'Failed to update preferences');
     return (await response.json()) as UserProfile;
 };

@@ -46,11 +46,11 @@ export const useAiChat = (): UseAiChatResult => {
                 const message = `Could not load providers: ${error.message}`;
                 setProvidersError(message);
                 setProviderDiagnostics(error.diagnostics);
-                showToast({ type: 'error', title: 'AI provider error', message }, 'ai-providers-error');
+                showToast({ type: 'error', source: 'assistant', title: 'AI provider error', message }, 'ai-providers-error');
             } else {
                 const message = 'Could not load providers.';
                 setProvidersError(message);
-                showToast({ type: 'error', title: 'AI provider error', message }, 'ai-providers-error-generic');
+                showToast({ type: 'error', source: 'assistant', title: 'AI provider error', message }, 'ai-providers-error-generic');
             }
         } finally {
             setIsLoadingProviders(false);
@@ -93,11 +93,11 @@ export const useAiChat = (): UseAiChatResult => {
                     const message = `Could not reach the AI assistant: ${error.message}`;
                     setError(message);
                     setLastChatDiagnostics(error.diagnostics);
-                    showToast({ type: 'error', title: 'AI assistant error', message }, 'ai-chat-error');
+                    showToast({ type: 'error', source: 'assistant', title: 'AI assistant error', message }, 'ai-chat-error');
                 } else {
                     const message = 'Could not reach the AI assistant.';
                     setError(message);
-                    showToast({ type: 'error', title: 'AI assistant error', message }, 'ai-chat-error-generic');
+                    showToast({ type: 'error', source: 'assistant', title: 'AI assistant error', message }, 'ai-chat-error-generic');
                 }
             } finally {
                 setIsLoading(false);

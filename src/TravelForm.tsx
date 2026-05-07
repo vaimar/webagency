@@ -78,11 +78,11 @@ const TravelForm: React.FC = () => {
             if (err instanceof ApiRequestError) {
                 setError(err.message);
                 setResultDiagnostics(err.diagnostics);
-                showToast({ type: 'error', title: 'Planner error', message: err.message }, 'planner-generate-error');
+                showToast({ type: 'error', source: 'planner', title: 'Planner error', message: err.message }, 'planner-generate-error');
             } else {
                 const message = err instanceof Error ? err.message : 'Failed to generate trip plan';
                 setError(message);
-                showToast({ type: 'error', title: 'Planner error', message }, 'planner-generate-error-generic');
+                showToast({ type: 'error', source: 'planner', title: 'Planner error', message }, 'planner-generate-error-generic');
             }
             setPhase('destination');
         }

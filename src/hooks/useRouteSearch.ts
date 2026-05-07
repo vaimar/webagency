@@ -136,11 +136,11 @@ export const useRouteSearch = (): UseRouteSearchResult => {
                 const message = buildSuggestionErrorMessage(error);
                 setSuggestionError(message);
                 setSuggestionDiagnostics(error.diagnostics);
-                showToast({ type: 'error', title: 'AI trip suggestion error', message }, 'trip-suggestion-error');
+                showToast({ type: 'error', source: 'planner', title: 'AI trip suggestion error', message }, 'trip-suggestion-error');
             } else {
                 const message = 'AI trip suggestion unavailable.';
                 setSuggestionError(message);
-                showToast({ type: 'error', title: 'AI trip suggestion error', message }, 'trip-suggestion-error-generic');
+                showToast({ type: 'error', source: 'planner', title: 'AI trip suggestion error', message }, 'trip-suggestion-error-generic');
             }
         }
 
@@ -175,11 +175,11 @@ export const useRouteSearch = (): UseRouteSearchResult => {
                 const message = buildSuggestionErrorMessage(error);
                 setSuggestionError(message);
                 setSuggestionDiagnostics(error.diagnostics);
-                showToast({ type: 'error', title: 'AI trip suggestion error', message }, 'trip-suggestion-retry-error');
+                showToast({ type: 'error', source: 'planner', title: 'AI trip suggestion error', message }, 'trip-suggestion-retry-error');
             } else {
                 const message = 'AI trip suggestion unavailable.';
                 setSuggestionError(message);
-                showToast({ type: 'error', title: 'AI trip suggestion error', message }, 'trip-suggestion-retry-error-generic');
+                showToast({ type: 'error', source: 'planner', title: 'AI trip suggestion error', message }, 'trip-suggestion-retry-error-generic');
             }
         } finally {
             setIsLoadingSuggestion(false);

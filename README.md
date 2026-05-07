@@ -81,13 +81,14 @@ This repo includes a workflow at `.github/workflows/netlify-deploy.yml`.
 
 ### API wiring
 
-The production build uses:
+The frontend now uses a single centralized client in `src/services/api.ts`.
+Its backend base URL is fixed to:
 
 ```bash
-REACT_APP_API_BASE=https://slumber-production.up.railway.app
+https://slumber-production.up.railway.app
 ```
 
-Backend CORS should include your Netlify domain.
+Protected requests (`/api/accounts/profile`, preferences, authenticated planner calls) always send `credentials: 'include'`.
 
 ## Custom domain (optional)
 
@@ -100,3 +101,41 @@ Backend CORS should include your Netlify domain.
 - The project still uses Create React App for compatibility with the existing setup.
 - Cache data is persisted in `localStorage` under `webagency.cache`.
 - `src/services/flightService.ts` is intentionally provider-neutral now, so swapping in a future API should be straightforward.
+
+## Session Auth Troubleshooting
+
+TravelHub uses a server-side session cookie (`JSESSIONID`), not JWT.
+
+### Expected flow
+
+1. `POST /api/accounts/login` with `credentials: 'include'`
+2. only after HTTP 200, `GET /api/accounts/profile`
+3. on app boot, `GET /api/accounts/profile` restores the session
+4. if `/api/accounts/profile` returns `401` or `403`, the frontend clears auth UI state, shows `Session expired, please sign in again.`, and redirects to `/profile`
+
+### Dev-only auth debug logs
+
+In development, the centralized API client logs these values for login/profile requests:
+
+- request URL
+- `credentials` mode
+- response status
+
+Look for `"[auth-debug] request"` and `"[auth-debug] response"` in the browser console.
+
+### If login works but profile still returns 401/403
+
+Check these backend conditions first:
+
+- Railway must return `Set-Cookie: JSESSIONID=...; SameSite=None; Secure`
+- backend CORS must allow the exact Netlify origin
+- backend CORS must also set `Access-Control-Allow-Credentials: true`
+- do **not** use `Access-Control-Allow-Origin: *` with credentialed requests
+
+### Frontend rules enforced in this repo
+
+- one centralized API client only: `src/services/api.ts`
+- no manual cookie parsing or manual `Cookie` headers in browser code
+- no conflicting frontend base URLs for login/profile
+- minimal auth UI state only (account/profile flags), never password or raw cookie values
+

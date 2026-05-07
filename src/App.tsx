@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import About from './About';
 import './App.css';
 import Assistant from './Assistant';
@@ -7,14 +7,33 @@ import { CacheProvider } from './CacheContext';
 import Home from './Home';
 import Main from './Main';
 import Profile from './Profile';
-import { ProfileProvider } from './ProfileContext';
+import { ProfileProvider, useProfile } from './ProfileContext';
 import TravelForm from './TravelForm';
+
+const SessionRedirector: React.FC = () => {
+    const { pendingLoginRedirect, consumePendingLoginRedirect } = useProfile();
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    useEffect(() => {
+        if (!pendingLoginRedirect) return;
+
+        if (location.pathname !== '/profile') {
+            navigate('/profile', { replace: true });
+        }
+
+        consumePendingLoginRedirect();
+    }, [consumePendingLoginRedirect, location.pathname, navigate, pendingLoginRedirect]);
+
+    return null;
+};
 
 const App: React.FC = () => {
     return (
         <CacheProvider>
             <ProfileProvider>
                 <BrowserRouter>
+                    <SessionRedirector />
                     <Routes>
                         <Route element={<Main />}>
                             <Route index element={<About />} />

@@ -84,7 +84,7 @@ const AuthProgress: React.FC<{ mode: AuthMode }> = ({ mode }) => {
 };
 
 const AuthWizardSection: React.FC = () => {
-    const { login, register, isLoading, error, flow } = useProfile();
+    const { login, register, isLoading, error, flow, sessionNotice, clearSessionNotice } = useProfile();
     const [mode, setMode] = useState<AuthMode>('login');
     const [wizardStep, setWizardStep] = useState(1);
     const [username, setUsername] = useState('');
@@ -97,7 +97,8 @@ const AuthWizardSection: React.FC = () => {
     useEffect(() => {
         setWizardStep(1);
         setFormError(null);
-    }, [mode]);
+        clearSessionNotice();
+    }, [clearSessionNotice, mode]);
 
     const validateCurrentStep = (): boolean => {
         if (wizardStep === 1) {
@@ -133,6 +134,7 @@ const AuthWizardSection: React.FC = () => {
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         if (!validateCurrentStep()) return;
+        clearSessionNotice();
 
         try {
             if (mode === 'login') {
@@ -295,6 +297,7 @@ const AuthWizardSection: React.FC = () => {
                             </div>
                         )}
 
+                        {sessionNotice && <div className="notice-banner notice-banner--warning">{sessionNotice}</div>}
                         {(formError ?? error) && <div className="notice-banner notice-banner--error">{formError ?? error}</div>}
 
                         <div className="auth-wizard__actions">
@@ -766,6 +769,7 @@ const Profile: React.FC = () => {
         statusMessage,
         syncState,
         isOnboardingActive,
+        sessionNotice,
     } = useProfile();
 
     const syncLabel = syncState === 'synced'
@@ -821,6 +825,10 @@ const Profile: React.FC = () => {
                         </p>
                     </div>
                 </div>
+
+                {!isAuthenticated && sessionNotice && (
+                    <div className="notice-banner notice-banner--warning">{sessionNotice}</div>
+                )}
 
                 <div className="info-grid">
                     <div className="card" style={{ padding: '16px' }}>

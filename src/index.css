@@ -2706,15 +2706,21 @@ a,
     min-width: 0;
 }
 
-.global-toast {
+.global-toast-stack {
     position: fixed;
     top: calc(var(--space-6) + env(safe-area-inset-top));
     right: var(--space-6);
     z-index: 220;
+    display: grid;
+    gap: var(--space-3);
+    width: min(420px, calc(100vw - 32px));
+}
+
+.global-toast {
     display: flex;
     align-items: flex-start;
     gap: var(--space-3);
-    max-width: min(420px, calc(100vw - 32px));
+    width: 100%;
     padding: 14px 16px;
     border-radius: 18px;
     border: 1px solid var(--border);
@@ -2736,6 +2742,15 @@ a,
 .global-toast__content {
     display: grid;
     gap: 4px;
+    flex: 1;
+    min-width: 0;
+}
+
+.global-toast__meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 .global-toast__content strong {
@@ -2752,6 +2767,52 @@ a,
     line-height: 1;
     color: var(--text-muted);
     padding: 4px;
+}
+
+.global-toast__icon {
+    display: inline-grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+.global-toast__source {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.global-toast--planner .global-toast__icon,
+.global-toast__source--planner {
+    color: var(--primary-dark);
+    background: rgba(0, 87, 184, 0.1);
+}
+
+.global-toast--assistant .global-toast__icon,
+.global-toast__source--assistant {
+    color: #6b46c1;
+    background: rgba(107, 70, 193, 0.1);
+}
+
+.global-toast--auth .global-toast__icon,
+.global-toast__source--auth {
+    color: #9c4221;
+    background: rgba(255, 107, 0, 0.12);
+}
+
+.global-toast--sync .global-toast__icon,
+.global-toast__source--sync {
+    color: var(--accent);
+    background: rgba(0, 166, 153, 0.12);
 }
 
 .header-sync-badge,
@@ -3072,11 +3133,11 @@ a,
 }
 
 @media (max-width: 768px) {
-    .global-toast {
+    .global-toast-stack {
         left: var(--space-4);
         right: var(--space-4);
         top: calc(var(--space-4) + env(safe-area-inset-top));
-        max-width: none;
+        width: auto;
     }
 
     .header-sync-badge,

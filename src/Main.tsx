@@ -1,8 +1,8 @@
-import { faCompass, faComments, faHome, faPlane, faUser } from '@fortawesome/free-solid-svg-icons';
+import { faCompass, faComments, faDatabase, faHome, faPlane, faUser } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { useProfile } from './ProfileContext';
+import { GlobalToast, useProfile } from './ProfileContext';
 
 const footerSections = [
 	{
@@ -30,8 +30,21 @@ const navItems = [
 	{ to: '/assistant', label: 'Assistant',    icon: faComments, end: false },
 ];
 
+const toastMeta = (toast: GlobalToast) => {
+	switch (toast.source) {
+		case 'planner':
+			return { icon: faCompass, label: 'Planner' };
+		case 'assistant':
+			return { icon: faComments, label: 'Assistant' };
+		case 'auth':
+			return { icon: faUser, label: 'Compte' };
+		default:
+			return { icon: faDatabase, label: 'Sync' };
+	}
+};
+
 const Main: React.FC = () => {
-	const { account, isAuthenticated, syncState, toast, dismissToast } = useProfile();
+	const { account, isAuthenticated, syncState, toasts, dismissToast } = useProfile();
 	const syncLabel = syncState === 'synced'
 		? 'Base sync'
 		: syncState === 'syncing'
@@ -42,13 +55,26 @@ const Main: React.FC = () => {
 
 	return (
 		<div className="app-shell">
-			{toast && (
-				<div className={`global-toast global-toast--${toast.type}`} role="status" aria-live="polite">
-					<div className="global-toast__content">
-						<strong>{toast.title ?? (toast.type === 'success' ? 'Action réussie' : toast.type === 'error' ? 'Une erreur est survenue' : 'Information')}</strong>
-						<span>{toast.message}</span>
-					</div>
-					<button type="button" className="global-toast__close" onClick={dismissToast} aria-label="Fermer la notification">×</button>
+			{toasts.length > 0 && (
+				<div className="global-toast-stack" aria-live="polite" aria-atomic="false">
+					{toasts.map((toast) => {
+						const meta = toastMeta(toast);
+						return (
+							<div key={toast.id} className={`global-toast global-toast--${toast.type} global-toast--${toast.source}`} role="status">
+								<div className="global-toast__icon" aria-hidden="true">
+									<FontAwesomeIcon icon={meta.icon} />
+								</div>
+								<div className="global-toast__content">
+									<div className="global-toast__meta">
+										<span className={`global-toast__source global-toast__source--${toast.source}`}>{meta.label}</span>
+										<strong>{toast.title ?? (toast.type === 'success' ? 'Action réussie' : toast.type === 'error' ? 'Une erreur est survenue' : 'Information')}</strong>
+									</div>
+									<span>{toast.message}</span>
+								</div>
+								<button type="button" className="global-toast__close" onClick={() => dismissToast(toast.id)} aria-label="Fermer la notification">×</button>
+							</div>
+						);
+					})}
 				</div>
 			)}
 			<header className="site-header">

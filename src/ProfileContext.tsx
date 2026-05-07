@@ -11,6 +11,7 @@ import React, {
 import {
     Account,
     ApiRequestError,
+    AuthFailureEvent,
     AiProviderName,
     LoginRequest,
     PreferredTransport,
@@ -23,6 +24,7 @@ import {
     loginAccount,
     logoutAccount,
     registerAccount,
+    setAuthFailureHandler,
     updatePreferences,
 } from './services/api';
 
@@ -38,13 +40,19 @@ export const ANONYMOUS_PROFILE: UserProfile = {
 
 const ONBOARDING_STORAGE_KEY = 'travelhub:onboarding-active';
 const ONBOARDING_STEP_STORAGE_KEY = 'travelhub:onboarding-step';
+const AUTH_HINT_STORAGE_KEY = 'travelhub:auth-hint';
 
 export type SyncState = 'anonymous' | 'syncing' | 'synced' | 'error';
+export type ToastSource = 'planner' | 'assistant' | 'auth' | 'sync';
 export interface GlobalToast {
+    id: string;
     type: 'success' | 'error' | 'info';
+    source: ToastSource;
     message: string;
     title?: string;
 }
+
+export type ToastInput = Omit<GlobalToast, 'id'>;
 
 // ─── Context shape ────────────────────────────────────────────────────────────
 
@@ -60,10 +68,12 @@ export interface ProfileContextType {
     isSavingPreferences: boolean;
     isOnboardingActive: boolean;
     onboardingStep: number;
+    sessionNotice: string | null;
+    pendingLoginRedirect: { reason: string; nonce: number } | null;
     error: string | null;
     statusMessage: string | null;
     successMessage: string | null;
-    toast: GlobalToast | null;
+    toasts: GlobalToast[];
     login: (request: LoginRequest) => Promise<void>;
     register: (request: RegisterAccountRequest) => Promise<void>;
     logout: () => Promise<void>;
@@ -72,8 +82,10 @@ export interface ProfileContextType {
     setOnboardingStep: (step: number) => void;
     completeOnboarding: () => void;
     skipOnboarding: () => void;
-    dismissToast: () => void;
-    showToast: (toast: GlobalToast, dedupeKey?: string) => void;
+    dismissToast: (id: string) => void;
+    showToast: (toast: ToastInput, dedupeKey?: string) => void;
+    clearSessionNotice: () => void;
+    consumePendingLoginRedirect: () => void;
 }
 
 const ProfileContext = createContext<ProfileContextType | undefined>(undefined);
@@ -87,10 +99,12 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [statusMessage, setStatusMessage] = useState<string | null>(null);
-    const [toast, setToast] = useState<GlobalToast | null>(null);
+    const [toasts, setToasts] = useState<GlobalToast[]>([]);
     const [flow, setFlow] = useState<ProfileContextType['flow']>('checking-session');
     const [syncState, setSyncState] = useState<SyncState>('syncing');
     const [hasCheckedSession, setHasCheckedSession] = useState(false);
+    const [sessionNotice, setSessionNotice] = useState<string | null>(null);
+    const [pendingLoginRedirect, setPendingLoginRedirect] = useState<{ reason: string; nonce: number } | null>(null);
     const [isOnboardingActive, setIsOnboardingActive] = useState<boolean>(() => {
         if (typeof window === 'undefined') return false;
         return window.sessionStorage.getItem(ONBOARDING_STORAGE_KEY) === '1';
@@ -101,10 +115,36 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
         return Number.isFinite(raw) && raw >= 1 && raw <= 3 ? raw : 1;
     });
     const lastToastRef = useRef<{ key: string; at: number } | null>(null);
+    const toastTimersRef = useRef<Record<string, number>>({});
 
     const isAuthenticated = account !== null;
     const isBootstrapping = !hasCheckedSession;
     const isSavingPreferences = flow === 'saving-preferences';
+
+    const hasAuthHint = useCallback((): boolean => {
+        if (typeof window === 'undefined') return false;
+        return window.localStorage.getItem(AUTH_HINT_STORAGE_KEY) === '1';
+    }, []);
+
+    const persistAuthHint = useCallback((enabled: boolean) => {
+        if (typeof window === 'undefined') return;
+
+        if (enabled) {
+            window.localStorage.setItem(AUTH_HINT_STORAGE_KEY, '1');
+        } else {
+            window.localStorage.removeItem(AUTH_HINT_STORAGE_KEY);
+        }
+    }, []);
+
+    const clearLocalAuthState = useCallback(() => {
+        setAccount(null);
+        setProfile(ANONYMOUS_PROFILE);
+        setFlow('anonymous');
+        setSyncState('anonymous');
+        setIsOnboardingActive(false);
+        setOnboardingStepState(1);
+        persistAuthHint(false);
+    }, [persistAuthHint]);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -118,15 +158,22 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
         }
     }, [isOnboardingActive, onboardingStep]);
 
-    useEffect(() => {
-        if (!toast) return undefined;
+    useEffect(() => () => {
+        Object.values(toastTimersRef.current).forEach((timeout) => window.clearTimeout(timeout));
+        toastTimersRef.current = {};
+    }, []);
 
-        const timeout = window.setTimeout(() => setToast(null), 4500);
-        return () => window.clearTimeout(timeout);
-    }, [toast]);
+    const dismissToast = useCallback((id: string) => {
+        setToasts((prev) => prev.filter((toast) => toast.id !== id));
+        const timeout = toastTimersRef.current[id];
+        if (timeout) {
+            window.clearTimeout(timeout);
+            delete toastTimersRef.current[id];
+        }
+    }, []);
 
-    const showToast = useCallback((nextToast: GlobalToast, dedupeKey?: string) => {
-        const key = dedupeKey ?? `${nextToast.type}:${nextToast.title ?? ''}:${nextToast.message}`;
+    const showToast = useCallback((nextToast: ToastInput, dedupeKey?: string) => {
+        const key = `${nextToast.source}:${dedupeKey ?? `${nextToast.type}:${nextToast.title ?? ''}:${nextToast.message}`}`;
         const now = Date.now();
 
         if (lastToastRef.current && lastToastRef.current.key === key && now - lastToastRef.current.at < 2500) {
@@ -134,8 +181,31 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
         }
 
         lastToastRef.current = { key, at: now };
-        setToast(nextToast);
+        const id = `${now}-${Math.random().toString(36).slice(2, 8)}`;
+        const toast: GlobalToast = { id, ...nextToast };
+
+        setToasts((prev) => [...prev, toast]);
+        toastTimersRef.current[id] = window.setTimeout(() => {
+            setToasts((prev) => prev.filter((item) => item.id !== id));
+            delete toastTimersRef.current[id];
+        }, 4500);
     }, []);
+
+    const handleAuthFailure = useCallback((event: AuthFailureEvent) => {
+        const message = event.status === 403 ? 'Session expired, please sign in again.' : 'Authentication required. Please sign in again.';
+
+        clearLocalAuthState();
+        setStatusMessage(null);
+        setError(message);
+        setSessionNotice(message);
+        setPendingLoginRedirect({ reason: message, nonce: Date.now() });
+        showToast({ type: 'info', source: 'auth', title: 'Session expirée', message }, 'session-expired');
+    }, [clearLocalAuthState, showToast]);
+
+    useEffect(() => {
+        setAuthFailureHandler(handleAuthFailure);
+        return () => setAuthFailureHandler(null);
+    }, [handleAuthFailure]);
 
     const mergeWithAnonymousDefaults = useCallback(
         (nextProfile?: UserProfile | null): UserProfile => ({
@@ -147,7 +217,7 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     const getReadableError = useCallback((err: unknown, fallback: string): string => {
         if (err instanceof ApiRequestError) {
-            if (err.diagnostics.status === 401) return 'Identifiants invalides ou session expirée.';
+            if (err.diagnostics.status === 401 || err.diagnostics.status === 403) return 'Identifiants invalides ou session expirée.';
             if (err.diagnostics.status === 409) return 'Ce nom d’utilisateur existe déjà.';
             if (err.diagnostics.status === 400) return 'Les informations envoyées sont invalides.';
             return err.message;
@@ -169,8 +239,11 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
         setFlow('authenticated');
         setSyncState('synced');
         setStatusMessage(null);
+        setSessionNotice(null);
+        setPendingLoginRedirect(null);
+        persistAuthHint(true);
         if (success) setSuccessMessage(success);
-    }, [mergeWithAnonymousDefaults]);
+    }, [mergeWithAnonymousDefaults, persistAuthHint]);
 
     const refreshSession = useCallback(async () => {
         setIsLoading(true);
@@ -183,29 +256,32 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
         try {
             await loadAuthenticatedSession();
         } catch (err) {
-            setAccount(null);
-            setProfile(ANONYMOUS_PROFILE);
-
-            if (err instanceof ApiRequestError && (err.diagnostics.status === 401 || err.diagnostics.status === 404)) {
-                setFlow('anonymous');
-                setSyncState('anonymous');
+            if (err instanceof ApiRequestError && (err.diagnostics.status === 401 || err.diagnostics.status === 403 || err.diagnostics.status === 404)) {
+                const hadAuthHint = hasAuthHint();
+                clearLocalAuthState();
                 setStatusMessage(null);
-                setError(null);
-                setIsOnboardingActive(false);
-                setOnboardingStepState(1);
+                if (hadAuthHint && (err.diagnostics.status === 401 || err.diagnostics.status === 403)) {
+                    const message = 'Session expired, please sign in again.';
+                    setSessionNotice(message);
+                    setPendingLoginRedirect({ reason: message, nonce: Date.now() });
+                    showToast({ type: 'info', source: 'auth', title: 'Session expirée', message }, 'boot-session-expired');
+                } else {
+                    setError(null);
+                    setSessionNotice(null);
+                }
             } else {
                 setFlow('error');
                 setSyncState('error');
                 setStatusMessage(null);
                 const message = getReadableError(err, 'Impossible de vérifier la session actuelle.');
                 setError(message);
-                showToast({ type: 'error', message }, 'session-check-error');
+                showToast({ type: 'error', source: 'sync', title: 'Erreur de synchronisation', message }, 'session-check-error');
             }
         } finally {
             setIsLoading(false);
             setHasCheckedSession(true);
         }
-    }, [getReadableError, loadAuthenticatedSession, showToast]);
+    }, [clearLocalAuthState, getReadableError, hasAuthHint, loadAuthenticatedSession, showToast]);
 
     useEffect(() => {
         void refreshSession();
@@ -214,6 +290,7 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
     const login = useCallback(async (request: LoginRequest) => {
         setIsLoading(true);
         setError(null);
+        setSessionNotice(null);
         setSuccessMessage(null);
         setFlow('signing-in');
         setSyncState('syncing');
@@ -223,25 +300,25 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
             setIsOnboardingActive(false);
             setOnboardingStepState(1);
             await loadAuthenticatedSession('Connexion réussie — profil chargé depuis la base de données.');
-            showToast({ type: 'success', message: 'Compte connecté et synchronisé avec la base.' }, 'login-success');
+            showToast({ type: 'success', source: 'auth', title: 'Connexion réussie', message: 'Compte connecté et synchronisé avec la base.' }, 'login-success');
         } catch (err) {
-            setAccount(null);
-            setProfile(ANONYMOUS_PROFILE);
+            clearLocalAuthState();
             setFlow('error');
             setSyncState('error');
             setStatusMessage(null);
             const message = getReadableError(err, 'Échec de la connexion.');
             setError(message);
-            showToast({ type: 'error', message }, 'login-error');
+            showToast({ type: 'error', source: 'auth', title: 'Erreur de connexion', message }, 'login-error');
             throw err;
         } finally {
             setIsLoading(false);
         }
-    }, [getReadableError, loadAuthenticatedSession, showToast]);
+    }, [clearLocalAuthState, getReadableError, loadAuthenticatedSession, showToast]);
 
     const register = useCallback(async (request: RegisterAccountRequest) => {
         setIsLoading(true);
         setError(null);
+        setSessionNotice(null);
         setSuccessMessage(null);
         setFlow('registering');
         setSyncState('syncing');
@@ -254,21 +331,20 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
             setIsOnboardingActive(true);
             setOnboardingStepState(1);
             await loadAuthenticatedSession('Compte créé, connecté et synchronisé avec la base de données.');
-            showToast({ type: 'success', message: 'Compte créé et prêt pour l’onboarding.' }, 'register-success');
+            showToast({ type: 'success', source: 'auth', title: 'Compte créé', message: 'Compte créé et prêt pour l’onboarding.' }, 'register-success');
         } catch (err) {
-            setAccount(null);
-            setProfile(ANONYMOUS_PROFILE);
+            clearLocalAuthState();
             setFlow('error');
             setSyncState('error');
             setStatusMessage(null);
             const message = getReadableError(err, 'Échec de la création du compte.');
             setError(message);
-            showToast({ type: 'error', message }, 'register-error');
+            showToast({ type: 'error', source: 'auth', title: 'Erreur d’inscription', message }, 'register-error');
             throw err;
         } finally {
             setIsLoading(false);
         }
-    }, [getReadableError, loadAuthenticatedSession, showToast]);
+    }, [clearLocalAuthState, getReadableError, loadAuthenticatedSession, showToast]);
 
     const logout = useCallback(async () => {
         setIsLoading(true);
@@ -280,27 +356,24 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
 
         try {
             await logoutAccount();
-            showToast({ type: 'success', message: 'Déconnexion confirmée côté serveur.' }, 'logout-success');
+            showToast({ type: 'success', source: 'auth', title: 'Déconnexion réussie', message: 'Déconnexion confirmée côté serveur.' }, 'logout-success');
         } catch (err) {
             if (!(err instanceof ApiRequestError) || (err.diagnostics.status !== 401 && err.diagnostics.status !== 204)) {
                 const message = getReadableError(err, 'Échec de la déconnexion serveur.');
                 setError(message);
-                showToast({ type: 'error', message }, 'logout-error');
+                showToast({ type: 'error', source: 'auth', title: 'Erreur de déconnexion', message }, 'logout-error');
                 throw err;
             }
         } finally {
-            setAccount(null);
-            setProfile(ANONYMOUS_PROFILE);
+            clearLocalAuthState();
             setError(null);
             setStatusMessage(null);
+            setSessionNotice(null);
+            setPendingLoginRedirect(null);
             setSuccessMessage('Session fermée.');
-            setFlow('anonymous');
-            setSyncState('anonymous');
-            setIsOnboardingActive(false);
-            setOnboardingStepState(1);
             setIsLoading(false);
         }
-    }, [getReadableError, showToast]);
+    }, [clearLocalAuthState, getReadableError, showToast]);
 
     const savePreferences = useCallback(async (request: UpdateUserProfileRequest) => {
         setIsLoading(true);
@@ -316,14 +389,14 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
             setSuccessMessage('Préférences enregistrées dans la base de données.');
             setFlow(isAuthenticated ? 'authenticated' : 'anonymous');
             setSyncState(isAuthenticated ? 'synced' : 'anonymous');
-            showToast({ type: 'success', message: 'Synchronisation réussie avec la base de données.' }, 'preferences-save-success');
+            showToast({ type: 'success', source: 'sync', title: 'Synchronisation réussie', message: 'Synchronisation réussie avec la base de données.' }, 'preferences-save-success');
         } catch (err) {
             setStatusMessage(null);
             setFlow('error');
             setSyncState('error');
             const message = getReadableError(err, 'Impossible d’enregistrer les préférences.');
             setError(message);
-            showToast({ type: 'error', message }, 'preferences-save-error');
+            showToast({ type: 'error', source: 'sync', title: 'Erreur de synchronisation', message }, 'preferences-save-error');
             throw err;
         } finally {
             setIsLoading(false);
@@ -346,7 +419,8 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
         setSuccessMessage('Onboarding ignoré — vous pourrez compléter votre profil à tout moment.');
     }, []);
 
-    const dismissToast = useCallback(() => setToast(null), []);
+    const clearSessionNotice = useCallback(() => setSessionNotice(null), []);
+    const consumePendingLoginRedirect = useCallback(() => setPendingLoginRedirect(null), []);
 
     const value = useMemo<ProfileContextType>(
         () => ({
@@ -360,10 +434,12 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
             isSavingPreferences,
             isOnboardingActive,
             onboardingStep,
+            sessionNotice,
+            pendingLoginRedirect,
             error,
             statusMessage,
             successMessage,
-            toast,
+            toasts,
             login,
             register,
             logout,
@@ -374,6 +450,8 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
             skipOnboarding,
             dismissToast,
             showToast,
+            clearSessionNotice,
+            consumePendingLoginRedirect,
         }),
         [
             profile,
@@ -386,10 +464,12 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
             isSavingPreferences,
             isOnboardingActive,
             onboardingStep,
+            sessionNotice,
+            pendingLoginRedirect,
             error,
             statusMessage,
             successMessage,
-            toast,
+            toasts,
             login,
             register,
             logout,
@@ -400,6 +480,8 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
             skipOnboarding,
             dismissToast,
             showToast,
+            clearSessionNotice,
+            consumePendingLoginRedirect,
         ],
     );
 
