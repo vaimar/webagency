@@ -6,6 +6,13 @@ export const MOCK_FLIGHT_DESTINATIONS = [
         departureDate: '2026-06-08',
         returnDate: '2026-06-15',
         price: { total: '129.00', currency: 'EUR' },
+        antiCauchemar: {
+            realWorldEntryPrice: 151,
+            hiddenCostPenalty: 22,
+            theCatch: 'Early departure: plan for a shuttle or taxi to reach the airport on time.',
+            logisticVerdict: 'The fare is decent, but the outbound transfer adds cost and stress.',
+            currency: 'EUR',
+        },
         links: {
             flightDates: 'https://example.com/flights/lisbon/dates',
             flightOffers: 'https://example.com/flights/lisbon/offers',
@@ -18,6 +25,13 @@ export const MOCK_FLIGHT_DESTINATIONS = [
         departureDate: '2026-06-10',
         returnDate: '2026-06-17',
         price: { total: '149.00', currency: 'EUR' },
+        antiCauchemar: {
+            realWorldEntryPrice: 158,
+            hiddenCostPenalty: 9,
+            theCatch: 'The price does not include the small airport-to-center transfer surcharge.',
+            logisticVerdict: 'A good option if you travel light and use public transport.',
+            currency: 'EUR',
+        },
         links: {
             flightDates: 'https://example.com/flights/barcelona/dates',
             flightOffers: 'https://example.com/flights/barcelona/offers',
@@ -30,6 +44,13 @@ export const MOCK_FLIGHT_DESTINATIONS = [
         departureDate: '2026-07-01',
         returnDate: '2026-07-09',
         price: { total: '189.00', currency: 'EUR' },
+        antiCauchemar: {
+            realWorldEntryPrice: 214,
+            hiddenCostPenalty: 25,
+            theCatch: 'Late arrival: there are few low-cost options to reach the center after 11 PM.',
+            logisticVerdict: 'The flight is still attractive, but expect a pricier last mile than advertised.',
+            currency: 'EUR',
+        },
         links: {
             flightDates: 'https://example.com/flights/rome/dates',
             flightOffers: 'https://example.com/flights/rome/offers',
@@ -42,6 +63,13 @@ export const MOCK_FLIGHT_DESTINATIONS = [
         departureDate: '2026-07-14',
         returnDate: '2026-07-21',
         price: { total: '219.00', currency: 'EUR' },
+        antiCauchemar: {
+            realWorldEntryPrice: 233,
+            hiddenCostPenalty: 14,
+            theCatch: 'The airport-to-center bus gets slow during rush hour.',
+            logisticVerdict: 'There are few hidden fees, but the transfer time should be taken seriously.',
+            currency: 'EUR',
+        },
         links: {
             flightDates: 'https://example.com/flights/athens/dates',
             flightOffers: 'https://example.com/flights/athens/offers',
@@ -54,6 +82,13 @@ export const MOCK_FLIGHT_DESTINATIONS = [
         departureDate: '2026-08-05',
         returnDate: '2026-08-11',
         price: { total: '199.00', currency: 'EUR' },
+        antiCauchemar: {
+            realWorldEntryPrice: 215,
+            hiddenCostPenalty: 16,
+            theCatch: 'Cabin baggage and the airport train can quickly push the total up.',
+            logisticVerdict: 'The fare looks tempting at first, but the real entry price is noticeably higher.',
+            currency: 'EUR',
+        },
         links: {
             flightDates: 'https://example.com/flights/copenhagen/dates',
             flightOffers: 'https://example.com/flights/copenhagen/offers',
@@ -66,6 +101,13 @@ export const MOCK_FLIGHT_DESTINATIONS = [
         departureDate: '2026-09-03',
         returnDate: '2026-09-10',
         price: { total: '174.00', currency: 'EUR' },
+        antiCauchemar: {
+            realWorldEntryPrice: 198,
+            hiddenCostPenalty: 24,
+            theCatch: 'Off-hour landing: the late transfer to the medina often costs more than expected.',
+            logisticVerdict: 'The headline fare only stays honest if you plan ahead for the late-night transfer.',
+            currency: 'EUR',
+        },
         links: {
             flightDates: 'https://example.com/flights/marrakech/dates',
             flightOffers: 'https://example.com/flights/marrakech/offers',

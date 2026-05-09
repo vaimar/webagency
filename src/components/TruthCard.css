@@ -1,0 +1,107 @@
+.truth-card {
+    display: grid;
+    gap: 12px;
+    margin-top: 14px;
+    padding: 14px;
+    border: 1px solid #d5dfeb;
+    border-radius: 16px;
+    background: linear-gradient(180deg, #f9fbfd 0%, #f1f6fb 100%);
+    color: #102033;
+}
+
+.truth-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.truth-card__eyebrow,
+.truth-card__label,
+.truth-card__warning-label {
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.truth-card__eyebrow {
+    color: #173c63;
+}
+
+.truth-card__penalty {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #475569;
+}
+
+.truth-card__price-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.truth-card__label {
+    color: #64748b;
+}
+
+.truth-card__price {
+    font-size: 1.55rem;
+    line-height: 1;
+    color: #081b31;
+}
+
+.truth-card__fact {
+    display: grid;
+    gap: 6px;
+}
+
+.truth-card__fact--catch {
+    padding: 12px;
+    border-radius: 14px;
+    border: 1px solid #c7d6e7;
+    background: rgba(255, 255, 255, 0.78);
+}
+
+.truth-card__fact p,
+.truth-card__warning p {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: #1e293b;
+}
+
+.truth-card__fact--verdict {
+    padding-top: 12px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.truth-card__warning {
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 14px;
+    border: 2px solid #b42318;
+    background: #fff2f0;
+    color: #7a271a;
+}
+
+.truth-card__warning-label {
+    color: #7a271a;
+}
+
+@media (max-width: 480px) {
+    .truth-card {
+        padding: 12px;
+    }
+
+    .truth-card__price-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+

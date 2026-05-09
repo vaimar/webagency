@@ -28,7 +28,7 @@ interface TransparentTravelCardProps {
 
 const formatMoney = (amount: number, currency: string): string => {
     try {
-        return new Intl.NumberFormat('fr-FR', {
+        return new Intl.NumberFormat('en-IE', {
             style: 'currency',
             currency,
             maximumFractionDigits: 0,
@@ -40,7 +40,7 @@ const formatMoney = (amount: number, currency: string): string => {
 
 const feeFrequencyLabel: Record<NonNullable<PotentialFee['frequency']>, string> = {
     common: 'Frequent',
-    sometimes: 'Occasionnel',
+    sometimes: 'Occasional',
     rare: 'Rare',
 };
 
@@ -51,41 +51,41 @@ const TransparentTravelCard: React.FC<TransparentTravelCardProps> = ({
     currency = 'EUR',
     hiddenFees,
     bookingLinks = [],
-    estimateNote = 'Estimation basee sur les 24h precedentes',
-    verificationLabel = 'Approche Anti-Cauchemar: prix explique avant redirection',
+    estimateNote = 'Estimated from the previous 24 hours',
+    verificationLabel = 'Anti-Nightmare approach: pricing explained before redirect',
 }) => {
     const hasDelta = estimatedRealPrice > callPrice;
     const delta = Math.max(0, estimatedRealPrice - callPrice);
 
     return (
-        <article className="transparent-travel-card" aria-label={`Carte tarifaire transparente pour ${routeLabel}`}>
+        <article className="transparent-travel-card" aria-label={`Transparent pricing card for ${routeLabel}`}>
             <header className="transparent-travel-card__header">
                 <div>
-                    <p className="transparent-travel-card__badge">Anti-Cauchemar</p>
+                    <p className="transparent-travel-card__badge">Anti-Nightmare</p>
                     <h3 className="transparent-travel-card__route">{routeLabel}</h3>
                 </div>
                 <span className="transparent-travel-card__trust">{verificationLabel}</span>
             </header>
 
             <section className="transparent-travel-card__price-block" aria-live="polite">
-                <p className="transparent-travel-card__label">Prix d'appel</p>
+                <p className="transparent-travel-card__label">Headline price</p>
                 <p className="transparent-travel-card__price">{formatMoney(callPrice, currency)}</p>
 
                 <div className="transparent-travel-card__subtotal">
-                    <span>Prix Reel Estime</span>
+                    <span>Estimated real price</span>
                     <strong>{formatMoney(estimatedRealPrice, currency)}</strong>
                 </div>
 
                 {hasDelta && (
                     <p className="transparent-travel-card__delta">
-                        +{formatMoney(delta, currency)} potentiels (bagage, transfert, taxes locales)
+                        +{formatMoney(delta, currency)} potential extras (bag, transfer, local taxes)
                     </p>
                 )}
                 <p className="transparent-travel-card__note">{estimateNote}</p>
             </section>
 
             <details className="transparent-travel-card__details">
-                <summary>Pourquoi ce prix ?</summary>
+                <summary>Why this price?</summary>
                 <ul className="transparent-travel-card__fees" role="list">
                     {hiddenFees.map((fee) => (
                         <li key={fee.id} className="transparent-travel-card__fee-row">

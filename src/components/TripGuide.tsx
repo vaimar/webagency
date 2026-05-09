@@ -1,6 +1,7 @@
 import { faExternalLinkAlt } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useEffect, useState } from 'react';
+import TruthCard from './TruthCard';
 import { AccommodationOption, Activity, ApiDiagnostics, DayPlan, Neighborhood, Restaurant, TripSuggestion } from '../services/api';
 import { accommodationUrls, activityUrls, placeUrls } from '../services/affiliates';
 
@@ -130,59 +131,52 @@ const TRIP_TABS: { key: TripTab; label: string; emoji: string }[] = [
 
 /* ─── Tab Content Components ───────────────────────────────────────────────── */
 
-const OverviewTab: React.FC<{ trip: TripSuggestion }> = ({ trip }) => (
-    <div className="trip-tab-content stack-lg">
-        {trip.summary && <p className="trip-summary">{trip.summary}</p>}
-        <div className="trip-quickfacts">
-            {trip.bestTimeToVisit && <div className="trip-quickfact"><span className="trip-quickfact__icon">📅</span><div><strong>Best Time</strong><p>{trip.bestTimeToVisit}</p></div></div>}
-            {trip.estimatedBudget && <div className="trip-quickfact"><span className="trip-quickfact__icon">💰</span><div><strong>Budget</strong><p>{trip.estimatedBudget}</p></div></div>}
-            {typeof trip.antiCauchemar?.realCost === 'number' && (
-                <div className="trip-quickfact">
-                    <span className="trip-quickfact__icon">🛡️</span>
-                    <div><strong>Real Cost</strong><p>~€{Math.round(trip.antiCauchemar.realCost)}</p></div>
-                </div>
-            )}
-            {trip.antiCauchemar?.logisticVerdict && (
-                <div className="trip-quickfact">
-                    <span className="trip-quickfact__icon">🚦</span>
-                    <div><strong>Logistics Verdict</strong><p>{trip.antiCauchemar.logisticVerdict}</p></div>
-                </div>
-            )}
-            {trip.weather && <div className="trip-quickfact"><span className="trip-quickfact__icon">🌤️</span><div><strong>Weather</strong><p>{trip.weather}</p></div></div>}
-            {trip.language && <div className="trip-quickfact"><span className="trip-quickfact__icon">🗣️</span><div><strong>Language</strong><p>{trip.language}</p></div></div>}
-            {trip.currency && <div className="trip-quickfact"><span className="trip-quickfact__icon">💱</span><div><strong>Currency</strong><p>{trip.currency}</p></div></div>}
-        </div>
-        {trip.neighborhoods && trip.neighborhoods.length > 0 && (
-            <div className="stack-md">
-                <h3>🏘️ Neighborhoods to Explore</h3>
-                <div className="trip-neighborhoods">{trip.neighborhoods.map((n: Neighborhood) => (
-                    <div key={n.name} className="trip-neighborhood card">
-                        <h4>{n.name}</h4><p className="trip-neighborhood__vibe">{n.vibe}</p><span className="tag">{n.bestFor}</span>
-                        <div className="trip-booking-links" style={{ marginTop: '8px' }}>
-                            <ExternalLink href={placeUrls(n.name, trip.destination).googleMaps} label="Explore on Maps" />
+const OverviewTab: React.FC<{ trip: TripSuggestion }> = ({ trip }) => {
+    const truth = trip.antiCauchemar ?? trip.cheapestFlight?.antiCauchemar;
+
+    return (
+        <div className="trip-tab-content stack-lg">
+            {trip.summary && <p className="trip-summary">{trip.summary}</p>}
+            <div className="trip-quickfacts">
+                {trip.bestTimeToVisit && <div className="trip-quickfact"><span className="trip-quickfact__icon">📅</span><div><strong>Best Time</strong><p>{trip.bestTimeToVisit}</p></div></div>}
+                {trip.estimatedBudget && <div className="trip-quickfact"><span className="trip-quickfact__icon">💰</span><div><strong>Budget</strong><p>{trip.estimatedBudget}</p></div></div>}
+                {trip.weather && <div className="trip-quickfact"><span className="trip-quickfact__icon">🌤️</span><div><strong>Weather</strong><p>{trip.weather}</p></div></div>}
+                {trip.language && <div className="trip-quickfact"><span className="trip-quickfact__icon">🗣️</span><div><strong>Language</strong><p>{trip.language}</p></div></div>}
+                {trip.currency && <div className="trip-quickfact"><span className="trip-quickfact__icon">💱</span><div><strong>Currency</strong><p>{trip.currency}</p></div></div>}
+            </div>
+            <TruthCard truth={truth} />
+            {trip.neighborhoods && trip.neighborhoods.length > 0 && (
+                <div className="stack-md">
+                    <h3>🏘️ Neighborhoods to Explore</h3>
+                    <div className="trip-neighborhoods">{trip.neighborhoods.map((n: Neighborhood) => (
+                        <div key={n.name} className="trip-neighborhood card">
+                            <h4>{n.name}</h4><p className="trip-neighborhood__vibe">{n.vibe}</p><span className="tag">{n.bestFor}</span>
+                            <div className="trip-booking-links" style={{ marginTop: '8px' }}>
+                                <ExternalLink href={placeUrls(n.name, trip.destination).googleMaps} label="Explore on Maps" />
+                            </div>
                         </div>
-                    </div>
-                ))}</div>
-            </div>
-        )}
-        {trip.localTips && trip.localTips.length > 0 && (
-            <div className="stack-md">
-                <h3>💡 Local Tips</h3>
-                <div className="trip-tips">{trip.localTips.map((tip, i) => (
-                    <div key={i} className="trip-tip"><span className="trip-tip__number">{i + 1}</span><p>{tip}</p></div>
-                ))}</div>
-            </div>
-        )}
-        {trip.packingTips && trip.packingTips.length > 0 && (
-            <div className="stack-md">
-                <h3>🎒 Packing List</h3>
-                <div className="trip-packing">{trip.packingTips.map((item, i) => (
-                    <span key={i} className="trip-packing__item">✓ {item}</span>
-                ))}</div>
-            </div>
-        )}
-    </div>
-);
+                    ))}</div>
+                </div>
+            )}
+            {trip.localTips && trip.localTips.length > 0 && (
+                <div className="stack-md">
+                    <h3>💡 Local Tips</h3>
+                    <div className="trip-tips">{trip.localTips.map((tip, i) => (
+                        <div key={i} className="trip-tip"><span className="trip-tip__number">{i + 1}</span><p>{tip}</p></div>
+                    ))}</div>
+                </div>
+            )}
+            {trip.packingTips && trip.packingTips.length > 0 && (
+                <div className="stack-md">
+                    <h3>🎒 Packing List</h3>
+                    <div className="trip-packing">{trip.packingTips.map((item, i) => (
+                        <span key={i} className="trip-packing__item">✓ {item}</span>
+                    ))}</div>
+                </div>
+            )}
+        </div>
+    );
+};
 
 const RestaurantsTab: React.FC<{ restaurants: Restaurant[]; destination?: string }> = ({ restaurants, destination }) => (
     <div className="trip-tab-content"><div className="trip-restaurants">{restaurants.map((r, i) => {

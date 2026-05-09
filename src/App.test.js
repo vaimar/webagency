@@ -8,6 +8,7 @@ test('renders the refreshed landing page and primary navigation', () => {
   expect(screen.getByText(/find flights, plan trips, and discover your next adventure/i)).toBeInTheDocument();
   expect(within(primaryNav).getByRole('link', { name: /home/i })).toBeInTheDocument();
   expect(within(primaryNav).getByRole('link', { name: /flights/i })).toBeInTheDocument();
-  expect(within(primaryNav).getByRole('link', { name: /trip planner/i })).toBeInTheDocument();
-  expect(within(primaryNav).getByRole('link', { name: /ai assistant/i })).toBeInTheDocument();
+  expect(within(primaryNav).getByRole('link', { name: /planner/i })).toBeInTheDocument();
+  expect(within(primaryNav).getByRole('link', { name: /assistant/i })).toBeInTheDocument();
+  expect(within(primaryNav).getByRole('link', { name: /sign in/i })).toBeInTheDocument();
 });

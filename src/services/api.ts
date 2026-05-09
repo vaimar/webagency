@@ -186,10 +186,13 @@ export interface AntiCauchemarAnalysis {
     airportShuttleEstimate?: number;
     cabinBagEstimate?: number;
     realCost?: number;
+    realWorldEntryPrice?: number;
     flightDurationMinutes?: number;
     transferToCenterMinutes?: number;
     totalTravelTimeMinutes?: number;
     currency?: string;
+    hiddenCostPenalty?: number;
+    theCatch?: string;
     logisticVerdict?: string;
     dataConfidence?: DataConfidence;
 }
@@ -225,11 +228,42 @@ export interface FlightAvailable {
 /** @deprecated Use FlightAvailable */
 export type BackendFlight = FlightAvailable;
 
+interface FlightPriceEnvelope {
+    total?: number | string;
+    currency?: string;
+}
+
+interface RawFlightAvailable extends Omit<FlightAvailable, 'price' | 'currency'> {
+    price?: number | string | FlightPriceEnvelope;
+    currency?: string;
+}
+
 export interface BackendFlightsResponse {
     flights?: FlightAvailable[];
     data?: FlightAvailable[];
     [key: string]: unknown;
 }
+
+const normalizeFlight = (flight: RawFlightAvailable): FlightAvailable => {
+    const priceValue = flight.price;
+    const price = typeof priceValue === 'object' && priceValue !== null
+        ? priceValue.total ?? 0
+        : priceValue ?? 0;
+    const nestedCurrency = typeof priceValue === 'object' && priceValue !== null
+        ? priceValue.currency
+        : undefined;
+
+    return {
+        ...flight,
+        price,
+        currency: flight.currency ?? nestedCurrency,
+    };
+};
+
+const extractFlights = (data: BackendFlightsResponse | RawFlightAvailable[]): FlightAvailable[] => {
+    const rawFlights = Array.isArray(data) ? data : data.flights ?? (data.data as RawFlightAvailable[]) ?? [];
+    return rawFlights.map(normalizeFlight);
+};
 
 // ─── AI ───────────────────────────────────────────────────────────────────────
 
@@ -508,20 +542,47 @@ export interface FlightSearchParams {
     destination: string;
 }
 
-export const searchFlights = async (params: FlightSearchParams): Promise<FlightsResult> => {
-    const url = buildApiUrl('/api/flights', {
+const fetchFlightsFromPath = async (
+    path: string,
+    params: FlightSearchParams,
+    init?: RequestInit,
+): Promise<FlightsResult> => {
+    const url = buildApiUrl(path, {
         origin: params.origin.toUpperCase(),
         destination: params.destination.toUpperCase(),
     });
 
-    const { response, diagnostics } = await fetchWithDiagnostics(url);
+    const { response, diagnostics } = await fetchWithDiagnostics(url, init);
     await ensureOk(response, diagnostics, 'Flights failed');
 
-    const data = (await response.json()) as BackendFlightsResponse | FlightAvailable[];
+    const data = (await response.json()) as BackendFlightsResponse | RawFlightAvailable[];
     return {
-        flights: Array.isArray(data) ? data : data.flights ?? (data.data as FlightAvailable[]) ?? [],
+        flights: extractFlights(data),
         diagnostics,
     };
+};
+
+export const searchFlights = async (params: FlightSearchParams): Promise<FlightsResult> => {
+    return fetchFlightsFromPath('/api/flights', params);
+};
+
+export const refreshFlights = async (params: FlightSearchParams): Promise<FlightsResult> => {
+    try {
+        return await fetchFlightsFromPath('/api/flights/refresh', params);
+    } catch (error) {
+        if (error instanceof ApiRequestError && (error.diagnostics.status === 404 || error.diagnostics.status === 405)) {
+            return fetchFlightsFromPath('/api/flights/refresh', params, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    origin: params.origin.toUpperCase(),
+                    destination: params.destination.toUpperCase(),
+                }),
+            });
+        }
+
+        throw error;
+    }
 };
 
 // ─── Trip suggestion  GET /api/trips/suggestions ──────────────────────────────

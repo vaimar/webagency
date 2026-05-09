@@ -37,7 +37,7 @@ const toastMeta = (toast: GlobalToast) => {
 		case 'assistant':
 			return { icon: faComments, label: 'Assistant' };
 		case 'auth':
-			return { icon: faUser, label: 'Compte' };
+				return { icon: faUser, label: 'Account' };
 		default:
 			return { icon: faDatabase, label: 'Sync' };
 	}
@@ -67,11 +67,11 @@ const Main: React.FC = () => {
 								<div className="global-toast__content">
 									<div className="global-toast__meta">
 										<span className={`global-toast__source global-toast__source--${toast.source}`}>{meta.label}</span>
-										<strong>{toast.title ?? (toast.type === 'success' ? 'Action réussie' : toast.type === 'error' ? 'Une erreur est survenue' : 'Information')}</strong>
+													<strong>{toast.title ?? (toast.type === 'success' ? 'Action completed' : toast.type === 'error' ? 'Something went wrong' : 'Information')}</strong>
 									</div>
 									<span>{toast.message}</span>
 								</div>
-								<button type="button" className="global-toast__close" onClick={() => dismissToast(toast.id)} aria-label="Fermer la notification">×</button>
+											<button type="button" className="global-toast__close" onClick={() => dismissToast(toast.id)} aria-label="Close notification">×</button>
 							</div>
 						);
 					})}

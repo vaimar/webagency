@@ -1,0 +1,1 @@
+Always refer to AGENTS.md. Apply the 'Anti-Cauchemar' logic. Prioritize realWorldEntryPrice over marketing price. Use the 'Frozen Summer' tone

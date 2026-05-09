@@ -5,10 +5,9 @@ import {
     ApiRequestError,
     FlightAvailable,
     fetchTripSuggestion,
-    searchFlights,
     TripSuggestion,
 } from '../services/api';
-import { MOCK_FLIGHT_DESTINATIONS } from '../data/mockDestinations';
+import { searchFlightFirstRoute } from '../services/searchService';
 
 interface RouteSearchState {
     origin: string;
@@ -22,27 +21,36 @@ interface UseRouteSearchResult {
     isSearchingFlights: boolean;
     isLoadingSuggestion: boolean;
     flightError: string | null;
+    noFlightsMessage: string | null;
     suggestionError: string | null;
-    flightSource: 'live' | 'curated' | null;
+    flightSource: 'live' | null;
     flightDiagnostics: ApiDiagnostics | null;
     suggestionDiagnostics: ApiDiagnostics | null;
+    hasSearched: boolean;
     setOrigin: (value: string) => void;
     setDestination: (value: string) => void;
-    searchRoute: () => Promise<void>;
+    searchRoute: (options?: { refreshFlights?: boolean }) => Promise<void>;
     retrySuggestion: () => Promise<void>;
     clearResults: () => void;
 }
 
-const mapMockToFlight = (item: typeof MOCK_FLIGHT_DESTINATIONS[number]): FlightAvailable => ({
-    origin: item.origin,
-    destination: item.destination,
-    departureDate: item.departureDate,
-    // Mock data stores return date — map to canonical arrivalDate
-    arrivalDate: item.returnDate,
-    returnDate: item.returnDate,  // keep for legacy consumers
-    price: item.price.total,
-    currency: item.price.currency,
-});
+const buildFlightErrorMessage = (error: ApiRequestError): string => {
+    const status = error.diagnostics.status;
+
+    if (status === 429) {
+        return 'Ryanair flight search is rate limited right now. No trip guide can be generated yet.';
+    }
+
+    if (status !== null && status >= 500) {
+        return 'Live Ryanair flights are temporarily unavailable from the backend. No trip guide until flights are back.';
+    }
+
+    if (error.message.toLowerCase().includes('timed out')) {
+        return 'Live Ryanair search timed out. Please try again.';
+    }
+
+    return 'Live Ryanair flights are unavailable for this search. No trip guide can be generated.';
+};
 
 const buildSuggestionErrorMessage = (error: ApiRequestError): string => {
     const status = error.diagnostics.status;
@@ -64,102 +72,94 @@ const buildSuggestionErrorMessage = (error: ApiRequestError): string => {
 
 export const useRouteSearch = (): UseRouteSearchResult => {
     const { showToast } = useProfile();
-    const [state, setState] = useState<RouteSearchState>({ origin: 'DUB', destination: 'STN' });
+    const [state, setState] = useState<RouteSearchState>({ origin: 'DUB', destination: 'PAR' });
     const [flights, setFlights] = useState<FlightAvailable[]>([]);
     const [tripSuggestion, setTripSuggestion] = useState<TripSuggestion | null>(null);
     const [isSearchingFlights, setIsSearchingFlights] = useState(false);
     const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
     const [flightError, setFlightError] = useState<string | null>(null);
+    const [noFlightsMessage, setNoFlightsMessage] = useState<string | null>(null);
     const [suggestionError, setSuggestionError] = useState<string | null>(null);
-    const [flightSource, setFlightSource] = useState<'live' | 'curated' | null>(null);
+    const [flightSource, setFlightSource] = useState<'live' | null>(null);
     const [flightDiagnostics, setFlightDiagnostics] = useState<ApiDiagnostics | null>(null);
     const [suggestionDiagnostics, setSuggestionDiagnostics] = useState<ApiDiagnostics | null>(null);
+    const [hasSearched, setHasSearched] = useState(false);
 
     const setOrigin = useCallback((value: string) => setState((prev) => ({ ...prev, origin: value.toUpperCase() })), []);
     const setDestination = useCallback((value: string) => setState((prev) => ({ ...prev, destination: value.toUpperCase() })), []);
 
-    const searchRoute = useCallback(async () => {
+    const searchRoute = useCallback(async (options?: { refreshFlights?: boolean }) => {
         if (!state.origin || !state.destination) return;
 
+        setHasSearched(true);
         setTripSuggestion(null);
+        setFlights([]);
         setIsSearchingFlights(true);
         setFlightError(null);
+        setNoFlightsMessage(null);
         setFlightDiagnostics(null);
         setIsLoadingSuggestion(true);
         setSuggestionError(null);
         setSuggestionDiagnostics(null);
 
-        const [flightResult, suggestionResult] = await Promise.allSettled([
-            searchFlights({ origin: state.origin, destination: state.destination }),
-            fetchTripSuggestion({ origin: state.origin, destination: state.destination }),
-        ]);
+        try {
+            const result = await searchFlightFirstRoute({
+                origin: state.origin,
+                destination: state.destination,
+                refreshFlightsFirst: options?.refreshFlights ?? false,
+            });
 
-        if (flightResult.status === 'fulfilled') {
-            const live = flightResult.value;
-            setFlights(live.flights);
-            setFlightSource('live');
-            setFlightDiagnostics(live.diagnostics);
-        } else {
-            const error = flightResult.reason;
+            setFlights(result.flights);
+            setFlightSource(result.flightSource);
+            setFlightDiagnostics(result.flightDiagnostics);
+            setTripSuggestion(result.tripSuggestion);
+            setSuggestionDiagnostics(result.suggestionDiagnostics);
+            setNoFlightsMessage(result.noFlightsMessage);
 
-            // Fall back to curated mock data filtered by destination
-            const fallback = MOCK_FLIGHT_DESTINATIONS
-                .filter(
-                    (item) =>
-                        item.destination.toUpperCase() === state.destination.toUpperCase() ||
-                        item.origin.toUpperCase() === state.origin.toUpperCase(),
-                )
-                .map(mapMockToFlight);
-
-            setFlights(fallback.length > 0 ? fallback : MOCK_FLIGHT_DESTINATIONS.map(mapMockToFlight));
-            setFlightSource('curated');
-            setFlightError(
-                error instanceof Error
-                    ? `Live flights unavailable — showing curated ideas instead. ${error.message}`
-                    : 'Live flights unavailable — showing curated ideas instead.',
-            );
-            if (error instanceof ApiRequestError) {
-                setFlightDiagnostics(error.diagnostics);
-            }
-        }
-
-        setIsSearchingFlights(false);
-
-        if (suggestionResult.status === 'fulfilled') {
-            const result = suggestionResult.value;
-            setTripSuggestion(result.suggestion);
-            setSuggestionDiagnostics(result.diagnostics);
-        } else {
-            const error = suggestionResult.reason;
-
-            if (error instanceof ApiRequestError) {
-                const message = buildSuggestionErrorMessage(error);
+            if (result.suggestionError instanceof ApiRequestError) {
+                const message = buildSuggestionErrorMessage(result.suggestionError);
                 setSuggestionError(message);
-                setSuggestionDiagnostics(error.diagnostics);
+                setSuggestionDiagnostics(result.suggestionError.diagnostics);
                 showToast({ type: 'error', source: 'planner', title: 'AI trip suggestion error', message }, 'trip-suggestion-error');
-            } else {
+            } else if (result.suggestionError) {
                 const message = 'AI trip suggestion unavailable.';
                 setSuggestionError(message);
                 showToast({ type: 'error', source: 'planner', title: 'AI trip suggestion error', message }, 'trip-suggestion-error-generic');
             }
+        } catch (error) {
+            if (error instanceof ApiRequestError) {
+                const message = buildFlightErrorMessage(error);
+                setFlightError(message);
+                setFlightDiagnostics(error.diagnostics);
+                showToast({ type: 'error', source: 'planner', title: 'Flight search error', message }, 'flight-search-error');
+            } else {
+                const message = error instanceof Error
+                    ? error.message
+                    : 'Live Ryanair flights are unavailable. No trip guide can be generated.';
+                setFlightError(message);
+                showToast({ type: 'error', source: 'planner', title: 'Flight search error', message }, 'flight-search-error-generic');
+            }
+        } finally {
+            setIsSearchingFlights(false);
+            setIsLoadingSuggestion(false);
         }
-
-        setIsLoadingSuggestion(false);
     }, [showToast, state.destination, state.origin]);
 
     const clearResults = useCallback(() => {
         setFlights([]);
         setTripSuggestion(null);
         setFlightError(null);
+        setNoFlightsMessage(null);
         setSuggestionError(null);
         setFlightSource(null);
         setFlightDiagnostics(null);
         setSuggestionDiagnostics(null);
+        setHasSearched(false);
     }, []);
 
     /** Retry only the AI suggestion without re-fetching flights */
     const retrySuggestion = useCallback(async () => {
-        if (!state.origin || !state.destination) return;
+        if (!state.origin || !state.destination || flights.length === 0) return;
 
         setTripSuggestion(null);
         setSuggestionError(null);
@@ -184,7 +184,7 @@ export const useRouteSearch = (): UseRouteSearchResult => {
         } finally {
             setIsLoadingSuggestion(false);
         }
-    }, [showToast, state.origin, state.destination]);
+    }, [flights.length, showToast, state.origin, state.destination]);
 
     return {
         state,
@@ -193,10 +193,12 @@ export const useRouteSearch = (): UseRouteSearchResult => {
         isSearchingFlights,
         isLoadingSuggestion,
         flightError,
+        noFlightsMessage,
         suggestionError,
         flightSource,
         flightDiagnostics,
         suggestionDiagnostics,
+        hasSearched,
         setOrigin,
         setDestination,
         searchRoute,

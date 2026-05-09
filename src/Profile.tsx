@@ -22,9 +22,9 @@ const AuthProgress: React.FC<{ mode: AuthMode }> = ({ mode }) => {
     const { flow, statusMessage, successMessage, error, isBootstrapping, refreshSession, isAuthenticated } = useProfile();
 
     const steps = useMemo(() => [
-        mode === 'login' ? 'Validation des identifiants' : 'Création du compte',
-        'Vérification de la session sécurisée',
-        'Chargement du profil depuis la base',
+        mode === 'login' ? 'Credential validation' : 'Account creation',
+        'Secure session verification',
+        'Profile loading from the database',
     ], [mode]);
 
     const currentStep = (() => {
@@ -47,16 +47,16 @@ const AuthProgress: React.FC<{ mode: AuthMode }> = ({ mode }) => {
         <div className="auth-status-panel stack-md">
             <div className="auth-status-panel__header">
                 <div>
-                    <strong>{isBootstrapping ? 'Connexion au backend en cours' : 'Compte relié à la base de données'}</strong>
+                    <strong>{isBootstrapping ? 'Connecting to the backend' : 'Account linked to the database'}</strong>
                     <p className="muted-text">
                         {statusMessage ?? (isAuthenticated
-                            ? 'Session vérifiée. Les préférences affichées viennent de la base de données.'
-                            : 'Le parcours suit des étapes réelles: authentification, vérification de session, puis chargement du profil.')}
+                            ? 'Session verified. The preferences shown here come from the database.'
+                            : 'This flow follows the real steps: authentication, session verification, then profile loading.')}
                     </p>
                 </div>
                 {(flow === 'error' || (!isAuthenticated && !isBootstrapping)) && (
                     <button type="button" className="button button--secondary button--small" onClick={() => void refreshSession()}>
-                        Vérifier la session
+                        Check session
                     </button>
                 )}
             </div>
@@ -70,7 +70,7 @@ const AuthProgress: React.FC<{ mode: AuthMode }> = ({ mode }) => {
                             <span className="auth-step-item__index">{completed ? '✓' : index + 1}</span>
                             <div>
                                 <strong>{step}</strong>
-                                <p className="muted-text">{completed ? 'Terminée' : active ? 'En cours' : 'En attente'}</p>
+                                <p className="muted-text">{completed ? 'Done' : active ? 'In progress' : 'Pending'}</p>
                             </div>
                         </li>
                     );
@@ -103,17 +103,17 @@ const AuthWizardSection: React.FC = () => {
     const validateCurrentStep = (): boolean => {
         if (wizardStep === 1) {
             if (!username.trim()) {
-                setFormError('Merci de renseigner votre nom d’utilisateur.');
+                setFormError('Please enter your username.');
                 return false;
             }
             if (mode === 'register' && email && !/^\S+@\S+\.\S+$/.test(email)) {
-                setFormError('Merci de saisir une adresse email valide.');
+                setFormError('Please enter a valid email address.');
                 return false;
             }
         }
 
         if (wizardStep === 2 && password.trim().length < 4) {
-            setFormError('Le mot de passe doit contenir au moins 4 caractères.');
+            setFormError('Your password must contain at least 4 characters.');
             return false;
         }
 
@@ -143,7 +143,7 @@ const AuthWizardSection: React.FC = () => {
                 await register({ username: username.trim(), password, email: email.trim() || undefined });
             }
         } catch (err) {
-            setFormError(err instanceof Error ? err.message : 'Une erreur est survenue.');
+            setFormError(err instanceof Error ? err.message : 'Something went wrong.');
         }
     };
 
@@ -152,53 +152,53 @@ const AuthWizardSection: React.FC = () => {
             <div className="auth-wizard__hero">
                 <div className="auth-wizard__copy stack-md">
                     <span className="auth-wizard__eyebrow">Premium account flow</span>
-                    <h2>{mode === 'login' ? 'Connexion fluide et vérifiée' : 'Créez votre compte en moins d’une minute'}</h2>
+                    <h2>{mode === 'login' ? 'Smooth, verified sign-in' : 'Create your account in under a minute'}</h2>
                     <p>
                         {mode === 'login'
-                            ? 'On vérifie vos identifiants, la session sécurisée, puis on recharge votre vrai profil depuis la base.'
-                            : 'Inscription, connexion automatique, synchronisation du compte puis onboarding guidé en 3 étapes.'}
+                            ? 'We verify your credentials, confirm the secure session, then reload your real profile from the database.'
+                            : 'Sign-up, automatic sign-in, account sync, then a guided 3-step onboarding flow.'}
                     </p>
 
                     <div className="auth-wizard__benefits">
                         <div className="auth-benefit-card">
                             <FontAwesomeIcon icon={faDatabase} />
                             <div>
-                                <strong>Base de données réelle</strong>
-                                <p>Vos préférences sont rechargées côté serveur, pas stockées juste en local.</p>
+                                <strong>Real database</strong>
+                                <p>Your preferences are reloaded from the server, not just kept locally.</p>
                             </div>
                         </div>
                         <div className="auth-benefit-card">
                             <FontAwesomeIcon icon={faShieldAlt} />
                             <div>
-                                <strong>Session vérifiée</strong>
-                                <p>Le système confirme l’utilisateur et la session avant d’afficher le profil.</p>
+                                <strong>Verified session</strong>
+                                <p>The system confirms the user and session before showing the profile.</p>
                             </div>
                         </div>
                         <div className="auth-benefit-card">
                             <FontAwesomeIcon icon={faCheck} />
                             <div>
-                                <strong>Onboarding rapide</strong>
-                                <p>Après inscription, 3 mini étapes pour préparer un profil voyage prêt à l’emploi.</p>
+                                <strong>Fast onboarding</strong>
+                                <p>After sign-up, 3 short steps prepare a travel profile that is ready to use.</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div className="auth-wizard__panel stack-lg">
-                    <div className="auth-mode-toggle" role="tablist" aria-label="Choisir connexion ou inscription">
+                    <div className="auth-mode-toggle" role="tablist" aria-label="Choose sign in or sign up">
                         <button
                             type="button"
                             className={mode === 'login' ? 'auth-mode-toggle__button auth-mode-toggle__button--active' : 'auth-mode-toggle__button'}
                             onClick={() => setMode('login')}
                         >
-                            <FontAwesomeIcon icon={faSignInAlt} /> Se connecter
+                            <FontAwesomeIcon icon={faSignInAlt} /> Sign in
                         </button>
                         <button
                             type="button"
                             className={mode === 'register' ? 'auth-mode-toggle__button auth-mode-toggle__button--active' : 'auth-mode-toggle__button'}
                             onClick={() => setMode('register')}
                         >
-                            <FontAwesomeIcon icon={faUserPlus} /> S’inscrire
+                            <FontAwesomeIcon icon={faUserPlus} /> Sign up
                         </button>
                     </div>
 
@@ -209,9 +209,9 @@ const AuthWizardSection: React.FC = () => {
                                 <div key={step} className={step === wizardStep ? 'auth-wizard__dot auth-wizard__dot--active' : step < wizardStep ? 'auth-wizard__dot auth-wizard__dot--done' : 'auth-wizard__dot'}>
                                     <span>{step < wizardStep ? '✓' : step}</span>
                                     <small>
-                                        {step === 1 && 'Profil'}
-                                        {step === 2 && 'Sécurité'}
-                                        {step === 3 && 'Finalisation'}
+                                        {step === 1 && 'Profile'}
+                                        {step === 2 && 'Security'}
+                                        {step === 3 && 'Finish'}
                                     </small>
                                 </div>
                             );
@@ -222,12 +222,12 @@ const AuthWizardSection: React.FC = () => {
                         {wizardStep === 1 && (
                             <div className="auth-step-panel stack-md">
                                 <div>
-                                    <p className="eyebrow">Étape 1</p>
-                                    <h3>{mode === 'login' ? 'Qui se connecte ?' : 'Créons votre identité de compte'}</h3>
+                                    <p className="eyebrow">Step 1</p>
+                                    <h3>{mode === 'login' ? 'Who is signing in?' : 'Let’s create your account identity'}</h3>
                                 </div>
 
                                 <label className="field-group">
-                                    <span className="field-group__label">Nom d’utilisateur</span>
+                                    <span className="field-group__label">Username</span>
                                     <input
                                         className="text-input"
                                         value={username}
@@ -240,7 +240,7 @@ const AuthWizardSection: React.FC = () => {
 
                                 {mode === 'register' && (
                                     <label className="field-group">
-                                        <span className="field-group__label">Email <span className="muted-text">(optionnel)</span></span>
+                                        <span className="field-group__label">Email <span className="muted-text">(optional)</span></span>
                                         <input
                                             className="text-input"
                                             type="email"
@@ -257,12 +257,12 @@ const AuthWizardSection: React.FC = () => {
                         {wizardStep === 2 && (
                             <div className="auth-step-panel stack-md">
                                 <div>
-                                    <p className="eyebrow">Étape 2</p>
-                                    <h3>{mode === 'login' ? 'Sécurisez la connexion' : 'Définissez votre accès sécurisé'}</h3>
+                                    <p className="eyebrow">Step 2</p>
+                                    <h3>{mode === 'login' ? 'Secure your sign-in' : 'Set your secure access'}</h3>
                                 </div>
 
                                 <label className="field-group">
-                                    <span className="field-group__label">Mot de passe</span>
+                                    <span className="field-group__label">Password</span>
                                     <input
                                         className="text-input"
                                         type="password"
@@ -276,7 +276,7 @@ const AuthWizardSection: React.FC = () => {
 
                                 <div className="auth-inline-note">
                                     <FontAwesomeIcon icon={faShieldAlt} />
-                                    <span>{mode === 'login' ? 'Nous allons ensuite vérifier la session serveur.' : 'Après création du compte, la connexion sera automatique.'}</span>
+                                    <span>{mode === 'login' ? 'We will verify the server session next.' : 'After account creation, sign-in will happen automatically.'}</span>
                                 </div>
                             </div>
                         )}
@@ -284,15 +284,15 @@ const AuthWizardSection: React.FC = () => {
                         {mode === 'register' && wizardStep === 3 && (
                             <div className="auth-step-panel stack-md">
                                 <div>
-                                    <p className="eyebrow">Étape 3</p>
-                                    <h3>Prêt pour l’onboarding</h3>
-                                    <p className="muted-text">Juste après l’inscription, on vous guidera sur 3 mini étapes pour configurer budget, rythme et transport.</p>
+                                    <p className="eyebrow">Step 3</p>
+                                    <h3>Ready for onboarding</h3>
+                                    <p className="muted-text">Right after sign-up, we guide you through 3 short steps to configure budget, pace, and transport.</p>
                                 </div>
 
                                 <div className="auth-review-card">
-                                    <div><strong>Compte</strong><p className="muted-text">{username || '—'}</p></div>
-                                    <div><strong>Email</strong><p className="muted-text">{email || 'Non renseigné'}</p></div>
-                                    <div><strong>Ensuite</strong><p className="muted-text">Connexion → synchronisation base → onboarding 3 étapes</p></div>
+                                    <div><strong>Account</strong><p className="muted-text">{username || '—'}</p></div>
+                                    <div><strong>Email</strong><p className="muted-text">{email || 'Not provided'}</p></div>
+                                    <div><strong>Next</strong><p className="muted-text">Sign-in → database sync → 3-step onboarding</p></div>
                                 </div>
                             </div>
                         )}
@@ -302,23 +302,23 @@ const AuthWizardSection: React.FC = () => {
 
                         <div className="auth-wizard__actions">
                             <button type="button" className="button button--secondary" onClick={handleBack} disabled={wizardStep === 1 || isLoading}>
-                                <FontAwesomeIcon icon={faArrowLeft} /> Retour
+                                <FontAwesomeIcon icon={faArrowLeft} /> Back
                             </button>
 
                             {wizardStep < totalSteps ? (
                                 <button type="button" className="button button--large" onClick={handleNext}>
-                                    Continuer <FontAwesomeIcon icon={faArrowRight} />
+                                    Continue <FontAwesomeIcon icon={faArrowRight} />
                                 </button>
                             ) : (
                                 <button type="submit" className="button button--large" disabled={isLoading}>
                                     <FontAwesomeIcon icon={mode === 'login' ? faSignInAlt : faUserPlus} />
                                     {isLoading
                                         ? flow === 'registering' || flow === 'signing-in' || flow === 'loading-profile'
-                                            ? 'Connexion au serveur...'
-                                            : 'Veuillez patienter...'
+                                            ? 'Connecting to the server...'
+                                            : 'Please wait...'
                                         : mode === 'login'
-                                            ? 'Se connecter'
-                                            : 'Créer mon compte'}
+                                            ? 'Sign in'
+                                            : 'Create my account'}
                                 </button>
                             )}
                         </div>
@@ -362,20 +362,20 @@ const OnboardingFlow: React.FC = () => {
     }, [profile]);
 
     const budgetPresets = [
-        { label: 'Budget', value: 60, helper: 'City break malin, restos simples, transports optimisés.' },
-        { label: 'Balanced', value: 120, helper: 'Confort + quelques extras sans exploser le budget.' },
-        { label: 'Luxury', value: 220, helper: 'Plus de flexibilité, taxis et belles adresses incluses.' },
+        { label: 'Budget', value: 60, helper: 'Smart city break, simple meals, optimized transport.' },
+        { label: 'Balanced', value: 120, helper: 'Comfort plus a few extras without blowing the budget.' },
+        { label: 'Luxury', value: 220, helper: 'More flexibility, taxis, and standout places included.' },
     ];
 
     const transportOptions: { value: PreferredTransport; label: string; emoji: string; helper: string }[] = [
-        { value: 'walking', label: 'Walking', emoji: '🚶', helper: 'Tout garder proche et fluide.' },
-        { value: 'public_transport', label: 'Public transport', emoji: '🚇', helper: 'Métro, bus et tram précis.' },
-        { value: 'taxi', label: 'Taxi', emoji: '🚕', helper: 'Rapide quand chaque minute compte.' },
-        { value: 'rental_car', label: 'Rental car', emoji: '🚗', helper: 'Idéal pour road trips et zones diffuses.' },
+        { value: 'walking', label: 'Walking', emoji: '🚶', helper: 'Keep everything close and frictionless.' },
+        { value: 'public_transport', label: 'Public transport', emoji: '🚇', helper: 'Metro, bus, and tram with precision.' },
+        { value: 'taxi', label: 'Taxi', emoji: '🚕', helper: 'Fast when every minute matters.' },
+        { value: 'rental_car', label: 'Rental car', emoji: '🚗', helper: 'Ideal for road trips and spread-out areas.' },
     ];
 
     const foodOptions = [
-        { value: 'local-specialties', label: '🍝 Cuisine locale' },
+        { value: 'local-specialties', label: '🍝 Local cuisine' },
         { value: 'street-food', label: '🌮 Street food' },
         { value: 'seafood', label: '🦐 Seafood' },
         { value: 'vegetarian', label: '🥗 Vegetarian' },
@@ -402,7 +402,7 @@ const OnboardingFlow: React.FC = () => {
             completeOnboarding();
             navigate('/planner');
         } catch (err) {
-            setFormError(err instanceof Error ? err.message : 'Impossible de finaliser l’onboarding.');
+            setFormError(err instanceof Error ? err.message : 'Could not finish onboarding.');
         }
     };
 
@@ -411,10 +411,10 @@ const OnboardingFlow: React.FC = () => {
             <div className="section-card__header section-card__header--plain">
                 <div>
                     <p className="eyebrow"><FontAwesomeIcon icon={faCheck} style={{ marginRight: '6px' }} />Onboarding</p>
-                    <h2>Bienvenue — configurons votre profil en 3 étapes</h2>
-                    <p className="muted-text">Chaque étape prépare de meilleurs itinéraires et enregistre directement vos préférences en base.</p>
+                    <h2>Welcome — let’s configure your profile in 3 steps</h2>
+                    <p className="muted-text">Each step improves future itineraries and saves your preferences directly to the database.</p>
                 </div>
-                <button type="button" className="button button--secondary button--small" onClick={skipOnboarding}>Passer</button>
+                <button type="button" className="button button--secondary button--small" onClick={skipOnboarding}>Skip</button>
             </div>
 
             <div className="onboarding-progress">
@@ -428,8 +428,8 @@ const OnboardingFlow: React.FC = () => {
                         <span>{step < onboardingStep ? '✓' : step}</span>
                         <small>
                             {step === 1 && 'Budget'}
-                            {step === 2 && 'Rythme'}
-                            {step === 3 && 'Goûts'}
+                            {step === 2 && 'Pace'}
+                            {step === 3 && 'Taste'}
                         </small>
                     </button>
                 ))}
@@ -438,8 +438,8 @@ const OnboardingFlow: React.FC = () => {
             {onboardingStep === 1 && (
                 <div className="stack-lg">
                     <div>
-                        <h3>1. Quel niveau de budget voulez-vous par défaut ?</h3>
-                        <p className="muted-text">Ce montant sert ensuite de base à tous les itinéraires si vous ne précisez rien.</p>
+                        <h3>1. What default budget level do you want?</h3>
+                        <p className="muted-text">This amount becomes the base for all itineraries when you do not specify a budget.</p>
                     </div>
                     <div className="option-grid option-grid--compact">
                         {budgetPresets.map((preset) => (
@@ -449,7 +449,7 @@ const OnboardingFlow: React.FC = () => {
                                 className={form.dailyBudget === preset.value ? 'choice-card choice-card--selected' : 'choice-card'}
                                 onClick={() => setForm((prev) => ({ ...prev, dailyBudget: preset.value }))}
                             >
-                                <span className="choice-card__title">{preset.label} · €{preset.value}/jour</span>
+                                <span className="choice-card__title">{preset.label} · €{preset.value}/day</span>
                                 <span className="choice-card__description">{preset.helper}</span>
                             </button>
                         ))}
@@ -460,8 +460,8 @@ const OnboardingFlow: React.FC = () => {
             {onboardingStep === 2 && (
                 <div className="stack-lg">
                     <div>
-                        <h3>2. Quel rythme et quel transport vous ressemblent ?</h3>
-                        <p className="muted-text">On s’en sert pour éviter des programmes trop chargés ou des trajets peu réalistes.</p>
+                        <h3>2. What pace and transport fit you best?</h3>
+                        <p className="muted-text">We use this to avoid overloaded schedules or unrealistic transfers.</p>
                     </div>
 
                     <div className="option-grid option-grid--compact">
@@ -474,9 +474,9 @@ const OnboardingFlow: React.FC = () => {
                             >
                                 <span className="choice-card__title">{paceLabel(pace)}</span>
                                 <span className="choice-card__description">
-                                    {pace === 'relaxed' && 'Moins d’activités, plus de marge.'}
-                                    {pace === 'balanced' && 'Bonne densité sans stress.'}
-                                    {pace === 'intense' && 'Journées pleines et optimisées.'}
+                                    {pace === 'relaxed' && 'Fewer activities, more breathing room.'}
+                                    {pace === 'balanced' && 'Good density without the stress.'}
+                                    {pace === 'intense' && 'Full, optimized days.'}
                                 </span>
                             </button>
                         ))}
@@ -501,8 +501,8 @@ const OnboardingFlow: React.FC = () => {
             {onboardingStep === 3 && (
                 <div className="stack-lg">
                     <div>
-                        <h3>3. Affinons vos goûts</h3>
-                        <p className="muted-text">Dernière étape avant de rendre le profil pleinement opérationnel.</p>
+                        <h3>3. Let’s refine your preferences</h3>
+                        <p className="muted-text">The final step before making the profile fully ready to use.</p>
                     </div>
 
                     <div className="checkbox-grid">
@@ -518,13 +518,13 @@ const OnboardingFlow: React.FC = () => {
                     </div>
 
                     <label className="field-group">
-                        <span className="field-group__label">IA favorite</span>
+                        <span className="field-group__label">Favorite AI</span>
                         <select
                             className="text-input"
                             value={form.preferredAiProvider ?? ''}
                             onChange={(e) => setForm((prev) => ({ ...prev, preferredAiProvider: (e.target.value as AiProviderName) || null }))}
                         >
-                            <option value="">Auto (meilleure option disponible)</option>
+                            <option value="">Auto (best available option)</option>
                             <option value="openai">OpenAI</option>
                             <option value="gemini">Gemini</option>
                             <option value="grok">Grok</option>
@@ -537,16 +537,16 @@ const OnboardingFlow: React.FC = () => {
 
             <div className="onboarding-actions">
                 <button type="button" className="button button--secondary" onClick={() => setOnboardingStep(onboardingStep - 1)} disabled={onboardingStep === 1 || isSavingPreferences}>
-                    <FontAwesomeIcon icon={faArrowLeft} /> Retour
+                    <FontAwesomeIcon icon={faArrowLeft} /> Back
                 </button>
                 {onboardingStep < 3 ? (
                     <button type="button" className="button button--large" onClick={() => setOnboardingStep(onboardingStep + 1)}>
-                        Continuer <FontAwesomeIcon icon={faArrowRight} />
+                        Continue <FontAwesomeIcon icon={faArrowRight} />
                     </button>
                 ) : (
                     <button type="button" className="button button--large" onClick={() => void handleFinish()} disabled={isSavingPreferences}>
                         <FontAwesomeIcon icon={faCheck} />
-                        {isSavingPreferences ? 'Synchronisation...' : 'Terminer et synchroniser'}
+                        {isSavingPreferences ? 'Syncing...' : 'Finish and sync'}
                     </button>
                 )}
             </div>
@@ -628,11 +628,11 @@ const PreferencesSection: React.FC = () => {
 
             <div className="notice-banner" style={{ alignItems: 'flex-start', gap: '12px' }}>
                 <div>
-                    <strong>{isAuthenticated ? 'Profil synchronisé avec la base de données' : 'Mode anonyme'}</strong>
+                    <strong>{isAuthenticated ? 'Profile synced with the database' : 'Anonymous mode'}</strong>
                     <p className="muted-text" style={{ margin: '6px 0 0' }}>
                         {isAuthenticated
-                            ? `Connecté en tant que ${account?.username ?? 'utilisateur'}. Chaque modification est enregistrée côté serveur puis réutilisée pour vos itinéraires.`
-                            : 'Vous voyez des valeurs par défaut réalistes. Connectez-vous pour charger et sauvegarder vos vraies préférences.'}
+                            ? `Signed in as ${account?.username ?? 'user'}. Every change is saved on the server and reused for your itineraries.`
+                            : 'You are seeing realistic defaults. Sign in to load and save your real preferences.'}
                     </p>
                 </div>
             </div>
@@ -749,7 +749,7 @@ const PreferencesSection: React.FC = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                         <button type="submit" className="button button--large" disabled={isLoading}>
                             <FontAwesomeIcon icon={faCheck} />
-                            {isSavingPreferences ? 'Sauvegarde en base...' : 'Save preferences'}
+                            {isSavingPreferences ? 'Saving to the database...' : 'Save preferences'}
                         </button>
                         {saved && <span className="tag tag--success">✓ Saved</span>}
                     </div>
@@ -773,12 +773,12 @@ const Profile: React.FC = () => {
     } = useProfile();
 
     const syncLabel = syncState === 'synced'
-        ? 'Compte synchronisé avec la base'
+        ? 'Account synced with the database'
         : syncState === 'syncing'
-            ? 'Synchronisation en cours'
+            ? 'Sync in progress'
             : syncState === 'error'
-                ? 'Synchronisation en erreur'
-                : 'Mode anonyme';
+                ? 'Sync error'
+                : 'Anonymous mode';
 
     return (
         <div className="stack-xl">
@@ -791,8 +791,8 @@ const Profile: React.FC = () => {
                     <h1>{isAuthenticated ? 'Your profile' : 'Your travel profile'}</h1>
                     <p className="hero-card__lede">
                         {isAuthenticated
-                            ? 'Votre compte est relié à la base et vos préférences alimentent chaque trip planning.'
-                            : 'Vous utilisez des valeurs par défaut intelligentes. Créez un compte pour charger et sauvegarder votre vrai profil voyage.'}
+                            ? 'Your account is linked to the database and your preferences power every trip plan.'
+                            : 'You are using smart defaults. Create an account to load and save your real travel profile.'}
                     </p>
                     <div className="hero-card__actions" style={{ marginTop: '16px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                         <span className={`account-sync-pill account-sync-pill--${syncState}`}>{syncLabel}</span>
@@ -820,8 +820,8 @@ const Profile: React.FC = () => {
                             {isBootstrapping
                                 ? (statusMessage ?? 'Checking your existing session...')
                                 : isAuthenticated
-                                    ? 'Votre compte et vos préférences ont été rechargés depuis le backend.'
-                                    : 'Aucune session active. Vous pouvez continuer en anonyme ou vous connecter pour charger vos données.'}
+                                    ? 'Your account and preferences were reloaded from the backend.'
+                                    : 'No active session. You can continue anonymously or sign in to load your data.'}
                         </p>
                     </div>
                 </div>
