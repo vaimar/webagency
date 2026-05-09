@@ -526,6 +526,10 @@ ul, ol {
     transform: translateY(-4px);
 }
 
+.flight-card--animate-select {
+    animation: flight-card-select-pop 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 .flight-card__header {
     display: flex;
     justify-content: space-between;
@@ -746,6 +750,44 @@ ul, ol {
     gap: 8px;
 }
 
+.selected-fare-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    width: fit-content;
+    max-width: 100%;
+    padding: 10px 14px;
+    border-radius: var(--radius-full);
+    background: rgba(255, 255, 255, 0.14);
+    color: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(10px);
+}
+
+.selected-fare-pill__label {
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.72);
+}
+
+@keyframes flight-card-select-pop {
+    0% {
+        transform: translateY(0) scale(0.985);
+        box-shadow: 0 0 0 0 rgba(23, 60, 99, 0);
+    }
+    40% {
+        transform: translateY(-8px) scale(1.01);
+        box-shadow: 0 0 0 6px rgba(23, 60, 99, 0.12), 0 22px 34px rgba(7, 24, 44, 0.16);
+    }
+    100% {
+        transform: translateY(-4px) scale(1);
+        box-shadow: 0 0 0 3px rgba(23, 60, 99, 0.18), 0 18px 34px rgba(7, 24, 44, 0.14);
+    }
+}
+
 @media (max-width: 640px) {
     .flight-card__media-topline {
         flex-wrap: wrap;
@@ -952,7 +994,7 @@ select.text-input {
 
 .search-box__grid {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr auto;
+    grid-template-columns: 1fr 1fr 1fr 1fr auto;
     gap: var(--space-3);
     align-items: end;
 }

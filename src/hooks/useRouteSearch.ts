@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useProfile } from '../ProfileContext';
 import { normalizeAirportCode } from '../data/airportMetadata';
+import { normalizeTripDates } from './routeSearchDates';
 import {
     ApiDiagnostics,
     ApiRequestError,
@@ -16,6 +17,7 @@ interface RouteSearchState {
     departureDate: string;
     returnDate: string;
 }
+
 
 interface UseRouteSearchResult {
     state: RouteSearchState;
@@ -92,8 +94,20 @@ export const useRouteSearch = (): UseRouteSearchResult => {
 
     const setOrigin = useCallback((value: string) => setState((prev) => ({ ...prev, origin: normalizeAirportCode(value) })), []);
     const setDestination = useCallback((value: string) => setState((prev) => ({ ...prev, destination: normalizeAirportCode(value) })), []);
-    const setDepartureDate = useCallback((value: string) => setState((prev) => ({ ...prev, departureDate: value })), []);
-    const setReturnDate = useCallback((value: string) => setState((prev) => ({ ...prev, returnDate: value })), []);
+    const setDepartureDate = useCallback((value: string) => setState((prev) => ({
+        ...prev,
+        ...normalizeTripDates(value, prev.returnDate),
+    })), []);
+    const setReturnDate = useCallback((value: string) => setState((prev) => {
+        if (!value) {
+            return { ...prev, returnDate: value };
+        }
+
+        return {
+            ...prev,
+            ...normalizeTripDates(prev.departureDate, value),
+        };
+    }), []);
 
     const searchRoute = useCallback(async (options?: { refreshFlights?: boolean; date?: string }) => {
         const selectedDate = options?.date ?? state.departureDate;

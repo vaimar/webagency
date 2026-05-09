@@ -7,6 +7,7 @@ interface FlightDestinationCardProps {
     onSelect?: () => void;
     isSelected?: boolean;
     showsDateMatch?: boolean;
+    shouldAnimate?: boolean;
 }
 
 const dateFormatter = new Intl.DateTimeFormat('en', {
@@ -22,14 +23,14 @@ const formatDate = (value: string): string => {
     return dateFormatter.format(new Date(value));
 };
 
-const FlightDestinationCard: React.FC<FlightDestinationCardProps> = ({ destination, onSelect, isSelected = false, showsDateMatch = false }) => {
+const FlightDestinationCard: React.FC<FlightDestinationCardProps> = ({ destination, onSelect, isSelected = false, showsDateMatch = false, shouldAnimate = false }) => {
     const origin: AirportDisplay = getAirportDisplay(destination.origin);
     const arrival: AirportDisplay = getAirportDisplay(destination.destination);
     const fareChip = destination.links.flightOffers ? 'Offer-ready' : 'Preview fare';
 
     return (
         <article
-            className={`card flight-card ${onSelect ? 'flight-card--selectable' : ''} ${isSelected ? 'flight-card--selected' : ''}`.trim()}
+            className={`card flight-card ${onSelect ? 'flight-card--selectable' : ''} ${isSelected ? 'flight-card--selected' : ''} ${shouldAnimate ? 'flight-card--animate-select' : ''}`.trim()}
             onClick={onSelect}
             onKeyDown={(event) => {
                 if (!onSelect) return;

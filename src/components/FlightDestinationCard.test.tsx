@@ -8,6 +8,7 @@ describe('FlightDestinationCard', () => {
             onSelect: jest.fn(),
             isSelected: true,
             showsDateMatch: true,
+            shouldAnimate: true,
             destination: {
                 type: 'flight-destination',
                 origin: 'DUB',
@@ -37,6 +38,7 @@ describe('FlightDestinationCard', () => {
         expect(screen.getByText(/this fare matches your selected date/i)).toBeInTheDocument();
         expect(screen.getByText(/offer-ready/i)).toBeInTheDocument();
         expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button')).toHaveClass('flight-card--animate-select');
     });
 });
 

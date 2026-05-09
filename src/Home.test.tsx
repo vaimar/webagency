@@ -72,7 +72,7 @@ describe('Home', () => {
 
         render(<Home />);
 
-        await userEvent.click(screen.getByText(/from eur 69.00/i).closest('[role="button"]') as HTMLElement);
+        await userEvent.click(screen.getAllByRole('button', { name: /paris beauvais/i })[0]);
 
         expect(setOrigin).toHaveBeenCalledWith('DUB');
         expect(setDestination).toHaveBeenCalledWith('BVA');
@@ -110,6 +110,8 @@ describe('Home', () => {
         expect(screen.getAllByText(/real-world entry price/i).length).toBeGreaterThan(0);
         expect(screen.getAllByText(/paris beauvais/i).length).toBeGreaterThan(0);
         expect(screen.getAllByText(/france/i).length).toBeGreaterThan(0);
+        expect(screen.getByText(/selected fare/i)).toBeInTheDocument();
+        expect(screen.getByText(/2026-06-01 → 2026-06-05/i)).toBeInTheDocument();
         expect(screen.getByText(/this fare matches your selected date/i)).toBeInTheDocument();
         expect(screen.getByText(/late arrival means the airport transfer is usually a taxi after midnight\./i)).toBeInTheDocument();
         expect(screen.getByText((content) => content.includes('Base fare:') && content.includes('99'))).toBeInTheDocument();

@@ -1,12 +1,13 @@
 import { faExchangeAlt, faExternalLinkAlt, faInfoCircle, faMapMarkerAlt, faPlane, faSearch } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Select, { components, GroupBase, OptionProps, SingleValueProps, StylesConfig } from 'react-select';
 import FlightDestinationCard from './components/FlightDestinationCard';
 import TruthCard from './components/TruthCard';
 import { RequestDiagnostics, TripGuide, TripGuideLoading } from './components/TripGuide';
 import { MOCK_FLIGHT_DESTINATIONS } from './data/mockDestinations';
 import { AirportDisplay, buildAirportSearchText, DESTINATION_AIRPORT_OPTIONS, formatAirportOptionLabel, getAirportDisplay, groupAirportsByCountry, ORIGIN_AIRPORT_OPTIONS } from './data/airportMetadata';
+import { addDaysToDateOnly } from './hooks/routeSearchDates';
 import { useRouteSearch } from './hooks/useRouteSearch';
 import { FlightAvailable } from './services/api';
 import { flightUrls } from './services/affiliates';
@@ -242,12 +243,14 @@ const toSuggestedRoute = (item: typeof MOCK_FLIGHT_DESTINATIONS[number]) => ({
     returnDate: item.returnDate,
 });
 
+
 const Home: React.FC = () => {
     const {
         state, flights, tripSuggestion, isSearchingFlights, isLoadingSuggestion,
         flightError, noFlightsMessage, suggestionError, flightSource, flightDiagnostics, suggestionDiagnostics, hasSearched,
         setOrigin, setDestination, setDepartureDate, setReturnDate, searchRoute, retrySuggestion, clearResults,
     } = useRouteSearch();
+    const [animatedCardKey, setAnimatedCardKey] = useState<string | null>(null);
 
     const hasResults = flights.length > 0 || tripSuggestion !== null;
     const originAirport = state.origin ? getAirportDisplay(state.origin) : null;
@@ -285,8 +288,27 @@ const Home: React.FC = () => {
         setDestination(route.destination);
         setDepartureDate(route.departureDate);
         setReturnDate(route.returnDate);
+        setAnimatedCardKey(`${route.origin}-${route.destination}-${route.departureDate}`);
     };
 
+    const selectedSuggestedFare = useMemo(
+        () => suggestedRoutes.find(({ suggestedRoute, matchesSelectedDates }) => (
+            state.origin === suggestedRoute.origin &&
+            state.destination === suggestedRoute.destination &&
+            matchesSelectedDates
+        )) ?? null,
+        [state.destination, state.origin, suggestedRoutes],
+    );
+
+    useEffect(() => {
+        if (!animatedCardKey) return undefined;
+
+        const timeoutId = window.setTimeout(() => {
+            setAnimatedCardKey(null);
+        }, 1100);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [animatedCardKey]);
     return (
         <div className="stack-xl">
             <section className="hero-card card hero-card--compact">
@@ -294,6 +316,16 @@ const Home: React.FC = () => {
                     <p className="eyebrow eyebrow--light"><FontAwesomeIcon icon={faPlane} style={{ marginRight: '8px' }} />Trip Discovery</p>
                     <h1>Start with the flight. Trust the real route.</h1>
                     <p className="hero-card__lede">Pick a real airport pair, choose your outbound and return dates, and then run the search. Suggested fares below can prefill the full round-trip box, but nothing auto-searches for you anymore.</p>
+                    {selectedSuggestedFare && (
+                        <div className="selected-fare-pill" role="status">
+                            <span className="selected-fare-pill__label">Selected fare</span>
+                            <strong>{selectedSuggestedFare.destination.price.currency} {selectedSuggestedFare.destination.price.total}</strong>
+                            <span>
+                                {getAirportDisplay(selectedSuggestedFare.suggestedRoute.origin).city} → {getAirportDisplay(selectedSuggestedFare.suggestedRoute.destination).city}
+                            </span>
+                            <span>{selectedSuggestedFare.suggestedRoute.departureDate} → {selectedSuggestedFare.suggestedRoute.returnDate}</span>
+                        </div>
+                    )}
                     <div className="search-box" style={{ marginTop: '24px' }}>
                         <div className="search-box__grid">
                             <div className="search-box__field">
@@ -346,7 +378,7 @@ const Home: React.FC = () => {
                                     type="date"
                                     value={state.returnDate}
                                     className="search-box__input"
-                                    min={state.departureDate || '2026-05-09'}
+                                    min={state.departureDate ? addDaysToDateOnly(state.departureDate, 1) : '2026-05-10'}
                                     onChange={(event) => setReturnDate(event.target.value)}
                                 />
                             </div>
@@ -383,6 +415,7 @@ const Home: React.FC = () => {
                                 matchesSelectedDates
                             }
                             showsDateMatch={matchesSelectedDates}
+                            shouldAnimate={animatedCardKey === `${suggestedRoute.origin}-${suggestedRoute.destination}-${suggestedRoute.departureDate}`}
                         />
                     ))}
                 </div>
