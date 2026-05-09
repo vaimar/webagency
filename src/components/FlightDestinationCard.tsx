@@ -1,6 +1,7 @@
 import React from 'react';
 import { AirportDisplay, getAirportDisplay } from '../data/airportMetadata';
 import { FlightDestination } from '../model/FlightDestination';
+import TruthCard from './TruthCard';
 
 interface FlightDestinationCardProps {
     destination: FlightDestination;
@@ -23,10 +24,33 @@ const formatDate = (value: string): string => {
     return dateFormatter.format(new Date(value));
 };
 
+const formatMoney = (value: number | string, currency: string = 'EUR'): string => {
+    const amount = typeof value === 'number' ? value : Number.parseFloat(String(value));
+
+    if (Number.isFinite(amount)) {
+        try {
+            return new Intl.NumberFormat('en-IE', {
+                style: 'currency',
+                currency,
+                minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
+                maximumFractionDigits: 2,
+            }).format(amount);
+        } catch {
+            // fall through to the plain text fallback below
+        }
+    }
+
+    return `${currency} ${value}`;
+};
+
 const FlightDestinationCard: React.FC<FlightDestinationCardProps> = ({ destination, onSelect, isSelected = false, showsDateMatch = false, shouldAnimate = false }) => {
     const origin: AirportDisplay = getAirportDisplay(destination.origin);
     const arrival: AirportDisplay = getAirportDisplay(destination.destination);
     const fareChip = destination.links.flightOffers ? 'Offer-ready' : 'Preview fare';
+    const currency = destination.antiCauchemar?.currency ?? destination.price.currency;
+    const honestPrice = destination.antiCauchemar?.realWorldEntryPrice ?? destination.antiCauchemar?.realCost;
+    const honestPriceLabel = formatMoney(honestPrice ?? destination.price.total, currency);
+    const marketingPriceLabel = formatMoney(destination.price.total, currency);
 
     return (
         <article
@@ -60,11 +84,13 @@ const FlightDestinationCard: React.FC<FlightDestinationCardProps> = ({ destinati
             </div>
             <div className="flight-card__eyebrow">{origin.city} → {arrival.city}</div>
             <div className="flight-card__price-row">
-                <div className="flight-card__price">
-                    {destination.price.currency} {destination.price.total}
+                <div className="flight-card__price-stack">
+                    <span className="flight-card__price-caption">Real-world entry price</span>
+                    <div className="flight-card__price">{honestPriceLabel}</div>
+                    <span className="flight-card__marketing-note">Marketing fare <span className="flight-card__marketing-price">{marketingPriceLabel}</span></span>
                 </div>
                 <div className="flight-card__chips">
-                    <span className="flight-card__chip flight-card__chip--fare">From {destination.price.currency} {destination.price.total}</span>
+                    <span className="flight-card__chip flight-card__chip--fare">Truth-first fare</span>
                     <span className="flight-card__chip flight-card__chip--status">{fareChip}</span>
                     {showsDateMatch && <span className="flight-card__chip flight-card__chip--match">This fare matches your selected date</span>}
                 </div>
@@ -75,6 +101,7 @@ const FlightDestinationCard: React.FC<FlightDestinationCardProps> = ({ destinati
                 <br />
                 Depart {formatDate(destination.departureDate)} · Return {formatDate(destination.returnDate)}
             </p>
+            <TruthCard truth={destination.antiCauchemar} className="truth-card--embedded" />
             <dl className="flight-card__meta">
                 <div>
                     <dt>Fare type</dt>

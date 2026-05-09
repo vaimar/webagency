@@ -3,10 +3,14 @@
     gap: 12px;
     margin-top: 14px;
     padding: 14px;
-    border: 1px solid #d5dfeb;
+    border: 1px solid rgba(148, 163, 184, 0.28);
     border-radius: 16px;
-    background: linear-gradient(180deg, #f9fbfd 0%, #f1f6fb 100%);
-    color: #102033;
+    background: linear-gradient(180deg, #091423 0%, #102033 100%);
+    color: #e2e8f0;
+}
+
+.truth-card--embedded {
+    margin-top: 0;
 }
 
 .truth-card__header {
@@ -27,13 +31,13 @@
 }
 
 .truth-card__eyebrow {
-    color: #173c63;
+    color: #93c5fd;
 }
 
 .truth-card__penalty {
     font-size: 0.78rem;
     font-weight: 700;
-    color: #475569;
+    color: #cbd5e1;
 }
 
 .truth-card__price-row {
@@ -42,17 +46,18 @@
     justify-content: space-between;
     gap: 12px;
     padding-bottom: 12px;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.18);
 }
 
 .truth-card__label {
-    color: #64748b;
+    color: #94a3b8;
 }
 
 .truth-card__price {
-    font-size: 1.55rem;
+    font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+    font-size: 1.85rem;
     line-height: 1;
-    color: #081b31;
+    color: #f8fafc;
 }
 
 .truth-card__fact {
@@ -63,8 +68,8 @@
 .truth-card__fact--catch {
     padding: 12px;
     border-radius: 14px;
-    border: 1px solid #c7d6e7;
-    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid rgba(125, 211, 252, 0.24);
+    background: rgba(15, 23, 42, 0.42);
 }
 
 .truth-card__fact p,
@@ -72,12 +77,12 @@
     margin: 0;
     font-size: 0.9rem;
     line-height: 1.5;
-    color: #1e293b;
+    color: #e2e8f0;
 }
 
 .truth-card__fact--verdict {
     padding-top: 12px;
-    border-top: 1px solid #e2e8f0;
+    border-top: 1px solid rgba(148, 163, 184, 0.18);
 }
 
 .truth-card__warning {
@@ -85,13 +90,14 @@
     gap: 8px;
     padding: 12px;
     border-radius: 14px;
-    border: 2px solid #b42318;
-    background: #fff2f0;
-    color: #7a271a;
+    border: 2px solid #fb7185;
+    background: linear-gradient(180deg, rgba(127, 29, 29, 0.42) 0%, rgba(69, 10, 10, 0.68) 100%);
+    color: #fff1f2;
+    box-shadow: inset 0 0 0 1px rgba(255, 241, 242, 0.08);
 }
 
 .truth-card__warning-label {
-    color: #7a271a;
+    color: #fecdd3;
 }
 
 @media (max-width: 480px) {

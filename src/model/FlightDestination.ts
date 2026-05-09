@@ -1,3 +1,5 @@
+import { AntiCauchemarAnalysis } from '../services/api';
+
 export interface FlightDestination {
     type: string;
     origin: string;
@@ -12,6 +14,7 @@ export interface FlightDestination {
         flightDates: string;
         flightOffers: string;
     };
+    antiCauchemar?: AntiCauchemarAnalysis;
 }
 
 export interface FlightSearchParams {
@@ -21,7 +24,7 @@ export interface FlightSearchParams {
 
 export interface FlightSearchResult {
     destinations: FlightDestination[];
-    source: 'curated';
+    source: 'live' | 'curated';
     notice?: string;
     fetchedAt: string;
 }

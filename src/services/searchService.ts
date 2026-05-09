@@ -24,7 +24,7 @@ export interface FlightFirstSearchResult {
     noFlightsMessage: string | null;
 }
 
-export const NO_FLIGHT_NO_TRIP_MESSAGE = 'No Ryanair flight found for this route. No trip guide will be generated.';
+export const NO_FLIGHT_NO_TRIP_MESSAGE = 'No Honest Routes Found. No flight data means no trip guide.';
 const REFRESH_READ_RETRIES = 3;
 const REFRESH_READ_DELAY_MS = 900;
 

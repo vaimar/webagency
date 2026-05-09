@@ -1,53 +1,108 @@
 import { MOCK_FLIGHT_DESTINATIONS } from '../data/mockDestinations';
 import { normalizeAirportCode } from '../data/airportMetadata';
+import { flightUrls } from './affiliates';
+import { FlightAvailable } from './api';
+import { FlightDestination, FlightSearchParams, FlightSearchResult } from '../model/FlightDestination';
+import { loadPriorityFlights, NO_FLIGHT_NO_TRIP_MESSAGE } from './searchService';
 
-export interface FlightDestination {
-    type: string;
-    origin: string;
-    destination: string;
-    departureDate: string;
-    returnDate: string;
-    price: {
-        total: string;
-        currency: string;
+const LANDING_SHOWCASE_LIMIT = 4;
+
+const LANDING_ROUTE_SEEDS = Array.from(
+    new Map(
+        MOCK_FLIGHT_DESTINATIONS.map((destination) => [normalizeAirportCode(destination.destination), {
+            destination: normalizeAirportCode(destination.destination),
+            departureDate: destination.departureDate,
+            returnDate: destination.returnDate,
+        }]),
+    ).values(),
+).slice(0, LANDING_SHOWCASE_LIMIT);
+
+const DATE_ONLY_PREFIX_RE = /^(\d{4}-\d{2}-\d{2})/;
+
+const extractDateOnly = (value?: string, fallback: string = ''): string => {
+    if (!value) {
+        return fallback;
+    }
+
+    const match = value.match(DATE_ONLY_PREFIX_RE);
+    return match?.[1] ?? fallback;
+};
+
+const formatPriceTotal = (value: number | string): string => {
+    const numericValue = typeof value === 'number' ? value : Number.parseFloat(String(value));
+    if (!Number.isFinite(numericValue)) {
+        return String(value);
+    }
+
+    return numericValue.toFixed(2);
+};
+
+const getComparablePrice = (destination: FlightDestination): number => {
+    const honestPrice = destination.antiCauchemar?.realWorldEntryPrice ?? destination.antiCauchemar?.realCost;
+    if (typeof honestPrice === 'number' && Number.isFinite(honestPrice)) {
+        return honestPrice;
+    }
+
+    const marketingPrice = Number.parseFloat(destination.price.total);
+    return Number.isFinite(marketingPrice) ? marketingPrice : Number.MAX_SAFE_INTEGER;
+};
+
+const mapFlightToDestination = (
+    flight: FlightAvailable,
+    fallbackReturnDate: string,
+): FlightDestination => {
+    const departureDate = extractDateOnly(flight.departureDate ?? flight.departureTime, '');
+    const travelLinks = flightUrls(flight.origin, flight.destination, departureDate);
+
+    return {
+        type: 'flight-destination',
+        origin: normalizeAirportCode(flight.origin),
+        destination: normalizeAirportCode(flight.destination),
+        departureDate,
+        returnDate: fallbackReturnDate,
+        price: {
+            total: formatPriceTotal(flight.price),
+            currency: flight.currency ?? flight.antiCauchemar?.currency ?? 'EUR',
+        },
+        antiCauchemar: flight.antiCauchemar,
+        links: {
+            flightDates: travelLinks.googleFlights,
+            flightOffers: travelLinks.kiwi || travelLinks.skyscanner || travelLinks.googleFlights,
+        },
     };
-    links: {
-        flightDates: string;
-        flightOffers: string;
-    };
-}
-
-export interface FlightSearchParams {
-    origin: string;
-    maxPrice: number;
-}
-
-export interface FlightSearchResult {
-    destinations: FlightDestination[];
-    source: 'curated';
-    notice?: string;
-    fetchedAt: string;
-}
-
-const curatedNotice =
-    'Showing curated destination ideas for now. If you add another flight provider later, this service is the right integration point.';
-
-const normalizeDestination = (destination: FlightDestination, origin: string): FlightDestination => ({
-    ...destination,
-    origin,
-});
+};
 
 export const fetchFlightDestinations = async (params: FlightSearchParams): Promise<FlightSearchResult> => {
     const normalizedOrigin = normalizeAirportCode(params.origin) || 'DUB';
 
-    const destinations = (MOCK_FLIGHT_DESTINATIONS as FlightDestination[])
-        .filter((item) => Number(item.price.total) <= params.maxPrice)
-        .map((item) => normalizeDestination(item, normalizedOrigin));
+    const destinations = (await Promise.all(
+        LANDING_ROUTE_SEEDS.map(async (seed) => {
+            try {
+                const { flights } = await loadPriorityFlights({
+                    origin: normalizedOrigin,
+                    destination: seed.destination,
+                    date: seed.departureDate,
+                    refreshFlightsFirst: true,
+                });
+
+                if (flights.length === 0) {
+                    return null;
+                }
+
+                return mapFlightToDestination(flights[0], seed.returnDate);
+            } catch {
+                return null;
+            }
+        }),
+    ))
+        .filter((destination): destination is FlightDestination => Boolean(destination))
+        .filter((destination) => getComparablePrice(destination) <= params.maxPrice)
+        .sort((left, right) => getComparablePrice(left) - getComparablePrice(right));
 
     return {
         destinations,
-        source: 'curated',
-        notice: curatedNotice,
+        source: 'live',
+        notice: destinations.length === 0 ? NO_FLIGHT_NO_TRIP_MESSAGE : undefined,
         fetchedAt: new Date().toISOString(),
     };
 };

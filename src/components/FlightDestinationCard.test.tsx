@@ -19,6 +19,13 @@ describe('FlightDestinationCard', () => {
                     total: '69.00',
                     currency: 'EUR',
                 },
+                antiCauchemar: {
+                    realWorldEntryPrice: 112,
+                    hiddenCostPenalty: 28,
+                    theCatch: 'This is the Ryanair Paris truth: Beauvais is outside the city and late transfers can erase the cheap headline fare.',
+                    logisticVerdict: 'A sharp entry price only stays honest if you budget the Beauvais coach or a late taxi.',
+                    currency: 'EUR',
+                },
                 links: {
                     flightDates: 'https://example.com/flights/paris-beauvais/dates',
                     flightOffers: 'https://example.com/flights/paris-beauvais/offers',
@@ -33,10 +40,13 @@ describe('FlightDestinationCard', () => {
         expect(screen.getByText(/paris beauvais, france/i)).toBeInTheDocument();
         expect(screen.getAllByText(/paris beauvais airport/i).length).toBeGreaterThan(0);
         expect(screen.getByAltText(/paris beauvais airport view/i)).toBeInTheDocument();
-        expect(screen.getByText(/anti-cauchemar/i)).toBeInTheDocument();
-        expect(screen.getByText(/from eur 69.00/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/anti-cauchemar/i).length).toBeGreaterThan(0);
+        expect(screen.getByText((content, element) => content === '€112' && element?.classList.contains('flight-card__price') === true)).toBeInTheDocument();
+        expect(screen.getByText((content, element) => content === '€69' && element?.classList.contains('flight-card__marketing-price') === true)).toBeInTheDocument();
         expect(screen.getByText(/this fare matches your selected date/i)).toBeInTheDocument();
         expect(screen.getByText(/offer-ready/i)).toBeInTheDocument();
+        expect(screen.getByText(/this is the ryanair paris truth/i)).toBeInTheDocument();
+        expect(screen.getByText(/a sharp entry price only stays honest if you budget the beauvais coach or a late taxi/i)).toBeInTheDocument();
         expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'true');
         expect(screen.getByRole('button')).toHaveClass('flight-card--animate-select');
     });

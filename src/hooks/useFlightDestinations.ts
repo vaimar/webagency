@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CACHE_TTL, useCache } from '../CacheContext';
-import { fetchFlightDestinations, FlightSearchParams, FlightSearchResult } from '../services/flightService';
+import { FlightSearchParams, FlightSearchResult } from '../model/FlightDestination';
+import { fetchFlightDestinations } from '../services/flightService';
 
 interface UseFlightDestinationsResult extends FlightSearchResult {
     isLoading: boolean;
@@ -9,7 +10,7 @@ interface UseFlightDestinationsResult extends FlightSearchResult {
 
 const emptyResult: FlightSearchResult = {
     destinations: [],
-    source: 'curated',
+    source: 'live',
     fetchedAt: '',
 };
 
@@ -20,7 +21,7 @@ export const useFlightDestinations = (params: FlightSearchParams): UseFlightDest
 
     const normalizedParams = useMemo<FlightSearchParams>(
         () => ({
-            origin: params.origin.trim().toUpperCase() || 'PAR',
+            origin: params.origin.trim().toUpperCase() || 'DUB',
             maxPrice: params.maxPrice,
         }),
         [params.maxPrice, params.origin],

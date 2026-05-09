@@ -1,20 +1,21 @@
-import { faExchangeAlt, faExternalLinkAlt, faInfoCircle, faMapMarkerAlt, faPlane, faSearch } from '@fortawesome/free-solid-svg-icons';
+import { faInfoCircle, faMapMarkerAlt, faPlane, faSearch } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useEffect, useMemo, useState } from 'react';
 import Select, { components, GroupBase, OptionProps, SingleValueProps, StylesConfig } from 'react-select';
+import FlightCard from './components/FlightCard';
 import FlightDestinationCard from './components/FlightDestinationCard';
-import TruthCard from './components/TruthCard';
 import { RequestDiagnostics, TripGuide, TripGuideLoading } from './components/TripGuide';
-import { MOCK_FLIGHT_DESTINATIONS } from './data/mockDestinations';
 import { AirportDisplay, buildAirportSearchText, DESTINATION_AIRPORT_OPTIONS, formatAirportOptionLabel, getAirportDisplay, groupAirportsByCountry, ORIGIN_AIRPORT_OPTIONS } from './data/airportMetadata';
 import { addDaysToDateOnly } from './hooks/routeSearchDates';
 import { useRouteSearch } from './hooks/useRouteSearch';
-import { FlightAvailable } from './services/api';
-import { flightUrls } from './services/affiliates';
+import { FlightDestination } from './model/FlightDestination';
+import { fetchFlightDestinations } from './services/flightService';
 
 /* ─── Helpers ──────────────────────────────────────────────────────────────── */
 
-const ESTIMATION_LABEL = 'Estimated from the previous 24 hours';
+const LANDING_ORIGIN = 'DUB';
+const LANDING_MAX_PRICE = 260;
+const NO_HONEST_ROUTES_FOUND = 'No Honest Routes Found';
 
 const formatPrice = (price: number | string, currency: string = 'EUR'): string => {
     const amount = typeof price === 'number' ? price : Number.parseFloat(String(price));
@@ -35,97 +36,11 @@ const formatPrice = (price: number | string, currency: string = 'EUR'): string =
     return `${currency} ${price}`;
 };
 
-const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
-const ISO_DATE_PREFIX_RE = /^(\d{4}-\d{2}-\d{2})/;
-
-const extractDatePart = (value?: string): string => {
-    if (!value) return '';
-    if (DATE_ONLY_RE.test(value)) return value;
-    const match = value.match(ISO_DATE_PREFIX_RE);
-    if (match) return match[1];
-    return '';
+const getDestinationLeadPrice = (destination: FlightDestination): string => {
+    const currency = destination.antiCauchemar?.currency ?? destination.price.currency;
+    const honestPrice = destination.antiCauchemar?.realWorldEntryPrice ?? destination.antiCauchemar?.realCost;
+    return formatPrice(honestPrice ?? destination.price.total, currency);
 };
-
-const formatTime = (value?: string): string => {
-    if (!value) return '—';
-
-    // Keep date-only payloads timezone-safe (avoid off-by-one day shifts).
-    if (DATE_ONLY_RE.test(value)) {
-        const [year, month, day] = value.split('-').map((part) => Number.parseInt(part, 10));
-        const utcDate = new Date(Date.UTC(year, month - 1, day));
-        return new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeZone: 'UTC' }).format(utcDate);
-    }
-
-    const date = new Date(value);
-    if (isNaN(date.getTime())) return value;
-    return new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
-};
-
-const getFlightDate = (flight: FlightAvailable): string => {
-    // Prefer canonical departureDate (ISO date-time), fall back to legacy departureTime
-    const dep = flight.departureDate ?? flight.departureTime ?? '';
-    return extractDatePart(dep);
-};
-
-const getFlightLinks = (flight: FlightAvailable) => {
-    const date = getFlightDate(flight);
-    return flightUrls(flight.origin, flight.destination, date);
-};
-
-const isValidRedirectUrl = (value: string): boolean => {
-    try {
-        const url = new URL(value);
-        return ['http:', 'https:'].includes(url.protocol) && Boolean(url.hostname);
-    } catch {
-        return false;
-    }
-};
-
-const isWithin24Hours = (value?: string): boolean => {
-    if (!value) return false;
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return false;
-    return Date.now() - date.getTime() <= 24 * 60 * 60 * 1000;
-};
-
-const getFlightPriceDisplay = (
-    flight: FlightAvailable,
-    flightSource: 'live' | null,
-    flightDiagnosticsOk: boolean,
-) => {
-    const links = getFlightLinks(flight);
-    const validLinks = [links.googleFlights, links.skyscanner, links.kiwi].filter(isValidRedirectUrl);
-    const hasVerifiedRedirect = validLinks.length > 0;
-    const hasActiveBookingApi = flightSource === 'live' && flightDiagnosticsOk;
-    const isFreshRealtime = isWithin24Hours(flight.fetchDate) || !flight.fetchDate;
-    const isRealtimeVerified = hasVerifiedRedirect && hasActiveBookingApi && isFreshRealtime;
-
-    return {
-        links: validLinks,
-        showExactPrice: isRealtimeVerified,
-        label: isRealtimeVerified ? formatPrice(flight.price, flight.currency ?? flight.antiCauchemar?.currency ?? 'EUR') : ESTIMATION_LABEL,
-    };
-};
-
-const getRealWorldEntryPrice = (flight: FlightAvailable): number | undefined => {
-    const honestPrice = flight.antiCauchemar?.realWorldEntryPrice ?? flight.antiCauchemar?.realCost;
-    return typeof honestPrice === 'number' && Number.isFinite(honestPrice) ? honestPrice : undefined;
-};
-
-const getMainPriceLabel = (flight: FlightAvailable): string => {
-    const honestPrice = getRealWorldEntryPrice(flight);
-    const currency = flight.antiCauchemar?.currency ?? flight.currency ?? 'EUR';
-
-    if (typeof honestPrice === 'number') {
-        return formatPrice(honestPrice, currency);
-    }
-
-    return formatPrice(flight.price, currency);
-};
-
-/** Canonical arrival: arrivalDate (new spec) → arrivalTime → returnDate (legacy) */
-const getFlightArrival = (flight: FlightAvailable): string | undefined =>
-    flight.arrivalDate ?? flight.arrivalTime ?? flight.returnDate;
 
 type AirportOption = {
     value: string;
@@ -236,7 +151,7 @@ const filterAirportOption = (candidate: { data: AirportOption }, rawInput: strin
     return buildAirportSearchText(candidate.data.airport).includes(query);
 };
 
-const toSuggestedRoute = (item: typeof MOCK_FLIGHT_DESTINATIONS[number]) => ({
+const toSuggestedRoute = (item: FlightDestination) => ({
     origin: getAirportDisplay(item.origin).code,
     destination: getAirportDisplay(item.destination).code,
     departureDate: item.departureDate,
@@ -251,6 +166,10 @@ const Home: React.FC = () => {
         setOrigin, setDestination, setDepartureDate, setReturnDate, searchRoute, retrySuggestion, clearResults,
     } = useRouteSearch();
     const [animatedCardKey, setAnimatedCardKey] = useState<string | null>(null);
+    const [landingDestinations, setLandingDestinations] = useState<FlightDestination[]>([]);
+    const [isLoadingLanding, setIsLoadingLanding] = useState(true);
+    const [landingError, setLandingError] = useState<string | null>(null);
+    const [landingNotice, setLandingNotice] = useState<string | null>(null);
 
     const hasResults = flights.length > 0 || tripSuggestion !== null;
     const originAirport = state.origin ? getAirportDisplay(state.origin) : null;
@@ -261,14 +180,7 @@ const Home: React.FC = () => {
     const destinationOptions = mapAirportGroupsToSelect(destinationGroups);
     const selectedOriginOption = originOptions.flatMap((group) => group.options).find((option) => option.value === originAirport?.searchCode) ?? null;
     const selectedDestinationOption = destinationOptions.flatMap((group) => group.options).find((option) => option.value === destinationAirport?.searchCode) ?? null;
-    const destinationShowcase = MOCK_FLIGHT_DESTINATIONS
-        .filter((item, index, collection) => collection.findIndex((candidate) => candidate.destination === item.destination) === index)
-        .map((item) => ({
-            ...item,
-            origin: getAirportDisplay(item.origin).code,
-            destination: getAirportDisplay(item.destination).code,
-        }));
-    const suggestedRoutes = destinationShowcase.map((destination) => {
+    const suggestedRoutes = landingDestinations.map((destination) => {
         const suggestedRoute = toSuggestedRoute(destination);
         const matchesSelectedDates = Boolean(
             state.departureDate &&
@@ -309,17 +221,55 @@ const Home: React.FC = () => {
 
         return () => window.clearTimeout(timeoutId);
     }, [animatedCardKey]);
+
+    useEffect(() => {
+        let isActive = true;
+
+        const loadLandingDestinations = async () => {
+            setIsLoadingLanding(true);
+            setLandingError(null);
+
+            try {
+                const result = await fetchFlightDestinations({
+                    origin: LANDING_ORIGIN,
+                    maxPrice: LANDING_MAX_PRICE,
+                });
+
+                if (!isActive) return;
+
+                setLandingDestinations(result.destinations);
+                setLandingNotice(result.notice ?? null);
+            } catch (error) {
+                if (!isActive) return;
+
+                setLandingDestinations([]);
+                setLandingNotice(null);
+                setLandingError(error instanceof Error ? error.message : 'Live DUB discovery is unavailable right now.');
+            } finally {
+                if (isActive) {
+                    setIsLoadingLanding(false);
+                }
+            }
+        };
+
+        void loadLandingDestinations();
+
+        return () => {
+            isActive = false;
+        };
+    }, []);
+
     return (
         <div className="stack-xl">
             <section className="hero-card card hero-card--compact">
                 <div className="hero-card__content" style={{ maxWidth: '100%' }}>
                     <p className="eyebrow eyebrow--light"><FontAwesomeIcon icon={faPlane} style={{ marginRight: '8px' }} />Trip Discovery</p>
                     <h1>Start with the flight. Trust the real route.</h1>
-                    <p className="hero-card__lede">Pick a real airport pair, choose your outbound and return dates, and then run the search. Suggested fares below can prefill the full round-trip box, but nothing auto-searches for you anymore.</p>
+                    <p className="hero-card__lede">Live DUB routes are refreshed on arrival. Pick a real airport pair, choose your outbound and return dates, and only then run the search. No flight data means no trip fiction.</p>
                     {selectedSuggestedFare && (
                         <div className="selected-fare-pill" role="status">
                             <span className="selected-fare-pill__label">Selected fare</span>
-                            <strong>{selectedSuggestedFare.destination.price.currency} {selectedSuggestedFare.destination.price.total}</strong>
+                            <strong>{getDestinationLeadPrice(selectedSuggestedFare.destination)}</strong>
                             <span>
                                 {getAirportDisplay(selectedSuggestedFare.suggestedRoute.origin).city} → {getAirportDisplay(selectedSuggestedFare.suggestedRoute.destination).city}
                             </span>
@@ -398,27 +348,44 @@ const Home: React.FC = () => {
             <section className="stack-lg">
                 <div className="section-card__header section-card__header--plain">
                     <div>
-                        <p className="eyebrow">❄️ Ryanair-style destination board</p>
-                        <h2>Suggested fares that populate the search box.</h2>
-                        <p className="muted-text">Click any suggested fare to fill origin, destination, outbound date, and return date. Then run the search when the route looks right.</p>
+                        <p className="eyebrow">❄️ Frozen Summer discovery board</p>
+                        <h2>Live DUB fares that populate the search box.</h2>
+                        <p className="muted-text">These cards are built from the backend refresh flow, then mapped into truth-first fare cards. Click one to fill origin, destination, outbound date, and return date.</p>
                     </div>
                 </div>
-                <div className="info-grid">
-                    {suggestedRoutes.map(({ destination, suggestedRoute, matchesSelectedDates }) => (
-                        <FlightDestinationCard
-                            key={`${destination.origin}-${destination.destination}-${destination.departureDate}`}
-                            destination={destination}
-                            onSelect={() => handleSuggestedRouteSelect(suggestedRoute)}
-                            isSelected={
-                                state.origin === suggestedRoute.origin &&
-                                state.destination === suggestedRoute.destination &&
-                                matchesSelectedDates
-                            }
-                            showsDateMatch={matchesSelectedDates}
-                            shouldAnimate={animatedCardKey === `${suggestedRoute.origin}-${suggestedRoute.destination}-${suggestedRoute.departureDate}`}
-                        />
-                    ))}
-                </div>
+                {isLoadingLanding ? (
+                    <div className="card empty-state">
+                        <div className="loading-pulse">
+                            <FontAwesomeIcon icon={faPlane} className="empty-state__icon" />
+                            <p>Refreshing live Dublin departures and stripping out the fake cheap routes...</p>
+                        </div>
+                    </div>
+                ) : landingError ? (
+                    <div className="notice-banner notice-banner--error"><FontAwesomeIcon icon={faInfoCircle} />{landingError}</div>
+                ) : suggestedRoutes.length === 0 ? (
+                    <div className="card empty-state">
+                        <FontAwesomeIcon icon={faPlane} className="empty-state__icon" />
+                        <h3>{NO_HONEST_ROUTES_FOUND}</h3>
+                        <p>{landingNotice ?? 'The backend returned no flight-backed landing fares from Dublin. No flight data, no discover card.'}</p>
+                    </div>
+                ) : (
+                    <div className="info-grid">
+                        {suggestedRoutes.map(({ destination, suggestedRoute, matchesSelectedDates }) => (
+                            <FlightDestinationCard
+                                key={`${destination.origin}-${destination.destination}-${destination.departureDate}`}
+                                destination={destination}
+                                onSelect={() => handleSuggestedRouteSelect(suggestedRoute)}
+                                isSelected={
+                                    state.origin === suggestedRoute.origin &&
+                                    state.destination === suggestedRoute.destination &&
+                                    matchesSelectedDates
+                                }
+                                showsDateMatch={matchesSelectedDates}
+                                shouldAnimate={animatedCardKey === `${suggestedRoute.origin}-${suggestedRoute.destination}-${suggestedRoute.departureDate}`}
+                            />
+                        ))}
+                    </div>
+                )}
             </section>
 
             {(flightSource || hasResults) && (
@@ -465,41 +432,19 @@ const Home: React.FC = () => {
                     ) : flights.length === 0 ? (
                         <div className="card empty-state">
                             <FontAwesomeIcon icon={faPlane} className="empty-state__icon" />
-                            <h3>No flight. No trip.</h3>
-                            <p>We only build the itinerary after a real flight appears. Try a nearby airport or different dates.</p>
+                            <h3>{NO_HONEST_ROUTES_FOUND}</h3>
+                            <p>We only build the itinerary after a real flight appears. Try a nearby airport or a different date window.</p>
                         </div>
                     ) : (
                         <>
-                            <div className="info-grid">{flights.map((flight, index) => {
-                                const priceDisplay = getFlightPriceDisplay(flight, flightSource, Boolean(flightDiagnostics?.ok));
-                                const [googleFlights, skyscanner, kiwi] = priceDisplay.links;
-                                const honestPrice = getMainPriceLabel(flight);
-                                const honestPriceAvailable = typeof getRealWorldEntryPrice(flight) === 'number';
-                                const originDetails = getAirportDisplay(flight.origin);
-                                const destinationDetails = getAirportDisplay(flight.destination);
-
-                                return (
-                                    <article key={`${flight.flightNumber ?? index}-${flight.departureTime ?? flight.departureDate}`} className="card card--hoverable flight-card">
-                                        <div className="flight-card__header"><div className="flight-card__route"><span>{originDetails.city}</span><FontAwesomeIcon icon={faExchangeAlt} className="flight-card__route-icon" /><span>{destinationDetails.city}</span></div>{flight.flightNumber && <span className="tag tag--success" style={{ fontSize: '0.7rem' }}>{flight.airline ?? 'Ryanair'}</span>}</div>
-                                        <div>
-                                            <div className="flight-card__price">{honestPrice}</div>
-                                            <span className="flight-card__price-label">{honestPriceAvailable ? 'Real-world entry price' : priceDisplay.showExactPrice ? 'Base fare per person' : 'Base fare estimated from the previous 24 hours'}</span>
-                                            <div className="muted-text" style={{ fontSize: '0.8rem', marginTop: '6px' }}>
-                                                Base fare: {priceDisplay.label}
-                                            </div>
-                                        </div>
-                                        <h3 style={{ fontSize: '1rem' }}>{flight.flightNumber ? `Flight ${flight.flightNumber} to ${destinationDetails.city}` : `${destinationDetails.city}, ${destinationDetails.country}`}</h3>
-                                        <p className="muted-text" style={{ fontSize: '0.875rem' }}>{destinationDetails.airportName} ({destinationDetails.code}){getFlightArrival(flight) && <><br /></>}Depart: {formatTime(flight.departureDate ?? flight.departureTime)}{getFlightArrival(flight) && <><br />Arrive: {formatTime(getFlightArrival(flight))}</>}</p>
-                                        <TruthCard truth={flight.antiCauchemar} />
-                                        <div className="trip-booking-links" style={{ marginTop: 'auto' }}>
-                                            {googleFlights && <a href={googleFlights} target="_blank" rel="noopener noreferrer" className="trip-external-link">Google Flights <FontAwesomeIcon icon={faExternalLinkAlt} style={{ marginLeft: '4px', fontSize: '0.65rem' }} /></a>}
-                                            {skyscanner && <a href={skyscanner} target="_blank" rel="noopener noreferrer" className="trip-external-link">Skyscanner <FontAwesomeIcon icon={faExternalLinkAlt} style={{ marginLeft: '4px', fontSize: '0.65rem' }} /></a>}
-                                            {kiwi && <a href={kiwi} target="_blank" rel="noopener noreferrer" className="trip-external-link">Kiwi <FontAwesomeIcon icon={faExternalLinkAlt} style={{ marginLeft: '4px', fontSize: '0.65rem' }} /></a>}
-                                            {priceDisplay.links.length === 0 && <span className="muted-text" style={{ fontSize: '0.8rem' }}>No verified booking link.</span>}
-                                        </div>
-                                    </article>
-                                );
-                            })}</div>
+                            <div className="info-grid">{flights.map((flight, index) => (
+                                <FlightCard
+                                    key={`${flight.flightNumber ?? index}-${flight.departureTime ?? flight.departureDate}`}
+                                    flight={flight}
+                                    flightSource={flightSource}
+                                    flightDiagnosticsOk={Boolean(flightDiagnostics?.ok)}
+                                />
+                            ))}</div>
                             <RequestDiagnostics title="Flight request details" diagnostics={flightDiagnostics} />
                         </>
                     )}
@@ -509,9 +454,9 @@ const Home: React.FC = () => {
             {!hasResults && !isSearchingFlights && !isLoadingSuggestion && !noFlightsMessage && !hasSearched && (
                 <div className="card empty-state">
                     <FontAwesomeIcon icon={faPlane} className="empty-state__icon" />
-                    <h3>Live flight-first discovery</h3>
-                    <p>Choose a route manually or tap one of the suggested fares above to preload the search box with a real airport pair and date.</p>
-                    <p className="muted-text" style={{ fontSize: '0.8rem', marginTop: '12px' }}>💡 Click a suggested fare card to populate the search fields.</p>
+                    <h3>Flight-first discovery</h3>
+                    <p>Choose a route manually or use one of the live DUB fare cards above to preload the search box with a real airport pair and date.</p>
+                    <p className="muted-text" style={{ fontSize: '0.8rem', marginTop: '12px' }}>Truth-first rule: if the flight is missing, the trip never appears.</p>
                 </div>
             )}
         </div>
