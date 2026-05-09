@@ -540,7 +540,29 @@ export const sendChatMessage = async (params: ChatParams): Promise<ChatResult> =
 export interface FlightSearchParams {
     origin: string;
     destination: string;
+    date?: string;
 }
+
+export interface FlightsRefreshResult {
+    message?: string;
+    origin?: string;
+    destination?: string;
+    date?: string;
+    diagnostics: ApiDiagnostics;
+}
+
+const DEFAULT_FLIGHT_REFRESH_OFFSET_DAYS = 21;
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+const resolveFlightDate = (date?: string): string => {
+    if (date && DATE_ONLY_RE.test(date)) {
+        return date;
+    }
+
+    const target = new Date();
+    target.setUTCDate(target.getUTCDate() + DEFAULT_FLIGHT_REFRESH_OFFSET_DAYS);
+    return target.toISOString().slice(0, 10);
+};
 
 const fetchFlightsFromPath = async (
     path: string,
@@ -566,23 +588,30 @@ export const searchFlights = async (params: FlightSearchParams): Promise<Flights
     return fetchFlightsFromPath('/api/flights', params);
 };
 
-export const refreshFlights = async (params: FlightSearchParams): Promise<FlightsResult> => {
-    try {
-        return await fetchFlightsFromPath('/api/flights/refresh', params);
-    } catch (error) {
-        if (error instanceof ApiRequestError && (error.diagnostics.status === 404 || error.diagnostics.status === 405)) {
-            return fetchFlightsFromPath('/api/flights/refresh', params, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    origin: params.origin.toUpperCase(),
-                    destination: params.destination.toUpperCase(),
-                }),
-            });
-        }
+export const refreshFlights = async (params: FlightSearchParams): Promise<FlightsRefreshResult> => {
+    const resolvedDate = resolveFlightDate(params.date);
+    const url = buildApiUrl('/api/flights/refresh', {
+        origin: params.origin.toUpperCase(),
+        destination: params.destination.toUpperCase(),
+        date: resolvedDate,
+    });
 
-        throw error;
+    const { response, diagnostics } = await fetchWithDiagnostics(url, {
+        method: 'POST',
+    });
+    await ensureOk(response, diagnostics, 'Flights refresh failed');
+
+    let payload: Omit<FlightsRefreshResult, 'diagnostics'> = {};
+    const contentType = response.headers.get('content-type') ?? '';
+    if (contentType.includes('application/json')) {
+        payload = await response.json() as Omit<FlightsRefreshResult, 'diagnostics'>;
     }
+
+    return {
+        ...payload,
+        date: payload.date ?? resolvedDate,
+        diagnostics,
+    };
 };
 
 // ─── Trip suggestion  GET /api/trips/suggestions ──────────────────────────────

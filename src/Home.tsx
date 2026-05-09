@@ -11,6 +11,7 @@ import { flightUrls } from './services/affiliates';
 
 const ESTIMATION_LABEL = 'Estimated from the previous 24 hours';
 const LANDING_AUTO_REFRESH_DEBOUNCE_MS = 2_000;
+const LANDING_REFRESH_DATE = '2026-06-01';
 
 let lastLandingRefreshAt = 0;
 
@@ -141,7 +142,7 @@ const Home: React.FC = () => {
         }
 
         lastLandingRefreshAt = now;
-        void searchRoute({ refreshFlights: true });
+        void searchRoute({ refreshFlights: true, date: LANDING_REFRESH_DATE });
     }, [searchRoute]);
 
     return (
@@ -150,7 +151,7 @@ const Home: React.FC = () => {
                 <div className="hero-card__content" style={{ maxWidth: '100%' }}>
                     <p className="eyebrow eyebrow--light"><FontAwesomeIcon icon={faPlane} style={{ marginRight: '8px' }} />Trip Discovery</p>
                     <h1>Start with the flight. Trust the real price.</h1>
-                    <p className="hero-card__lede">The landing search opens on live Ryanair availability from Dublin to Paris. We lead with the real-world entry price, flag the catch, and only build the trip if a flight exists.</p>
+                    <p className="hero-card__lede">The landing search opens on live Ryanair availability from Dublin to Paris for 1 June 2026. We lead with the real-world entry price, flag the catch, and only build the trip if a flight exists.</p>
                     <div className="search-box" style={{ marginTop: '24px' }}>
                         <div className="search-box__grid">
                             <div className="search-box__field">
@@ -161,7 +162,7 @@ const Home: React.FC = () => {
                                 <label className="search-box__label"><FontAwesomeIcon icon={faMapMarkerAlt} style={{ marginRight: '6px' }} />To</label>
                                 <input value={state.destination} maxLength={4} className="search-box__input" placeholder="BCN" onChange={(e) => setDestination(e.target.value.toUpperCase())} style={{ textTransform: 'uppercase' }} />
                             </div>
-                            <button type="button" className="button button--large" disabled={isSearchingFlights || isLoadingSuggestion || !state.origin || !state.destination} onClick={() => void searchRoute({ refreshFlights: true })} style={{ height: '52px' }}>
+                            <button type="button" className="button button--large" disabled={isSearchingFlights || isLoadingSuggestion || !state.origin || !state.destination} onClick={() => void searchRoute({ refreshFlights: true, date: LANDING_REFRESH_DATE })} style={{ height: '52px' }}>
                                 <FontAwesomeIcon icon={faSearch} />{isSearchingFlights || isLoadingSuggestion ? 'Searching...' : 'Find live flights'}
                             </button>
                         </div>

@@ -48,7 +48,7 @@ describe('Home', () => {
 
         render(<Home />);
 
-        expect(searchRoute).toHaveBeenCalledWith({ refreshFlights: true });
+        expect(searchRoute).toHaveBeenCalledWith({ refreshFlights: true, date: '2026-06-01' });
         expect(screen.getByRole('heading', { name: /start with the flight\. trust the real price\./i })).toBeInTheDocument();
     });
 

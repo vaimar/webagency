@@ -25,6 +25,14 @@ export interface FlightFirstSearchResult {
 }
 
 export const NO_FLIGHT_NO_TRIP_MESSAGE = 'No Ryanair flight found for this route. No trip guide will be generated.';
+const REFRESH_READ_RETRIES = 3;
+const REFRESH_READ_DELAY_MS = 900;
+
+const wait = async (delayMs: number): Promise<void> => {
+    await new Promise((resolve) => {
+        window.setTimeout(resolve, delayMs);
+    });
+};
 
 const getComparablePrice = (flight: FlightAvailable): number => {
     const honestPrice = flight.antiCauchemar?.realWorldEntryPrice ?? flight.antiCauchemar?.realCost;
@@ -43,9 +51,21 @@ const sortFlightsByHonestPrice = (flights: FlightAvailable[]): FlightAvailable[]
 export const loadPriorityFlights = async (
     params: FlightFirstSearchParams,
 ): Promise<{ flights: FlightAvailable[]; diagnostics: ApiDiagnostics; source: 'live' }> => {
-    const response = params.refreshFlightsFirst
-        ? await refreshFlights(params)
-        : await searchFlights(params);
+    let response;
+
+    if (params.refreshFlightsFirst) {
+        await refreshFlights(params);
+        response = await searchFlights(params);
+
+        let attemptsRemaining = REFRESH_READ_RETRIES;
+        while (response.flights.length === 0 && attemptsRemaining > 0) {
+            await wait(REFRESH_READ_DELAY_MS);
+            response = await searchFlights(params);
+            attemptsRemaining -= 1;
+        }
+    } else {
+        response = await searchFlights(params);
+    }
 
     return {
         flights: sortFlightsByHonestPrice(response.flights),

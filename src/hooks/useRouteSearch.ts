@@ -29,7 +29,7 @@ interface UseRouteSearchResult {
     hasSearched: boolean;
     setOrigin: (value: string) => void;
     setDestination: (value: string) => void;
-    searchRoute: (options?: { refreshFlights?: boolean }) => Promise<void>;
+    searchRoute: (options?: { refreshFlights?: boolean; date?: string }) => Promise<void>;
     retrySuggestion: () => Promise<void>;
     clearResults: () => void;
 }
@@ -88,7 +88,7 @@ export const useRouteSearch = (): UseRouteSearchResult => {
     const setOrigin = useCallback((value: string) => setState((prev) => ({ ...prev, origin: value.toUpperCase() })), []);
     const setDestination = useCallback((value: string) => setState((prev) => ({ ...prev, destination: value.toUpperCase() })), []);
 
-    const searchRoute = useCallback(async (options?: { refreshFlights?: boolean }) => {
+    const searchRoute = useCallback(async (options?: { refreshFlights?: boolean; date?: string }) => {
         if (!state.origin || !state.destination) return;
 
         setHasSearched(true);
@@ -107,6 +107,7 @@ export const useRouteSearch = (): UseRouteSearchResult => {
                 origin: state.origin,
                 destination: state.destination,
                 refreshFlightsFirst: options?.refreshFlights ?? false,
+                date: options?.date,
             });
 
             setFlights(result.flights);

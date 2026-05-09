@@ -30,6 +30,13 @@ describe('searchFlightFirstRoute', () => {
     it('refreshes flights first, sorts by realWorldEntryPrice, then fetches the trip guide', async () => {
         mockedRefreshFlights.mockResolvedValue({
             diagnostics: baseDiagnostics,
+            message: 'Flights refresh started',
+            origin: 'DUB',
+            destination: 'PAR',
+            date: '2026-06-01',
+        });
+        mockedSearchFlights.mockResolvedValue({
+            diagnostics: baseDiagnostics,
             flights: [
                 {
                     origin: 'DUB',
@@ -50,10 +57,10 @@ describe('searchFlightFirstRoute', () => {
             suggestion: { origin: 'DUB', destination: 'PAR', summary: 'Cold, honest weekend.' },
         });
 
-        const result = await searchFlightFirstRoute({ origin: 'DUB', destination: 'PAR', refreshFlightsFirst: true });
+        const result = await searchFlightFirstRoute({ origin: 'DUB', destination: 'PAR', refreshFlightsFirst: true, date: '2026-06-01' });
 
-        expect(mockedRefreshFlights).toHaveBeenCalledWith({ origin: 'DUB', destination: 'PAR', refreshFlightsFirst: true });
-        expect(mockedSearchFlights).not.toHaveBeenCalled();
+        expect(mockedRefreshFlights).toHaveBeenCalledWith({ origin: 'DUB', destination: 'PAR', refreshFlightsFirst: true, date: '2026-06-01' });
+        expect(mockedSearchFlights).toHaveBeenCalledWith({ origin: 'DUB', destination: 'PAR', refreshFlightsFirst: true, date: '2026-06-01' });
         expect(mockedFetchTripSuggestion).toHaveBeenCalledWith({ origin: 'DUB', destination: 'PAR', provider: undefined });
         expect(result.flights.map((flight) => flight.antiCauchemar?.realWorldEntryPrice)).toEqual([132, 141]);
         expect(result.tripSuggestion?.summary).toBe('Cold, honest weekend.');
