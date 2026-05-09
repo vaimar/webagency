@@ -515,6 +515,17 @@ ul, ol {
     box-shadow: var(--shadow-card-hover);
 }
 
+.flight-card--selectable:focus-visible {
+    outline: 3px solid rgba(0, 87, 184, 0.28);
+    outline-offset: 3px;
+}
+
+.flight-card--selected {
+    border-color: #173c63;
+    box-shadow: 0 0 0 3px rgba(23, 60, 99, 0.18), 0 18px 34px rgba(7, 24, 44, 0.14);
+    transform: translateY(-4px);
+}
+
 .flight-card__header {
     display: flex;
     justify-content: space-between;
@@ -656,6 +667,11 @@ ul, ol {
 .flight-card__chip--status {
     background: rgba(8, 135, 90, 0.1);
     color: #086c48;
+}
+
+.flight-card__chip--match {
+    background: rgba(255, 107, 0, 0.12);
+    color: #8a3b00;
 }
 
 .flight-card__price-label {
@@ -936,7 +952,7 @@ select.text-input {
 
 .search-box__grid {
     display: grid;
-    grid-template-columns: 1fr 1fr auto;
+    grid-template-columns: 1fr 1fr 1fr auto;
     gap: var(--space-3);
     align-items: end;
 }

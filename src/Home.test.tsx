@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import Home from './Home';
 import { useRouteSearch } from './hooks/useRouteSearch';
 
@@ -17,7 +18,7 @@ const diagnostics = {
 };
 
 const createRouteSearchState = (overrides: Partial<ReturnType<typeof useRouteSearch>> = {}): ReturnType<typeof useRouteSearch> => ({
-    state: { origin: 'DUB', destination: 'BVA' },
+    state: { origin: '', destination: '', departureDate: '', returnDate: '' },
     flights: [],
     tripSuggestion: null,
     isSearchingFlights: false,
@@ -31,6 +32,8 @@ const createRouteSearchState = (overrides: Partial<ReturnType<typeof useRouteSea
     hasSearched: true,
     setOrigin: jest.fn(),
     setDestination: jest.fn(),
+    setDepartureDate: jest.fn(),
+    setReturnDate: jest.fn(),
     searchRoute: jest.fn().mockResolvedValue(undefined),
     retrySuggestion: jest.fn().mockResolvedValue(undefined),
     clearResults: jest.fn(),
@@ -42,19 +45,44 @@ describe('Home', () => {
         jest.resetAllMocks();
     });
 
-    it('refreshes live DUB to BVA flights on mount', () => {
+    it('does not auto-search on mount anymore', () => {
         const searchRoute = jest.fn().mockResolvedValue(undefined);
         mockedUseRouteSearch.mockReturnValue(createRouteSearchState({ searchRoute }));
 
         render(<Home />);
 
-        expect(searchRoute).toHaveBeenCalledWith({ refreshFlights: true, date: '2026-06-01' });
+        expect(searchRoute).not.toHaveBeenCalled();
         expect(screen.getByRole('heading', { name: /start with the flight\. trust the real route\./i })).toBeInTheDocument();
         expect(screen.getAllByText(/paris beauvais/i).length).toBeGreaterThan(0);
     });
 
+    it('clicking a suggested fare card populates the search fields', async () => {
+        const setOrigin = jest.fn();
+        const setDestination = jest.fn();
+        const setDepartureDate = jest.fn();
+        const setReturnDate = jest.fn();
+
+        mockedUseRouteSearch.mockReturnValue(createRouteSearchState({
+            setOrigin,
+            setDestination,
+            setDepartureDate,
+            setReturnDate,
+            hasSearched: false,
+        }));
+
+        render(<Home />);
+
+        await userEvent.click(screen.getByText(/from eur 69.00/i).closest('[role="button"]') as HTMLElement);
+
+        expect(setOrigin).toHaveBeenCalledWith('DUB');
+        expect(setDestination).toHaveBeenCalledWith('BVA');
+        expect(setDepartureDate).toHaveBeenCalledWith('2026-06-01');
+        expect(setReturnDate).toHaveBeenCalledWith('2026-06-05');
+    });
+
     it('shows the honest price with the actual ryanair airport label for paris routes', () => {
         mockedUseRouteSearch.mockReturnValue(createRouteSearchState({
+            state: { origin: 'DUB', destination: 'BVA', departureDate: '2026-06-01', returnDate: '2026-06-05' },
             flights: [
                 {
                     origin: 'DUB',
@@ -82,6 +110,7 @@ describe('Home', () => {
         expect(screen.getAllByText(/real-world entry price/i).length).toBeGreaterThan(0);
         expect(screen.getAllByText(/paris beauvais/i).length).toBeGreaterThan(0);
         expect(screen.getAllByText(/france/i).length).toBeGreaterThan(0);
+        expect(screen.getByText(/this fare matches your selected date/i)).toBeInTheDocument();
         expect(screen.getByText(/late arrival means the airport transfer is usually a taxi after midnight\./i)).toBeInTheDocument();
         expect(screen.getByText((content) => content.includes('Base fare:') && content.includes('99'))).toBeInTheDocument();
     });

@@ -13,6 +13,8 @@ import { searchFlightFirstRoute } from '../services/searchService';
 interface RouteSearchState {
     origin: string;
     destination: string;
+    departureDate: string;
+    returnDate: string;
 }
 
 interface UseRouteSearchResult {
@@ -30,6 +32,8 @@ interface UseRouteSearchResult {
     hasSearched: boolean;
     setOrigin: (value: string) => void;
     setDestination: (value: string) => void;
+    setDepartureDate: (value: string) => void;
+    setReturnDate: (value: string) => void;
     searchRoute: (options?: { refreshFlights?: boolean; date?: string }) => Promise<void>;
     retrySuggestion: () => Promise<void>;
     clearResults: () => void;
@@ -73,7 +77,7 @@ const buildSuggestionErrorMessage = (error: ApiRequestError): string => {
 
 export const useRouteSearch = (): UseRouteSearchResult => {
     const { showToast } = useProfile();
-    const [state, setState] = useState<RouteSearchState>({ origin: 'DUB', destination: 'BVA' });
+    const [state, setState] = useState<RouteSearchState>({ origin: '', destination: '', departureDate: '', returnDate: '' });
     const [flights, setFlights] = useState<FlightAvailable[]>([]);
     const [tripSuggestion, setTripSuggestion] = useState<TripSuggestion | null>(null);
     const [isSearchingFlights, setIsSearchingFlights] = useState(false);
@@ -88,9 +92,12 @@ export const useRouteSearch = (): UseRouteSearchResult => {
 
     const setOrigin = useCallback((value: string) => setState((prev) => ({ ...prev, origin: normalizeAirportCode(value) })), []);
     const setDestination = useCallback((value: string) => setState((prev) => ({ ...prev, destination: normalizeAirportCode(value) })), []);
+    const setDepartureDate = useCallback((value: string) => setState((prev) => ({ ...prev, departureDate: value })), []);
+    const setReturnDate = useCallback((value: string) => setState((prev) => ({ ...prev, returnDate: value })), []);
 
     const searchRoute = useCallback(async (options?: { refreshFlights?: boolean; date?: string }) => {
-        if (!state.origin || !state.destination) return;
+        const selectedDate = options?.date ?? state.departureDate;
+        if (!state.origin || !state.destination || !selectedDate || !state.returnDate) return;
 
         setHasSearched(true);
         setTripSuggestion(null);
@@ -108,7 +115,7 @@ export const useRouteSearch = (): UseRouteSearchResult => {
                 origin: state.origin,
                 destination: state.destination,
                 refreshFlightsFirst: options?.refreshFlights ?? false,
-                date: options?.date,
+                date: selectedDate,
             });
 
             setFlights(result.flights);
@@ -145,7 +152,7 @@ export const useRouteSearch = (): UseRouteSearchResult => {
             setIsSearchingFlights(false);
             setIsLoadingSuggestion(false);
         }
-    }, [showToast, state.destination, state.origin]);
+    }, [showToast, state.departureDate, state.destination, state.origin, state.returnDate]);
 
     const clearResults = useCallback(() => {
         setFlights([]);
@@ -203,6 +210,8 @@ export const useRouteSearch = (): UseRouteSearchResult => {
         hasSearched,
         setOrigin,
         setDestination,
+        setDepartureDate,
+        setReturnDate,
         searchRoute,
         retrySuggestion,
         clearResults,

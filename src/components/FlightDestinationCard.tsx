@@ -4,6 +4,9 @@ import { FlightDestination } from '../model/FlightDestination';
 
 interface FlightDestinationCardProps {
     destination: FlightDestination;
+    onSelect?: () => void;
+    isSelected?: boolean;
+    showsDateMatch?: boolean;
 }
 
 const dateFormatter = new Intl.DateTimeFormat('en', {
@@ -19,13 +22,26 @@ const formatDate = (value: string): string => {
     return dateFormatter.format(new Date(value));
 };
 
-const FlightDestinationCard: React.FC<FlightDestinationCardProps> = ({ destination }) => {
+const FlightDestinationCard: React.FC<FlightDestinationCardProps> = ({ destination, onSelect, isSelected = false, showsDateMatch = false }) => {
     const origin: AirportDisplay = getAirportDisplay(destination.origin);
     const arrival: AirportDisplay = getAirportDisplay(destination.destination);
     const fareChip = destination.links.flightOffers ? 'Offer-ready' : 'Preview fare';
 
     return (
-        <article className="card flight-card">
+        <article
+            className={`card flight-card ${onSelect ? 'flight-card--selectable' : ''} ${isSelected ? 'flight-card--selected' : ''}`.trim()}
+            onClick={onSelect}
+            onKeyDown={(event) => {
+                if (!onSelect) return;
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    onSelect();
+                }
+            }}
+            role={onSelect ? 'button' : undefined}
+            aria-pressed={onSelect ? isSelected : undefined}
+            tabIndex={onSelect ? 0 : undefined}
+        >
             <div className="flight-card__media">
                 <img
                     className="flight-card__media-image"
@@ -49,6 +65,7 @@ const FlightDestinationCard: React.FC<FlightDestinationCardProps> = ({ destinati
                 <div className="flight-card__chips">
                     <span className="flight-card__chip flight-card__chip--fare">From {destination.price.currency} {destination.price.total}</span>
                     <span className="flight-card__chip flight-card__chip--status">{fareChip}</span>
+                    {showsDateMatch && <span className="flight-card__chip flight-card__chip--match">This fare matches your selected date</span>}
                 </div>
             </div>
             <h3>{arrival.city}, {arrival.country}</h3>

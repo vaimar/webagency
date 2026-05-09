@@ -1,12 +1,12 @@
 import { faExchangeAlt, faExternalLinkAlt, faInfoCircle, faMapMarkerAlt, faPlane, faSearch } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import React, { useEffect } from 'react';
+import React from 'react';
 import Select, { components, GroupBase, OptionProps, SingleValueProps, StylesConfig } from 'react-select';
 import FlightDestinationCard from './components/FlightDestinationCard';
 import TruthCard from './components/TruthCard';
 import { RequestDiagnostics, TripGuide, TripGuideLoading } from './components/TripGuide';
 import { MOCK_FLIGHT_DESTINATIONS } from './data/mockDestinations';
-import { buildAirportSearchText, DESTINATION_AIRPORT_OPTIONS, formatAirportOptionLabel, getAirportDisplay, groupAirportsByCountry, ORIGIN_AIRPORT_OPTIONS } from './data/airportMetadata';
+import { AirportDisplay, buildAirportSearchText, DESTINATION_AIRPORT_OPTIONS, formatAirportOptionLabel, getAirportDisplay, groupAirportsByCountry, ORIGIN_AIRPORT_OPTIONS } from './data/airportMetadata';
 import { useRouteSearch } from './hooks/useRouteSearch';
 import { FlightAvailable } from './services/api';
 import { flightUrls } from './services/affiliates';
@@ -14,10 +14,6 @@ import { flightUrls } from './services/affiliates';
 /* ─── Helpers ──────────────────────────────────────────────────────────────── */
 
 const ESTIMATION_LABEL = 'Estimated from the previous 24 hours';
-const LANDING_AUTO_REFRESH_DEBOUNCE_MS = 2_000;
-const LANDING_REFRESH_DATE = '2026-06-01';
-
-let lastLandingRefreshAt = 0;
 
 const formatPrice = (price: number | string, currency: string = 'EUR'): string => {
     const amount = typeof price === 'number' ? price : Number.parseFloat(String(price));
@@ -133,7 +129,7 @@ const getFlightArrival = (flight: FlightAvailable): string | undefined =>
 type AirportOption = {
     value: string;
     label: string;
-    airport: ReturnType<typeof getAirportDisplay>;
+    airport: AirportDisplay;
 };
 
 const mapAirportGroupsToSelect = (groups: ReturnType<typeof groupAirportsByCountry>): GroupBase<AirportOption>[] => (
@@ -170,6 +166,11 @@ const selectStyles: StylesConfig<AirportOption, false> = {
         borderRadius: 18,
         overflow: 'hidden',
         boxShadow: '0 22px 40px rgba(15, 41, 66, 0.16)',
+        zIndex: 250,
+    }),
+    menuPortal: (base) => ({
+        ...base,
+        zIndex: 260,
     }),
     menuList: (base) => ({
         ...base,
@@ -234,39 +235,57 @@ const filterAirportOption = (candidate: { data: AirportOption }, rawInput: strin
     return buildAirportSearchText(candidate.data.airport).includes(query);
 };
 
+const toSuggestedRoute = (item: typeof MOCK_FLIGHT_DESTINATIONS[number]) => ({
+    origin: getAirportDisplay(item.origin).code,
+    destination: getAirportDisplay(item.destination).code,
+    departureDate: item.departureDate,
+    returnDate: item.returnDate,
+});
+
 const Home: React.FC = () => {
     const {
         state, flights, tripSuggestion, isSearchingFlights, isLoadingSuggestion,
         flightError, noFlightsMessage, suggestionError, flightSource, flightDiagnostics, suggestionDiagnostics, hasSearched,
-        setOrigin, setDestination, searchRoute, retrySuggestion, clearResults,
+        setOrigin, setDestination, setDepartureDate, setReturnDate, searchRoute, retrySuggestion, clearResults,
     } = useRouteSearch();
 
     const hasResults = flights.length > 0 || tripSuggestion !== null;
-    const originAirport = getAirportDisplay(state.origin);
-    const destinationAirport = getAirportDisplay(state.destination);
+    const originAirport = state.origin ? getAirportDisplay(state.origin) : null;
+    const destinationAirport = state.destination ? getAirportDisplay(state.destination) : null;
     const originGroups = groupAirportsByCountry(ORIGIN_AIRPORT_OPTIONS);
     const destinationGroups = groupAirportsByCountry(DESTINATION_AIRPORT_OPTIONS);
     const originOptions = mapAirportGroupsToSelect(originGroups);
     const destinationOptions = mapAirportGroupsToSelect(destinationGroups);
-    const selectedOriginOption = originOptions.flatMap((group) => group.options).find((option) => option.value === originAirport.searchCode) ?? null;
-    const selectedDestinationOption = destinationOptions.flatMap((group) => group.options).find((option) => option.value === destinationAirport.searchCode) ?? null;
+    const selectedOriginOption = originOptions.flatMap((group) => group.options).find((option) => option.value === originAirport?.searchCode) ?? null;
+    const selectedDestinationOption = destinationOptions.flatMap((group) => group.options).find((option) => option.value === destinationAirport?.searchCode) ?? null;
     const destinationShowcase = MOCK_FLIGHT_DESTINATIONS
         .filter((item, index, collection) => collection.findIndex((candidate) => candidate.destination === item.destination) === index)
         .map((item) => ({
             ...item,
-            origin: originAirport.code,
+            origin: getAirportDisplay(item.origin).code,
             destination: getAirportDisplay(item.destination).code,
         }));
+    const suggestedRoutes = destinationShowcase.map((destination) => {
+        const suggestedRoute = toSuggestedRoute(destination);
+        const matchesSelectedDates = Boolean(
+            state.departureDate &&
+            state.returnDate &&
+            state.departureDate === suggestedRoute.departureDate &&
+            state.returnDate === suggestedRoute.returnDate,
+        );
 
-    useEffect(() => {
-        const now = Date.now();
-        if (process.env.NODE_ENV !== 'test' && now - lastLandingRefreshAt < LANDING_AUTO_REFRESH_DEBOUNCE_MS) {
-            return;
-        }
-
-        lastLandingRefreshAt = now;
-        void searchRoute({ refreshFlights: true, date: LANDING_REFRESH_DATE });
-    }, [searchRoute]);
+        return {
+            destination,
+            suggestedRoute,
+            matchesSelectedDates,
+        };
+    });
+    const handleSuggestedRouteSelect = (route: { origin: string; destination: string; departureDate: string; returnDate: string }) => {
+        setOrigin(route.origin);
+        setDestination(route.destination);
+        setDepartureDate(route.departureDate);
+        setReturnDate(route.returnDate);
+    };
 
     return (
         <div className="stack-xl">
@@ -274,7 +293,7 @@ const Home: React.FC = () => {
                 <div className="hero-card__content" style={{ maxWidth: '100%' }}>
                     <p className="eyebrow eyebrow--light"><FontAwesomeIcon icon={faPlane} style={{ marginRight: '8px' }} />Trip Discovery</p>
                     <h1>Start with the flight. Trust the real route.</h1>
-                    <p className="hero-card__lede">The landing search opens on live Ryanair availability from {originAirport.city} to {destinationAirport.city} on 1 June 2026. We lead with the real-world entry price, show the catch, and name the actual airport instead of hiding it behind a city-group code.</p>
+                    <p className="hero-card__lede">Pick a real airport pair, choose your outbound and return dates, and then run the search. Suggested fares below can prefill the full round-trip box, but nothing auto-searches for you anymore.</p>
                     <div className="search-box" style={{ marginTop: '24px' }}>
                         <div className="search-box__grid">
                             <div className="search-box__field">
@@ -289,6 +308,8 @@ const Home: React.FC = () => {
                                     styles={selectStyles}
                                     isSearchable
                                     filterOption={filterAirportOption}
+                                    menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
+                                    menuPosition="fixed"
                                     placeholder="Search departure airport"
                                 />
                             </div>
@@ -304,15 +325,39 @@ const Home: React.FC = () => {
                                     styles={selectStyles}
                                     isSearchable
                                     filterOption={filterAirportOption}
+                                    menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
+                                    menuPosition="fixed"
                                     placeholder="Search destination airport"
                                 />
                             </div>
-                            <button type="button" className="button button--large" disabled={isSearchingFlights || isLoadingSuggestion || !state.origin || !state.destination} onClick={() => void searchRoute({ refreshFlights: true, date: LANDING_REFRESH_DATE })} style={{ height: '52px' }}>
+                            <div className="search-box__field">
+                                <label className="search-box__label">Departure</label>
+                                <input
+                                    type="date"
+                                    value={state.departureDate}
+                                    className="search-box__input"
+                                    min="2026-05-09"
+                                    onChange={(event) => setDepartureDate(event.target.value)}
+                                />
+                            </div>
+                            <div className="search-box__field">
+                                <label className="search-box__label">Return</label>
+                                <input
+                                    type="date"
+                                    value={state.returnDate}
+                                    className="search-box__input"
+                                    min={state.departureDate || '2026-05-09'}
+                                    onChange={(event) => setReturnDate(event.target.value)}
+                                />
+                            </div>
+                            <button type="button" className="button button--large" disabled={isSearchingFlights || isLoadingSuggestion || !state.origin || !state.destination || !state.departureDate || !state.returnDate} onClick={() => void searchRoute({ refreshFlights: true })} style={{ height: '52px' }}>
                                 <FontAwesomeIcon icon={faSearch} />{isSearchingFlights || isLoadingSuggestion ? 'Searching...' : 'Find live flights'}
                             </button>
                         </div>
                         <p className="muted-text" style={{ marginTop: '10px', fontSize: '0.82rem' }}>
-                            Frozen Summer truth: Paris on Ryanair means <strong>{destinationAirport.city}</strong> — {destinationAirport.airportName} ({destinationAirport.code}), {destinationAirport.country}.
+                            {originAirport && destinationAirport
+                                ? <>Route ready: <strong>{originAirport.city}</strong> → <strong>{destinationAirport.city}</strong>, <strong>{state.departureDate || 'choose departure'}</strong> to <strong>{state.returnDate || 'choose return'}</strong>.</>
+                                : <>Choose an origin, a destination, and both trip dates. Suggested fares below can fill the full box in one click.</>}
                         </p>
                     </div>
                 </div>
@@ -322,13 +367,23 @@ const Home: React.FC = () => {
                 <div className="section-card__header section-card__header--plain">
                     <div>
                         <p className="eyebrow">❄️ Ryanair-style destination board</p>
-                        <h2>Searchable airports. Country sections. Honest fare cues.</h2>
-                        <p className="muted-text">Each card names the serving airport, keeps the country visible, and surfaces a fare cue before you click.</p>
+                        <h2>Suggested fares that populate the search box.</h2>
+                        <p className="muted-text">Click any suggested fare to fill origin, destination, outbound date, and return date. Then run the search when the route looks right.</p>
                     </div>
                 </div>
                 <div className="info-grid">
-                    {destinationShowcase.map((destination) => (
-                        <FlightDestinationCard key={`${destination.origin}-${destination.destination}-${destination.departureDate}`} destination={destination} />
+                    {suggestedRoutes.map(({ destination, suggestedRoute, matchesSelectedDates }) => (
+                        <FlightDestinationCard
+                            key={`${destination.origin}-${destination.destination}-${destination.departureDate}`}
+                            destination={destination}
+                            onSelect={() => handleSuggestedRouteSelect(suggestedRoute)}
+                            isSelected={
+                                state.origin === suggestedRoute.origin &&
+                                state.destination === suggestedRoute.destination &&
+                                matchesSelectedDates
+                            }
+                            showsDateMatch={matchesSelectedDates}
+                        />
                     ))}
                 </div>
             </section>
@@ -369,7 +424,7 @@ const Home: React.FC = () => {
                         <div>
                             <p className="eyebrow">✈️ Available Flights</p>
                             <h2>{isSearchingFlights ? 'Refreshing live flights...' : `${flights.length} flight${flights.length !== 1 ? 's' : ''} found`}</h2>
-                            {!isSearchingFlights && flights.length > 0 && <p className="muted-text">{originAirport.city} ({originAirport.code}) → {destinationAirport.city} ({destinationAirport.code})</p>}
+                            {!isSearchingFlights && flights.length > 0 && originAirport && destinationAirport && <p className="muted-text">{originAirport.city} ({originAirport.code}) → {destinationAirport.city} ({destinationAirport.code})</p>}
                         </div>
                     </div>
                     {isSearchingFlights ? (
@@ -422,8 +477,8 @@ const Home: React.FC = () => {
                 <div className="card empty-state">
                     <FontAwesomeIcon icon={faPlane} className="empty-state__icon" />
                     <h3>Live flight-first discovery</h3>
-                    <p>Start with a real route and we will only open the rest of the trip once the flight is honest enough to trust.</p>
-                    <p className="muted-text" style={{ fontSize: '0.8rem', marginTop: '12px' }}>💡 Default route: Dublin (DUB) → Paris Beauvais (BVA)</p>
+                    <p>Choose a route manually or tap one of the suggested fares above to preload the search box with a real airport pair and date.</p>
+                    <p className="muted-text" style={{ fontSize: '0.8rem', marginTop: '12px' }}>💡 Click a suggested fare card to populate the search fields.</p>
                 </div>
             )}
         </div>
