@@ -163,6 +163,7 @@ describe('Home', () => {
         expect(screen.getByText(/this fare matches your selected date/i)).toBeInTheDocument();
         expect(screen.getByText(/late arrival means the airport transfer is usually a taxi after midnight\./i)).toBeInTheDocument();
         expect(screen.getByText('€99')).toHaveClass('flight-card__marketing-price');
+        expect(screen.getByRole('button', { name: /build honest guide/i })).toBeInTheDocument();
     });
 
     it('shows the honest empty state when no landing fares are returned', async () => {

@@ -46,6 +46,8 @@ const TRIPADVISOR_CAMPAIGN = process.env.REACT_APP_TRIPADVISOR_ID ?? '';
 // ─── Flight Booking URLs ──────────────────────────────────────────────────────
 
 export const flightUrls = (origin: string, destination: string, dateStr: string) => ({
+    ryanair: `https://www.ryanair.com/ie/en/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=${encodeURIComponent(dateStr)}&originIata=${encodeURIComponent(origin)}&destinationIata=${encodeURIComponent(destination)}&isReturn=false&discount=0&promoCode=&isConnectedFlight=false`,
+
     googleFlights: `https://www.google.com/travel/flights?q=flights+from+${origin}+to+${destination}${dateStr ? `+on+${dateStr}` : ''}`,
 
     skyscanner: (() => {

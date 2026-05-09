@@ -1,4 +1,4 @@
-import { buildAirportSearchText, formatAirportOptionLabel, getAirportDisplay, normalizeAirportCode } from './airportMetadata';
+import { ALL_AIRPORT_OPTIONS, buildAirportSearchText, formatAirportOptionLabel, getAirportDisplay, normalizeAirportCode } from './airportMetadata';
 
 describe('airportMetadata', () => {
     it('maps the generic PAR alias to the Ryanair-serving Beauvais airport', () => {
@@ -23,6 +23,10 @@ describe('airportMetadata', () => {
         expect(searchText).toContain('france');
         expect(searchText).toContain('beauvais');
         expect(searchText).toContain('paris');
+    });
+
+    it('keeps a broader Ryanair-style airport selector catalog available', () => {
+        expect(ALL_AIRPORT_OPTIONS).toEqual(expect.arrayContaining(['DUB', 'MAN', 'OPO', 'BUD', 'CRL', 'MRS']));
     });
 });
 

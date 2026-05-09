@@ -1,12 +1,13 @@
 import { useCallback, useState } from 'react';
 import { useProfile } from '../ProfileContext';
-import { normalizeAirportCode } from '../data/airportMetadata';
+import { getAirportDisplay, normalizeAirportCode } from '../data/airportMetadata';
 import { normalizeTripDates } from './routeSearchDates';
 import {
     ApiDiagnostics,
     ApiRequestError,
     FlightAvailable,
     fetchTripSuggestion,
+    planTrip,
     TripSuggestion,
 } from '../services/api';
 import { searchFlightFirstRoute } from '../services/searchService';
@@ -36,7 +37,7 @@ interface UseRouteSearchResult {
     setDestination: (value: string) => void;
     setDepartureDate: (value: string) => void;
     setReturnDate: (value: string) => void;
-    searchRoute: (options?: { refreshFlights?: boolean; date?: string }) => Promise<void>;
+    searchRoute: (options?: { refreshFlights?: boolean; date?: string; includeSuggestion?: boolean }) => Promise<void>;
     retrySuggestion: () => Promise<void>;
     clearResults: () => void;
 }
@@ -78,7 +79,7 @@ const buildSuggestionErrorMessage = (error: ApiRequestError): string => {
 };
 
 export const useRouteSearch = (): UseRouteSearchResult => {
-    const { showToast } = useProfile();
+    const { showToast, profile, isAuthenticated } = useProfile();
     const [state, setState] = useState<RouteSearchState>({ origin: '', destination: '', departureDate: '', returnDate: '' });
     const [flights, setFlights] = useState<FlightAvailable[]>([]);
     const [tripSuggestion, setTripSuggestion] = useState<TripSuggestion | null>(null);
@@ -109,9 +110,10 @@ export const useRouteSearch = (): UseRouteSearchResult => {
         };
     }), []);
 
-    const searchRoute = useCallback(async (options?: { refreshFlights?: boolean; date?: string }) => {
+    const searchRoute = useCallback(async (options?: { refreshFlights?: boolean; date?: string; includeSuggestion?: boolean }) => {
         const selectedDate = options?.date ?? state.departureDate;
         if (!state.origin || !state.destination || !selectedDate || !state.returnDate) return;
+        const shouldLoadSuggestion = options?.includeSuggestion ?? false;
 
         setHasSearched(true);
         setTripSuggestion(null);
@@ -120,7 +122,7 @@ export const useRouteSearch = (): UseRouteSearchResult => {
         setFlightError(null);
         setNoFlightsMessage(null);
         setFlightDiagnostics(null);
-        setIsLoadingSuggestion(true);
+        setIsLoadingSuggestion(shouldLoadSuggestion);
         setSuggestionError(null);
         setSuggestionDiagnostics(null);
 
@@ -130,6 +132,7 @@ export const useRouteSearch = (): UseRouteSearchResult => {
                 destination: state.destination,
                 refreshFlightsFirst: options?.refreshFlights ?? false,
                 date: selectedDate,
+                includeSuggestion: shouldLoadSuggestion,
             });
 
             setFlights(result.flights);
@@ -190,7 +193,21 @@ export const useRouteSearch = (): UseRouteSearchResult => {
         setIsLoadingSuggestion(true);
 
         try {
-            const result = await fetchTripSuggestion({ origin: state.origin, destination: state.destination });
+            const result = isAuthenticated
+                ? await planTrip({
+                    origin: state.origin,
+                    destination: getAirportDisplay(state.destination).city,
+                    duration: 4,
+                    budget: (profile.dailyBudget ?? 100) * 4,
+                    accommodation: profile.dailyBudget && profile.dailyBudget <= 60 ? 'Budget' : profile.dailyBudget && profile.dailyBudget >= 180 ? 'Luxury' : 'Mid-range',
+                    foodPreferences: profile.foodPreferences,
+                    pace: profile.pace,
+                    preferredTransport: profile.preferredTransport,
+                    provider: profile.preferredAiProvider ?? undefined,
+                    restaurantTips: 'Return at least 10 profile-matched restaurant recommendations with honest budget guidance when possible.',
+                    notes: 'Return at least 10 restaurant recommendations and at least 10 accommodation recommendations whenever enough data exists. Rank them according to the saved traveller profile first.',
+                })
+                : await fetchTripSuggestion({ origin: state.origin, destination: state.destination });
             setTripSuggestion(result.suggestion);
             setSuggestionDiagnostics(result.diagnostics);
         } catch (error) {
@@ -207,7 +224,7 @@ export const useRouteSearch = (): UseRouteSearchResult => {
         } finally {
             setIsLoadingSuggestion(false);
         }
-    }, [flights.length, showToast, state.origin, state.destination]);
+    }, [flights.length, isAuthenticated, profile.dailyBudget, profile.foodPreferences, profile.pace, profile.preferredAiProvider, profile.preferredTransport, showToast, state.destination, state.origin]);
 
     return {
         state,

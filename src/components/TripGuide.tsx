@@ -1,9 +1,9 @@
 import { faExternalLinkAlt } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import TruthCard from './TruthCard';
-import { AccommodationOption, Activity, ApiDiagnostics, DayPlan, Neighborhood, Restaurant, TripSuggestion } from '../services/api';
-import { accommodationUrls, activityUrls, placeUrls } from '../services/affiliates';
+import { AccommodationOption, Activity, ApiDiagnostics, DayPlan, Neighborhood, PreferredTransport, Restaurant, TripSuggestion } from '../services/api';
+import { accommodationUrls, activityUrls, flightUrls, placeUrls } from '../services/affiliates';
 
 /* ─── Helpers ──────────────────────────────────────────────────────────────── */
 
@@ -21,6 +21,96 @@ const ExternalLink: React.FC<{ href: string; label: string; className?: string }
 const formatDiagnosticsTime = (value?: string): string => {
     if (!value) return '—';
     return new Intl.DateTimeFormat('en', { timeStyle: 'medium' }).format(new Date(value));
+};
+
+const formatMoney = (value: number, currency: string = 'EUR'): string => {
+    if (!Number.isFinite(value)) {
+        return `${currency} —`;
+    }
+
+    try {
+        return new Intl.NumberFormat('en-IE', {
+            style: 'currency',
+            currency,
+            maximumFractionDigits: 0,
+        }).format(value);
+    } catch {
+        return `${Math.round(value)} ${currency}`;
+    }
+};
+
+const parseMoneyNumber = (text?: string): number | null => {
+    if (!text) return null;
+    const match = text.match(/(\d+(?:[.,]\d+)?)/);
+    if (!match) return null;
+    const value = Number.parseFloat(match[1].replace(',', '.'));
+    return Number.isFinite(value) ? value : null;
+};
+
+const priceRangeToMealEstimate = (value?: string): number => {
+    const text = (value ?? '').trim();
+    if (!text) return 22;
+    if (/free/i.test(text)) return 0;
+    if (/€€€€/.test(text)) return 75;
+    if (/€€€/.test(text)) return 50;
+    if (/€€/.test(text)) return 28;
+    if (/€/.test(text)) return 16;
+
+    const parsed = parseMoneyNumber(text);
+    return parsed ?? 22;
+};
+
+const transportDailyEstimate = (preferredTransport?: PreferredTransport): number => {
+    switch (preferredTransport) {
+        case 'walking':
+            return 6;
+        case 'taxi':
+            return 34;
+        case 'rental_car':
+            return 52;
+        default:
+            return 12;
+    }
+};
+
+interface PackageEstimate {
+    currency: string;
+    days: number;
+    flight: number;
+    stay: number;
+    food: number;
+    transport: number;
+    total: number;
+}
+
+const estimatePackage = (trip: TripSuggestion, days: number, dailyBudget?: number, preferredTransport?: PreferredTransport): PackageEstimate | null => {
+    const currency = trip.currency ?? trip.cheapestFlight?.antiCauchemar?.currency ?? trip.cheapestFlight?.currency ?? 'EUR';
+    const flight = trip.cheapestFlight?.antiCauchemar?.realWorldEntryPrice
+        ?? trip.cheapestFlight?.antiCauchemar?.realCost
+        ?? (typeof trip.cheapestFlight?.price === 'number' ? trip.cheapestFlight.price : Number.parseFloat(String(trip.cheapestFlight?.price ?? '')));
+
+    if (!Number.isFinite(flight)) {
+        return null;
+    }
+
+    const nightlyStay = parseMoneyNumber(trip.accommodation?.[0]?.pricePerNight) ?? Math.max(65, Math.round((dailyBudget ?? 100) * 0.7));
+    const averageMeal = trip.restaurants && trip.restaurants.length > 0
+        ? Math.round(trip.restaurants.slice(0, 5).reduce((sum, item) => sum + priceRangeToMealEstimate(item.priceRange), 0) / Math.min(trip.restaurants.length, 5))
+        : Math.max(18, Math.round((dailyBudget ?? 100) * 0.28));
+    const food = averageMeal * 2 * days;
+    const stay = nightlyStay * days;
+    const transport = Math.round((trip.cheapestFlight?.antiCauchemar?.hiddenCostPenalty ?? 0) + (transportDailyEstimate(preferredTransport) * days));
+    const total = Math.round(flight + stay + food + transport);
+
+    return {
+        currency,
+        days,
+        flight: Math.round(flight),
+        stay,
+        food,
+        transport,
+        total,
+    };
 };
 
 /** Parse transport hint from freeform text (e.g. "10 min walk", "Bus 12", "metro") */
@@ -121,6 +211,8 @@ export const RequestDiagnostics = ({ title, diagnostics }: { title: string; diag
 
 type TripTab = 'overview' | 'restaurants' | 'activities' | 'stay' | 'itinerary';
 
+const MIN_RECOMMENDATION_TARGET = 10;
+
 const TRIP_TABS: { key: TripTab; label: string; emoji: string }[] = [
     { key: 'overview', label: 'Overview', emoji: '✨' },
     { key: 'restaurants', label: 'Restaurants', emoji: '🍽️' },
@@ -128,6 +220,112 @@ const TRIP_TABS: { key: TripTab; label: string; emoji: string }[] = [
     { key: 'stay', label: 'Where to Stay', emoji: '🏨' },
     { key: 'itinerary', label: 'Day-by-Day', emoji: '📋' },
 ];
+
+const RecommendationCountWarning: React.FC<{ count: number; noun: string }> = ({ count, noun }) => {
+    if (count <= 0 || count >= MIN_RECOMMENDATION_TARGET) {
+        return null;
+    }
+
+    return (
+        <div className="notice-banner notice-banner--warning recommendation-count-warning">
+            <span>
+                Backend returned <strong>{count}</strong> {noun}. The UI is not truncating this list — the current limit is upstream.
+            </span>
+        </div>
+    );
+};
+
+const PackageSummary: React.FC<{
+    trip: TripSuggestion;
+    days: number;
+    dailyBudget?: number;
+    preferredTransport?: PreferredTransport;
+}> = ({ trip, days, dailyBudget, preferredTransport }) => {
+    const estimate = useMemo(
+        () => estimatePackage(trip, days, dailyBudget, preferredTransport),
+        [dailyBudget, days, preferredTransport, trip],
+    );
+
+    if (!estimate) {
+        return null;
+    }
+
+    const leadFlight = trip.cheapestFlight;
+    const leadStay = trip.accommodation?.[0];
+    const leadRestaurant = trip.restaurants?.[0];
+    const leadActivity = trip.activities?.[0];
+    const departureDate = (leadFlight?.departureDate ?? leadFlight?.departureTime ?? '').slice(0, 10);
+    const flightBookingUrls = leadFlight && departureDate
+        ? flightUrls(leadFlight.origin, leadFlight.destination, departureDate)
+        : null;
+    const stayBookingUrls = leadStay ? accommodationUrls(leadStay.area, trip.destination) : null;
+    const restaurantUrls = leadRestaurant ? placeUrls(leadRestaurant.name, trip.destination) : null;
+    const activityBookingUrls = leadActivity ? activityUrls(leadActivity.name, trip.destination) : null;
+
+    return (
+        <section className="trip-package card">
+            <div className="trip-package__header">
+                <div>
+                    <p className="eyebrow">❄️ Honest package</p>
+                    <h3>Your estimated trip package</h3>
+                    <p className="muted-text">Flight, where to sleep, food, and local transport for one traveller — then book each part on the right site.</p>
+                </div>
+                <div className="trip-package__total">
+                    <span className="trip-package__total-label">Estimated total</span>
+                    <strong>{formatMoney(estimate.total, estimate.currency)}</strong>
+                    <span>{estimate.days} day{estimate.days !== 1 ? 's' : ''}</span>
+                </div>
+            </div>
+
+            <div className="trip-package__grid">
+                <div className="trip-package__line-item"><span>Flight</span><strong>{formatMoney(estimate.flight, estimate.currency)}</strong></div>
+                <div className="trip-package__line-item"><span>Where to sleep</span><strong>{formatMoney(estimate.stay, estimate.currency)}</strong></div>
+                <div className="trip-package__line-item"><span>Food</span><strong>{formatMoney(estimate.food, estimate.currency)}</strong></div>
+                <div className="trip-package__line-item"><span>Transport</span><strong>{formatMoney(estimate.transport, estimate.currency)}</strong></div>
+            </div>
+
+            <div className="notice-banner trip-package__note">
+                <span>This total is an honest estimate, not a fake one-click bundle. It uses the real-world flight price, lead stay pricing, food signals, and transport friction.</span>
+            </div>
+
+            <div className="trip-package__booking-groups">
+                {flightBookingUrls && (
+                    <div className="trip-package__booking-card">
+                        <h4>Book the flight</h4>
+                        <p className="muted-text">Direct Ryanair handoff first, then backup search links.</p>
+                        <div className="trip-booking-links">
+                            <ExternalLink href={flightBookingUrls.ryanair} label="Ryanair" />
+                            <ExternalLink href={flightBookingUrls.googleFlights} label="Google Flights" />
+                            <ExternalLink href={flightBookingUrls.skyscanner} label="Skyscanner" />
+                        </div>
+                    </div>
+                )}
+                {stayBookingUrls && (
+                    <div className="trip-package__booking-card">
+                        <h4>Book where to sleep</h4>
+                        <p className="muted-text">Lead stay area: {leadStay?.area}</p>
+                        <div className="trip-booking-links">
+                            <ExternalLink href={stayBookingUrls.booking} label="Booking.com" />
+                            <ExternalLink href={stayBookingUrls.airbnb} label="Airbnb" />
+                            <ExternalLink href={stayBookingUrls.hostelworld} label="Hostelworld" />
+                        </div>
+                    </div>
+                )}
+                {(restaurantUrls || activityBookingUrls) && (
+                    <div className="trip-package__booking-card">
+                        <h4>Book the rest</h4>
+                        <p className="muted-text">Use the recommended places and tours after the package total looks right.</p>
+                        <div className="trip-booking-links">
+                            {restaurantUrls && <ExternalLink href={restaurantUrls.tripadvisor} label="Restaurants" />}
+                            {activityBookingUrls && <ExternalLink href={activityBookingUrls.getYourGuide} label="Activities" />}
+                            {restaurantUrls && <ExternalLink href={restaurantUrls.googleMaps} label="Maps" />}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </section>
+    );
+};
 
 /* ─── Tab Content Components ───────────────────────────────────────────────── */
 
@@ -179,7 +377,9 @@ const OverviewTab: React.FC<{ trip: TripSuggestion }> = ({ trip }) => {
 };
 
 const RestaurantsTab: React.FC<{ restaurants: Restaurant[]; destination?: string }> = ({ restaurants, destination }) => (
-    <div className="trip-tab-content"><div className="trip-restaurants">{restaurants.map((r, i) => {
+    <div className="trip-tab-content stack-md">
+        <RecommendationCountWarning count={restaurants.length} noun="restaurant recommendations" />
+        <div className="trip-restaurants">{restaurants.map((r, i) => {
         const urls = placeUrls(r.name, destination);
         const price = extractPrice(r.priceRange) ?? r.priceRange;
         return (
@@ -198,7 +398,8 @@ const RestaurantsTab: React.FC<{ restaurants: Restaurant[]; destination?: string
             </div>
         </article>
         );
-    })}</div></div>
+    })}</div>
+    </div>
 );
 
 const ActivitiesTab: React.FC<{ activities: Activity[]; destination?: string }> = ({ activities, destination }) => (
@@ -233,7 +434,9 @@ const ActivitiesTab: React.FC<{ activities: Activity[]; destination?: string }> 
 );
 
 const StayTab: React.FC<{ accommodation: AccommodationOption[]; destination?: string }> = ({ accommodation, destination }) => (
-    <div className="trip-tab-content"><div className="trip-accommodation">{accommodation.map((a, i) => {
+    <div className="trip-tab-content stack-md">
+        <RecommendationCountWarning count={accommodation.length} noun="stay recommendations" />
+        <div className="trip-accommodation">{accommodation.map((a, i) => {
         const urls = accommodationUrls(a.area, destination);
         return (
         <article key={i} className="trip-accommodation-card card card--hoverable">
@@ -251,7 +454,8 @@ const StayTab: React.FC<{ accommodation: AccommodationOption[]; destination?: st
             </div>
         </article>
         );
-    })}</div></div>
+    })}</div>
+    </div>
 );
 
 /* ─── Logistics Itinerary Tab ──────────────────────────────────────────────── */
@@ -399,15 +603,22 @@ interface TripGuideProps {
     diagnostics?: ApiDiagnostics | null;
     heroTitle?: string;
     dailyBudget?: number;
+    days?: number;
+    preferredTransport?: PreferredTransport;
 }
 
-export const TripGuide: React.FC<TripGuideProps> = ({ trip, diagnostics, heroTitle, dailyBudget }) => {
+export const TripGuide: React.FC<TripGuideProps> = ({ trip, diagnostics, heroTitle, dailyBudget, days, preferredTransport }) => {
     const [activeTab, setActiveTab] = useState<TripTab>('overview');
     const hasRestaurants = (trip.restaurants?.length ?? 0) > 0;
     const hasActivities = (trip.activities?.length ?? 0) > 0;
     const hasStay = (trip.accommodation?.length ?? 0) > 0;
     const hasItinerary = (trip.dayItinerary?.length ?? 0) > 0;
     const hasStructured = hasRestaurants || hasActivities || hasStay || hasItinerary;
+    const tripDays = days ?? trip.dayItinerary?.length ?? 4;
+    const tabLabels: Partial<Record<TripTab, string>> = {
+        restaurants: hasRestaurants ? `Restaurants (${trip.restaurants?.length ?? 0})` : 'Restaurants',
+        stay: hasStay ? `Where to Stay (${trip.accommodation?.length ?? 0})` : 'Where to Stay',
+    };
 
     // Auto-select itinerary tab when available (most valuable)
     useEffect(() => {
@@ -438,6 +649,9 @@ export const TripGuide: React.FC<TripGuideProps> = ({ trip, diagnostics, heroTit
                     )}
                 </div>
             </div>
+            <div className="trip-guide__body trip-guide__body--package">
+                <PackageSummary trip={trip} days={tripDays} dailyBudget={dailyBudget} preferredTransport={preferredTransport} />
+            </div>
             {hasStructured && (
                 <nav className="trip-tabs">
                     {TRIP_TABS.map((tab) => {
@@ -447,7 +661,7 @@ export const TripGuide: React.FC<TripGuideProps> = ({ trip, diagnostics, heroTit
                         if (tab.key === 'itinerary' && !hasItinerary) return null;
                         return (
                             <button key={tab.key} type="button" className={`trip-tab ${activeTab === tab.key ? 'trip-tab--active' : ''}`} onClick={() => setActiveTab(tab.key)}>
-                                <span>{tab.emoji}</span> {tab.label}
+                                <span>{tab.emoji}</span> {tabLabels[tab.key] ?? tab.label}
                             </button>
                         );
                     })}

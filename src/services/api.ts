@@ -328,6 +328,20 @@ export interface TripSuggestion {
     rawText?: string;
 }
 
+type GenericRecord = Record<string, unknown>;
+
+interface RawTripSuggestion extends Omit<Partial<TripSuggestion>, 'restaurants' | 'accommodation'> {
+    restaurants?: unknown;
+    restaurantRecommendations?: unknown;
+    recommendedRestaurants?: unknown;
+    foodSpots?: unknown;
+    accommodation?: unknown;
+    hotels?: unknown;
+    hotelRecommendations?: unknown;
+    stays?: unknown;
+    stayOptions?: unknown;
+}
+
 export interface Neighborhood {
     name: string;
     vibe: string;
@@ -356,6 +370,122 @@ export interface AccommodationOption {
     pricePerNight: string;
     tip: string;
 }
+
+const asRecord = (value: unknown): GenericRecord | null => (
+    typeof value === 'object' && value !== null ? value as GenericRecord : null
+);
+
+const asString = (value: unknown): string => {
+    if (typeof value === 'string') {
+        return value.trim();
+    }
+
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        return String(value);
+    }
+
+    return '';
+};
+
+const asStringArray = (value: unknown): string[] => (
+    Array.isArray(value)
+        ? value.map((item) => asString(item)).filter(Boolean)
+        : []
+);
+
+const asArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
+
+const dedupeBy = <T,>(items: T[], getKey: (item: T) => string): T[] => {
+    const seen = new Set<string>();
+
+    return items.filter((item) => {
+        const key = getKey(item).trim().toLowerCase();
+        if (!key || seen.has(key)) {
+            return false;
+        }
+
+        seen.add(key);
+        return true;
+    });
+};
+
+const normalizeRestaurant = (value: unknown): Restaurant | null => {
+    if (typeof value === 'string') {
+        const name = value.trim();
+        return name ? { name, cuisine: 'Recommended', priceRange: 'Varies', mustTry: 'Ask the locals for the signature dish.', tip: '' } : null;
+    }
+
+    const record = asRecord(value);
+    if (!record) {
+        return null;
+    }
+
+    const name = asString(record.name ?? record.title ?? record.restaurantName ?? record.place);
+    if (!name) {
+        return null;
+    }
+
+    return {
+        name,
+        cuisine: asString(record.cuisine ?? record.category ?? record.style ?? record.type) || 'Recommended',
+        priceRange: asString(record.priceRange ?? record.price ?? record.priceLevel ?? record.price_level ?? record.budget) || 'Varies',
+        mustTry: asString(record.mustTry ?? record.signatureDish ?? record.highlight ?? record.recommendation) || 'House specialty',
+        tip: asString(record.tip ?? record.note ?? record.reason ?? record.whyGo),
+    };
+};
+
+const normalizeAccommodation = (value: unknown): AccommodationOption | null => {
+    if (typeof value === 'string') {
+        const area = value.trim();
+        return area ? { type: 'Stay', area, pricePerNight: 'Varies', tip: '' } : null;
+    }
+
+    const record = asRecord(value);
+    if (!record) {
+        return null;
+    }
+
+    const area = asString(record.area ?? record.neighborhood ?? record.district ?? record.name ?? record.hotelName ?? record.title);
+    if (!area) {
+        return null;
+    }
+
+    return {
+        type: asString(record.type ?? record.category ?? record.accommodationType ?? record.kind) || 'Stay',
+        area,
+        pricePerNight: asString(record.pricePerNight ?? record.price ?? record.nightlyRate ?? record.priceRange ?? record.budget) || 'Varies',
+        tip: asString(record.tip ?? record.note ?? record.reason ?? record.whyStay),
+    };
+};
+
+const normalizeTripSuggestion = (value: RawTripSuggestion, fallback: { origin: string; destination: string }): TripSuggestion => {
+    const restaurants = dedupeBy(
+        [value.restaurants, value.restaurantRecommendations, value.recommendedRestaurants, value.foodSpots]
+            .flatMap((items) => asArray(items))
+            .map(normalizeRestaurant)
+            .filter((item): item is Restaurant => Boolean(item)),
+        (item) => item.name,
+    );
+
+    const accommodation = dedupeBy(
+        [value.accommodation, value.hotels, value.hotelRecommendations, value.stays, value.stayOptions]
+            .flatMap((items) => asArray(items))
+            .map(normalizeAccommodation)
+            .filter((item): item is AccommodationOption => Boolean(item)),
+        (item) => `${item.type}:${item.area}`,
+    );
+
+    return {
+        ...value,
+        origin: asString(value.origin) || fallback.origin,
+        destination: asString(value.destination) || fallback.destination,
+        restaurants,
+        accommodation,
+        packingTips: asStringArray(value.packingTips),
+        localTips: asStringArray(value.localTips),
+        highlights: asStringArray(value.highlights),
+    };
+};
 
 export interface DayPlan {
     day: number;
@@ -635,7 +765,7 @@ export const fetchTripSuggestion = async (params: TripSuggestParams): Promise<Tr
 
     const contentType = response.headers.get('content-type') ?? '';
     if (contentType.includes('application/json')) {
-        const data = (await response.json()) as TripSuggestion | string;
+        const data = (await response.json()) as RawTripSuggestion | string;
         if (typeof data === 'string') {
             return {
                 suggestion: { origin: params.origin, destination: params.destination, suggestion: data, rawText: data },
@@ -643,7 +773,7 @@ export const fetchTripSuggestion = async (params: TripSuggestParams): Promise<Tr
             };
         }
         return {
-            suggestion: { ...data, origin: params.origin, destination: params.destination },
+            suggestion: normalizeTripSuggestion(data, { origin: params.origin, destination: params.destination }),
             diagnostics,
         };
     }
@@ -689,9 +819,9 @@ export const planTrip = async (params: TripPlanParams): Promise<TripSuggestionRe
     );
     await ensureOk(response, diagnostics, 'Trip plan failed');
 
-    const data = (await response.json()) as TripSuggestion;
+    const data = (await response.json()) as RawTripSuggestion;
     return {
-        suggestion: { ...data, destination: params.destination },
+        suggestion: normalizeTripSuggestion(data, { origin: params.origin ?? '', destination: params.destination }),
         diagnostics,
     };
 };
@@ -725,9 +855,9 @@ export const generateItinerary = async (params: TripItineraryRequest): Promise<T
     );
     await ensureOk(response, diagnostics, 'Itinerary generation failed');
 
-    const data = (await response.json()) as TripSuggestion;
+    const data = (await response.json()) as RawTripSuggestion;
     return {
-        suggestion: { ...data, destination: params.destination },
+        suggestion: normalizeTripSuggestion(data, { origin: params.origin ?? '', destination: params.destination }),
         diagnostics,
     };
 };

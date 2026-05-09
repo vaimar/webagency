@@ -12,6 +12,23 @@ import { ApiDiagnostics, ApiRequestError, planTrip, TripSuggestion } from './ser
 
 type FormPhase = 'destination' | 'preferences' | 'generating' | 'result';
 
+const accommodationPreferenceFromBudget = (dailyBudget: number): string => {
+    if (dailyBudget <= 60) return 'Budget';
+    if (dailyBudget >= 180) return 'Luxury';
+    return 'Mid-range';
+};
+
+const buildRecommendationNotes = (prefs: SmartPreferencesResult, days: number): string => (
+    [
+        `Return at least 10 restaurant recommendations and at least 10 accommodation recommendations whenever the backend has enough data.`,
+        `Rank them for this traveller profile first, not for generic tourism coverage.`,
+        `Budget anchor: about €${prefs.dailyBudget} per day for ${days} days.`,
+        `Transport anchor: ${prefs.preferredTransport.replace(/_/g, ' ')}.`,
+        `Pace anchor: ${prefs.pace}.`,
+        `Prefer practical, high-signal options over tourist-trap filler.`,
+    ].join(' ')
+);
+
 const TravelForm: React.FC = () => {
     const { profile, isAuthenticated, savePreferences, showToast } = useProfile();
     const [destination, setDestination] = useState('');
@@ -57,13 +74,17 @@ const TravelForm: React.FC = () => {
         };
 
         try {
+            const recommendationNotes = buildRecommendationNotes(prefs, days);
             const result = await planTrip({
                 destination: destination.trim(),
                 duration: days,
                 budget: prefs.dailyBudget * days,
+                accommodation: accommodationPreferenceFromBudget(prefs.dailyBudget),
                 pace: prefs.pace,
                 preferredTransport: prefs.preferredTransport,
                 foodPreferences: baseProfile.foodPreferences,
+                restaurantTips: 'Return at least 10 profile-matched restaurant recommendations with honest price range guidance when possible.',
+                notes: recommendationNotes,
                 provider: baseProfile.preferredAiProvider ?? undefined,
             });
             setTripResult(result.suggestion);
@@ -217,6 +238,8 @@ const TravelForm: React.FC = () => {
                             diagnostics={resultDiagnostics}
                             heroTitle={`Your ${days}-Day ${destination} Trip`}
                             dailyBudget={activePrefs.dailyBudget}
+                            days={days}
+                            preferredTransport={activePrefs.preferredTransport}
                         />
                         <div style={{ textAlign: 'center', marginTop: '32px' }}>
                             <button type="button" className="button button--secondary" onClick={reset}>

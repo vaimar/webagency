@@ -1769,6 +1769,119 @@ input[type="range"]::-webkit-slider-thumb:hover {
     padding: var(--space-6);
 }
 
+.trip-guide__body--package {
+    padding-bottom: 0;
+}
+
+.trip-package {
+    display: grid;
+    gap: var(--space-5);
+    padding: var(--space-5);
+    background: linear-gradient(180deg, #091423 0%, #102033 100%);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    color: #e2e8f0;
+}
+
+.trip-package__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+}
+
+.trip-package__header h3 {
+    color: #f8fafc;
+    margin-top: var(--space-1);
+}
+
+.trip-package__header .muted-text {
+    color: #cbd5e1;
+}
+
+.trip-package__total {
+    display: grid;
+    gap: 4px;
+    min-width: 180px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: rgba(15, 23, 42, 0.48);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.trip-package__total-label {
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #93c5fd;
+}
+
+.trip-package__total strong {
+    font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+    font-size: 1.9rem;
+    color: #f8fafc;
+}
+
+.trip-package__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--space-3);
+}
+
+.trip-package__line-item {
+    display: grid;
+    gap: 6px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: rgba(15, 23, 42, 0.42);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.trip-package__line-item span {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.trip-package__line-item strong {
+    font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+    color: #f8fafc;
+    font-size: 1.05rem;
+}
+
+.trip-package__note {
+    background: rgba(125, 211, 252, 0.08);
+    color: #e0f2fe;
+    border-left-color: #38bdf8;
+}
+
+.trip-package__booking-groups {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: var(--space-4);
+}
+
+.trip-package__booking-card {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border-radius: 18px;
+    background: rgba(15, 23, 42, 0.42);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.trip-package__booking-card h4 {
+    color: #f8fafc;
+    font-size: 1rem;
+}
+
+.trip-package__booking-card .muted-text {
+    color: #cbd5e1;
+    font-size: 0.85rem;
+}
+
 .trip-tab-content {
     animation: fadeInUp 0.3s ease;
 }

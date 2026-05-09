@@ -265,7 +265,7 @@ const Home: React.FC = () => {
                 <div className="hero-card__content" style={{ maxWidth: '100%' }}>
                     <p className="eyebrow eyebrow--light"><FontAwesomeIcon icon={faPlane} style={{ marginRight: '8px' }} />Trip Discovery</p>
                     <h1>Start with the flight. Trust the real route.</h1>
-                    <p className="hero-card__lede">Live DUB routes are refreshed on arrival. Pick a real airport pair, choose your outbound and return dates, and only then run the search. No flight data means no trip fiction.</p>
+                    <p className="hero-card__lede">Live DUB routes are refreshed on arrival. Flight search stays flight-only now. Neighborhoods, restaurants, and activity combos only load if you explicitly ask for the guide after flights exist.</p>
                     {selectedSuggestedFare && (
                         <div className="selected-fare-pill" role="status">
                             <span className="selected-fare-pill__label">Selected fare</span>
@@ -339,7 +339,7 @@ const Home: React.FC = () => {
                         <p className="muted-text" style={{ marginTop: '10px', fontSize: '0.82rem' }}>
                             {originAirport && destinationAirport
                                 ? <>Route ready: <strong>{originAirport.city}</strong> → <strong>{destinationAirport.city}</strong>, <strong>{state.departureDate || 'choose departure'}</strong> to <strong>{state.returnDate || 'choose return'}</strong>.</>
-                                : <>Choose an origin, a destination, and both trip dates. Suggested fares below can fill the full box in one click.</>}
+                                : <>Choose any Ryanair-style airport pair and both trip dates. Suggested fares below can fill the full box in one click.</>}
                         </p>
                     </div>
                 </div>
@@ -350,7 +350,7 @@ const Home: React.FC = () => {
                     <div>
                         <p className="eyebrow">❄️ Frozen Summer discovery board</p>
                         <h2>Live DUB fares that populate the search box.</h2>
-                        <p className="muted-text">These cards are built from the backend refresh flow, then mapped into truth-first fare cards. Click one to fill origin, destination, outbound date, and return date.</p>
+                        <p className="muted-text">These cards are a lighter live subset so the homepage stays fast. The airport selectors above now cover a much broader Ryanair-style list than the landing board itself.</p>
                     </div>
                 </div>
                 {isLoadingLanding ? (
@@ -417,6 +417,21 @@ const Home: React.FC = () => {
             )}
 
             {tripSuggestion && !isLoadingSuggestion && <TripGuide trip={tripSuggestion} diagnostics={suggestionDiagnostics} />}
+
+            {flights.length > 0 && !tripSuggestion && !isLoadingSuggestion && !suggestionError && (
+                <section className="card section-card stack-md">
+                    <div className="section-card__header section-card__header--plain">
+                        <div>
+                            <p className="eyebrow">🧊 Guide on demand</p>
+                            <h2>Flights are loaded. The AI guide is optional.</h2>
+                            <p className="muted-text">Use this only if you want the extra neighborhood, restaurant, and activity layer after the flight truth is already clear.</p>
+                        </div>
+                        <button type="button" className="button button--secondary" onClick={() => void retrySuggestion()}>
+                            Build honest guide
+                        </button>
+                    </div>
+                </section>
+            )}
 
             {(isSearchingFlights || flights.length > 0 || Boolean(noFlightsMessage)) && (
                 <section className="stack-lg">

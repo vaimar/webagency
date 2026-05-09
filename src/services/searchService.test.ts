@@ -27,7 +27,7 @@ describe('searchFlightFirstRoute', () => {
         jest.resetAllMocks();
     });
 
-    it('refreshes flights first, sorts by realWorldEntryPrice, then fetches the trip guide', async () => {
+    it('refreshes flights first and returns flight truth without loading the AI guide by default', async () => {
         mockedRefreshFlights.mockResolvedValue({
             diagnostics: baseDiagnostics,
             message: 'Flights refresh started',
@@ -61,10 +61,33 @@ describe('searchFlightFirstRoute', () => {
 
         expect(mockedRefreshFlights).toHaveBeenCalledWith({ origin: 'DUB', destination: 'BVA', refreshFlightsFirst: true, date: '2026-06-01' });
         expect(mockedSearchFlights).toHaveBeenCalledWith({ origin: 'DUB', destination: 'BVA', refreshFlightsFirst: true, date: '2026-06-01' });
-        expect(mockedFetchTripSuggestion).toHaveBeenCalledWith({ origin: 'DUB', destination: 'BVA', provider: undefined });
+        expect(mockedFetchTripSuggestion).not.toHaveBeenCalled();
         expect(result.flights.map((flight) => flight.antiCauchemar?.realWorldEntryPrice)).toEqual([132, 141]);
-        expect(result.tripSuggestion?.summary).toBe('Cold, honest weekend.');
+        expect(result.tripSuggestion).toBeNull();
         expect(result.noFlightsMessage).toBeNull();
+    });
+
+    it('loads the AI guide only when explicitly requested', async () => {
+        mockedSearchFlights.mockResolvedValue({
+            diagnostics: baseDiagnostics,
+            flights: [
+                {
+                    origin: 'DUB',
+                    destination: 'BVA',
+                    price: 99,
+                    antiCauchemar: { realWorldEntryPrice: 141, theCatch: 'Late arrival' },
+                },
+            ],
+        });
+        mockedFetchTripSuggestion.mockResolvedValue({
+            diagnostics: { ...baseDiagnostics, url: 'https://slumber-production.up.railway.app/api/trips/suggestions' },
+            suggestion: { origin: 'DUB', destination: 'BVA', summary: 'Cold, honest weekend.' },
+        });
+
+        const result = await searchFlightFirstRoute({ origin: 'DUB', destination: 'BVA', includeSuggestion: true });
+
+        expect(mockedFetchTripSuggestion).toHaveBeenCalledWith({ origin: 'DUB', destination: 'BVA', provider: undefined });
+        expect(result.tripSuggestion?.summary).toBe('Cold, honest weekend.');
     });
 
     it('stops the flow when no flights are returned', async () => {

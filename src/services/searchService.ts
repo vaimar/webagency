@@ -12,6 +12,7 @@ import {
 export interface FlightFirstSearchParams extends FlightSearchParams {
     refreshFlightsFirst?: boolean;
     provider?: string;
+    includeSuggestion?: boolean;
 }
 
 export interface FlightFirstSearchResult {
@@ -86,6 +87,18 @@ export const searchFlightFirstRoute = async (params: FlightFirstSearchParams): P
             suggestionDiagnostics: null,
             suggestionError: null,
             noFlightsMessage: NO_FLIGHT_NO_TRIP_MESSAGE,
+        };
+    }
+
+    if (!params.includeSuggestion) {
+        return {
+            flights: flightResult.flights,
+            flightDiagnostics: flightResult.diagnostics,
+            flightSource: flightResult.source,
+            tripSuggestion: null,
+            suggestionDiagnostics: null,
+            suggestionError: null,
+            noFlightsMessage: null,
         };
     }
 
