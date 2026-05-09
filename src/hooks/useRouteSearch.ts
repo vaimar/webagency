@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useProfile } from '../ProfileContext';
+import { normalizeAirportCode } from '../data/airportMetadata';
 import {
     ApiDiagnostics,
     ApiRequestError,
@@ -72,7 +73,7 @@ const buildSuggestionErrorMessage = (error: ApiRequestError): string => {
 
 export const useRouteSearch = (): UseRouteSearchResult => {
     const { showToast } = useProfile();
-    const [state, setState] = useState<RouteSearchState>({ origin: 'DUB', destination: 'PAR' });
+    const [state, setState] = useState<RouteSearchState>({ origin: 'DUB', destination: 'BVA' });
     const [flights, setFlights] = useState<FlightAvailable[]>([]);
     const [tripSuggestion, setTripSuggestion] = useState<TripSuggestion | null>(null);
     const [isSearchingFlights, setIsSearchingFlights] = useState(false);
@@ -85,8 +86,8 @@ export const useRouteSearch = (): UseRouteSearchResult => {
     const [suggestionDiagnostics, setSuggestionDiagnostics] = useState<ApiDiagnostics | null>(null);
     const [hasSearched, setHasSearched] = useState(false);
 
-    const setOrigin = useCallback((value: string) => setState((prev) => ({ ...prev, origin: value.toUpperCase() })), []);
-    const setDestination = useCallback((value: string) => setState((prev) => ({ ...prev, destination: value.toUpperCase() })), []);
+    const setOrigin = useCallback((value: string) => setState((prev) => ({ ...prev, origin: normalizeAirportCode(value) })), []);
+    const setDestination = useCallback((value: string) => setState((prev) => ({ ...prev, destination: normalizeAirportCode(value) })), []);
 
     const searchRoute = useCallback(async (options?: { refreshFlights?: boolean; date?: string }) => {
         if (!state.origin || !state.destination) return;

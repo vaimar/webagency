@@ -1,4 +1,5 @@
 import { MOCK_FLIGHT_DESTINATIONS } from '../data/mockDestinations';
+import { normalizeAirportCode } from '../data/airportMetadata';
 
 export interface FlightDestination {
     type: string;
@@ -37,7 +38,7 @@ const normalizeDestination = (destination: FlightDestination, origin: string): F
 });
 
 export const fetchFlightDestinations = async (params: FlightSearchParams): Promise<FlightSearchResult> => {
-    const normalizedOrigin = params.origin.trim().toUpperCase() || 'PAR';
+    const normalizedOrigin = normalizeAirportCode(params.origin) || 'DUB';
 
     const destinations = (MOCK_FLIGHT_DESTINATIONS as FlightDestination[])
         .filter((item) => Number(item.price.total) <= params.maxPrice)

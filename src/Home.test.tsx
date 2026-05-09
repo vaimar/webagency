@@ -17,7 +17,7 @@ const diagnostics = {
 };
 
 const createRouteSearchState = (overrides: Partial<ReturnType<typeof useRouteSearch>> = {}): ReturnType<typeof useRouteSearch> => ({
-    state: { origin: 'DUB', destination: 'PAR' },
+    state: { origin: 'DUB', destination: 'BVA' },
     flights: [],
     tripSuggestion: null,
     isSearchingFlights: false,
@@ -42,17 +42,18 @@ describe('Home', () => {
         jest.resetAllMocks();
     });
 
-    it('refreshes live DUB to PAR flights on mount', () => {
+    it('refreshes live DUB to BVA flights on mount', () => {
         const searchRoute = jest.fn().mockResolvedValue(undefined);
         mockedUseRouteSearch.mockReturnValue(createRouteSearchState({ searchRoute }));
 
         render(<Home />);
 
         expect(searchRoute).toHaveBeenCalledWith({ refreshFlights: true, date: '2026-06-01' });
-        expect(screen.getByRole('heading', { name: /start with the flight\. trust the real price\./i })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /start with the flight\. trust the real route\./i })).toBeInTheDocument();
+        expect(screen.getAllByText(/paris beauvais/i).length).toBeGreaterThan(0);
     });
 
-    it('shows the honest price and catch before any softer marketing copy', () => {
+    it('shows the honest price with the actual ryanair airport label for paris routes', () => {
         mockedUseRouteSearch.mockReturnValue(createRouteSearchState({
             flights: [
                 {
@@ -79,6 +80,8 @@ describe('Home', () => {
 
         expect(screen.getByText((content, element) => content === '€142' && element?.classList.contains('flight-card__price') === true)).toBeInTheDocument();
         expect(screen.getAllByText(/real-world entry price/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/paris beauvais/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/france/i).length).toBeGreaterThan(0);
         expect(screen.getByText(/late arrival means the airport transfer is usually a taxi after midnight\./i)).toBeInTheDocument();
         expect(screen.getByText((content) => content.includes('Base fare:') && content.includes('99'))).toBeInTheDocument();
     });

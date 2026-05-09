@@ -32,7 +32,7 @@ describe('searchFlightFirstRoute', () => {
             diagnostics: baseDiagnostics,
             message: 'Flights refresh started',
             origin: 'DUB',
-            destination: 'PAR',
+            destination: 'BVA',
             date: '2026-06-01',
         });
         mockedSearchFlights.mockResolvedValue({
@@ -40,13 +40,13 @@ describe('searchFlightFirstRoute', () => {
             flights: [
                 {
                     origin: 'DUB',
-                    destination: 'PAR',
+                    destination: 'BVA',
                     price: 99,
                     antiCauchemar: { realWorldEntryPrice: 141, theCatch: 'Late arrival' },
                 },
                 {
                     origin: 'DUB',
-                    destination: 'PAR',
+                    destination: 'BVA',
                     price: 109,
                     antiCauchemar: { realWorldEntryPrice: 132, theCatch: 'Early shuttle' },
                 },
@@ -54,14 +54,14 @@ describe('searchFlightFirstRoute', () => {
         });
         mockedFetchTripSuggestion.mockResolvedValue({
             diagnostics: { ...baseDiagnostics, url: 'https://slumber-production.up.railway.app/api/trips/suggestions' },
-            suggestion: { origin: 'DUB', destination: 'PAR', summary: 'Cold, honest weekend.' },
+            suggestion: { origin: 'DUB', destination: 'BVA', summary: 'Cold, honest weekend.' },
         });
 
-        const result = await searchFlightFirstRoute({ origin: 'DUB', destination: 'PAR', refreshFlightsFirst: true, date: '2026-06-01' });
+        const result = await searchFlightFirstRoute({ origin: 'DUB', destination: 'BVA', refreshFlightsFirst: true, date: '2026-06-01' });
 
-        expect(mockedRefreshFlights).toHaveBeenCalledWith({ origin: 'DUB', destination: 'PAR', refreshFlightsFirst: true, date: '2026-06-01' });
-        expect(mockedSearchFlights).toHaveBeenCalledWith({ origin: 'DUB', destination: 'PAR', refreshFlightsFirst: true, date: '2026-06-01' });
-        expect(mockedFetchTripSuggestion).toHaveBeenCalledWith({ origin: 'DUB', destination: 'PAR', provider: undefined });
+        expect(mockedRefreshFlights).toHaveBeenCalledWith({ origin: 'DUB', destination: 'BVA', refreshFlightsFirst: true, date: '2026-06-01' });
+        expect(mockedSearchFlights).toHaveBeenCalledWith({ origin: 'DUB', destination: 'BVA', refreshFlightsFirst: true, date: '2026-06-01' });
+        expect(mockedFetchTripSuggestion).toHaveBeenCalledWith({ origin: 'DUB', destination: 'BVA', provider: undefined });
         expect(result.flights.map((flight) => flight.antiCauchemar?.realWorldEntryPrice)).toEqual([132, 141]);
         expect(result.tripSuggestion?.summary).toBe('Cold, honest weekend.');
         expect(result.noFlightsMessage).toBeNull();
@@ -73,9 +73,9 @@ describe('searchFlightFirstRoute', () => {
             flights: [],
         });
 
-        const result = await searchFlightFirstRoute({ origin: 'DUB', destination: 'PAR' });
+        const result = await searchFlightFirstRoute({ origin: 'DUB', destination: 'BVA' });
 
-        expect(mockedSearchFlights).toHaveBeenCalledWith({ origin: 'DUB', destination: 'PAR' });
+        expect(mockedSearchFlights).toHaveBeenCalledWith({ origin: 'DUB', destination: 'BVA' });
         expect(mockedFetchTripSuggestion).not.toHaveBeenCalled();
         expect(result.tripSuggestion).toBeNull();
         expect(result.noFlightsMessage).toBe(NO_FLIGHT_NO_TRIP_MESSAGE);

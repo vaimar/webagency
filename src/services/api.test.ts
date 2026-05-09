@@ -12,7 +12,7 @@ describe('refreshFlights', () => {
             json: async () => ({
                 message: 'Flights refresh started',
                 origin: 'DUB',
-                destination: 'PAR',
+                destination: 'BVA',
                 date: '2026-06-01',
             }),
             text: async () => '',
@@ -22,12 +22,12 @@ describe('refreshFlights', () => {
 
         const result = await refreshFlights({
             origin: 'DUB',
-            destination: 'PAR',
+            destination: 'BVA',
             date: '2026-06-01',
         });
 
         expect(fetchMock).toHaveBeenCalledWith(
-            'https://slumber-production.up.railway.app/api/flights/refresh?origin=DUB&destination=PAR&date=2026-06-01',
+            'https://slumber-production.up.railway.app/api/flights/refresh?origin=DUB&destination=BVA&date=2026-06-01',
             expect.objectContaining({ method: 'POST' }),
         );
         expect(result.diagnostics.status).toBe(202);

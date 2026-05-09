@@ -1,6 +1,25 @@
 export const MOCK_FLIGHT_DESTINATIONS = [
     {
         type: 'flight-destination',
+        origin: 'DUB',
+        destination: 'BVA',
+        departureDate: '2026-06-01',
+        returnDate: '2026-06-05',
+        price: { total: '69.00', currency: 'EUR' },
+        antiCauchemar: {
+            realWorldEntryPrice: 112,
+            hiddenCostPenalty: 28,
+            theCatch: 'This is the Ryanair Paris truth: Beauvais is outside the city and late transfers can erase the cheap headline fare.',
+            logisticVerdict: 'A sharp entry price only stays honest if you budget the Beauvais coach or a late taxi.',
+            currency: 'EUR',
+        },
+        links: {
+            flightDates: 'https://example.com/flights/paris-beauvais/dates',
+            flightOffers: 'https://example.com/flights/paris-beauvais/offers',
+        },
+    },
+    {
+        type: 'flight-destination',
         origin: 'PAR',
         destination: 'LIS',
         departureDate: '2026-06-08',
