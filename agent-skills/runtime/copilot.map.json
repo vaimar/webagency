@@ -1,0 +1,15 @@
+{
+  "runtime": "copilot",
+  "sourceManifest": "../manifest.json",
+  "instructionFile": "../../.github/copilot-instructions.md",
+  "promptDirectory": "../../.github/prompts",
+  "mappings": {
+    "slumber.senior-ui-expert": ".github/prompts/senior-ui-expert.prompt.md",
+    "slumber.travel-auditor": ".github/prompts/travel-auditor.prompt.md",
+    "slumber.flight-integrity": ".github/prompts/flight-integrity.prompt.md",
+    "slumber.legend-architect": ".github/prompts/legend-architect.prompt.md",
+    "slumber.agency-liaison": ".github/prompts/agency-liaison.prompt.md",
+    "slumber.flight-first-frontend": ".github/prompts/flight-first-frontend.prompt.md",
+    "slumber.package-booking": ".github/prompts/package-booking.prompt.md"
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 1,
+  "project": {
+    "id": "slumber-webagency",
+    "name": "Slumber Travel WebAgency Frontend",
+    "repoRoot": "/Users/vaimar/src/apps/webagency",
+    "primaryGuide": "AGENTS.md",
+    "copilotGuide": ".github/copilot-instructions.md"
+  },
+  "sharedRules": [
+    "agent-skills/shared/core-rules.md"
+  ],
+  "context": [
+    "agent-skills/context/frontend-surface.md",
+    "agent-skills/context/backend-contracts.md"
+  ],
+  "skills": [
+    {
+      "id": "slumber.senior-ui-expert",
+      "name": "Senior UI Expert",
+      "source": "agent-skills/skills/senior-ui-expert.md",
+      "tags": ["ui", "design-system", "frozen-summer", "truth-first"],
+      "wrapper": {
+        "load": ["agent-skills/context/frontend-surface.md"],
+        "claudeUsage": "for truth-first UI work, visual hierarchy, warning visibility, and Frozen Summer styling.",
+        "claudePrefer": [
+          "honest price hierarchy",
+          "dark crisp cards",
+          "minimal clutter",
+          "impossible-to-miss warning states"
+        ],
+        "copilotGoal": "enforce Frozen Summer, honest price hierarchy, and strong warning visibility."
+      }
+    },
+    {
+      "id": "slumber.travel-auditor",
+      "name": "Travel Auditor",
+      "source": "agent-skills/skills/travel-auditor.md",
+      "tags": ["auditing", "anti-cauchemar", "hidden-costs", "logistics"],
+      "wrapper": {
+        "load": ["agent-skills/context/backend-contracts.md"],
+        "claudeUsage": "for hidden-cost auditing, recommendation quality checks, and backend-limit honesty.",
+        "copilotGoal": "surface hidden costs, backend shortages, and logistics traps."
+      }
+    },
+    {
+      "id": "slumber.flight-integrity",
+      "name": "Flight Integrity",
+      "source": "agent-skills/skills/flight-integrity.md",
+      "tags": ["flights", "real-world-entry-price", "cache", "sorting"],
+      "wrapper": {
+        "load": ["agent-skills/context/backend-contracts.md"],
+        "claudeUsage": "when touching live flight refresh/search, cache honesty, or price ordering.",
+        "copilotGoal": "keep flight pricing, refresh flow, and honest sorting stable."
+      }
+    },
+    {
+      "id": "slumber.legend-architect",
+      "name": "Legend Architect",
+      "source": "agent-skills/skills/legend-architect.md",
+      "tags": ["itinerary", "content", "tone", "planner"],
+      "wrapper": {
+        "load": ["agent-skills/context/frontend-surface.md"],
+        "claudeUsage": "for itinerary content, neighborhood framing, and Frozen Summer narrative tone.",
+        "copilotGoal": "keep itinerary writing cold, useful, and neighborhood-driven."
+      }
+    },
+    {
+      "id": "slumber.agency-liaison",
+      "name": "Agency Liaison",
+      "source": "agent-skills/skills/agency-liaison.md",
+      "tags": ["client-explanation", "portfolio", "architecture"],
+      "wrapper": {
+        "load": [],
+        "claudeUsage": "for client-facing architecture summaries and professional explanations of the Slumber frontend.",
+        "copilotGoal": "explain the technical value of the Slumber frontend to clients and partners."
+      }
+    },
+    {
+      "id": "slumber.flight-first-frontend",
+      "name": "Flight-First Frontend",
+      "source": "agent-skills/skills/flight-first-frontend.md",
+      "tags": ["frontend", "search", "home", "route-search"],
+      "wrapper": {
+        "load": [
+          "agent-skills/context/frontend-surface.md",
+          "agent-skills/context/backend-contracts.md"
+        ],
+        "claudeUsage": "for Home search flow, selector coverage, and no-flight/no-trip enforcement.",
+        "copilotGoal": "keep route search flight-first and no-flight/no-trip."
+      }
+    },
+    {
+      "id": "slumber.package-booking",
+      "name": "Package Booking",
+      "source": "agent-skills/skills/package-booking.md",
+      "tags": ["planner", "package", "booking-links", "totals"],
+      "wrapper": {
+        "load": [
+          "agent-skills/context/frontend-surface.md",
+          "agent-skills/context/backend-contracts.md"
+        ],
+        "claudeUsage": "when editing planner totals, package summary tabs, booking links, and external booking handoff UX.",
+        "copilotGoal": "keep package totals honest and booking links explicit."
+      }
+    }
+  ]
+}
+

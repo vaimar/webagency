@@ -23,8 +23,11 @@
     "web-vitals": "^2.1.0"
   },
   "scripts": {
+    "audit:ryanair-destinations": "node scripts/audit-ryanair-destinations.mjs",
+    "resolve:ryanair-airports": "node scripts/resolve-ryanair-airport-candidates.mjs",
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "generate:agent-skills": "node scripts/generate-agent-wrappers.mjs",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },

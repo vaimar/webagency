@@ -366,10 +366,24 @@ export interface Activity {
 
 export interface AccommodationOption {
     type: string;
+    name?: string;
     area: string;
     pricePerNight: string;
     tip: string;
+    officialWebsiteUrl?: string;
 }
+
+const asHttpUrl = (value: unknown): string | undefined => {
+    const url = asString(value);
+    if (!url) return undefined;
+
+    try {
+        const parsed = new URL(url);
+        return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.toString() : undefined;
+    } catch {
+        return undefined;
+    }
+};
 
 const asRecord = (value: unknown): GenericRecord | null => (
     typeof value === 'object' && value !== null ? value as GenericRecord : null
@@ -437,7 +451,7 @@ const normalizeRestaurant = (value: unknown): Restaurant | null => {
 const normalizeAccommodation = (value: unknown): AccommodationOption | null => {
     if (typeof value === 'string') {
         const area = value.trim();
-        return area ? { type: 'Stay', area, pricePerNight: 'Varies', tip: '' } : null;
+        return area ? { type: 'Stay', name: area, area, pricePerNight: 'Varies', tip: '' } : null;
     }
 
     const record = asRecord(value);
@@ -445,16 +459,19 @@ const normalizeAccommodation = (value: unknown): AccommodationOption | null => {
         return null;
     }
 
-    const area = asString(record.area ?? record.neighborhood ?? record.district ?? record.name ?? record.hotelName ?? record.title);
+    const name = asString(record.name ?? record.hotelName ?? record.title ?? record.propertyName);
+    const area = asString(record.area ?? record.neighborhood ?? record.district ?? record.location ?? name);
     if (!area) {
         return null;
     }
 
     return {
         type: asString(record.type ?? record.category ?? record.accommodationType ?? record.kind) || 'Stay',
+        name: name || undefined,
         area,
         pricePerNight: asString(record.pricePerNight ?? record.price ?? record.nightlyRate ?? record.priceRange ?? record.budget) || 'Varies',
         tip: asString(record.tip ?? record.note ?? record.reason ?? record.whyStay),
+        officialWebsiteUrl: asHttpUrl(record.officialWebsiteUrl ?? record.officialUrl ?? record.websiteUrl ?? record.website),
     };
 };
 

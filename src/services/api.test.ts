@@ -60,6 +60,7 @@ describe('trip suggestion normalization', () => {
                     nightlyRate: `€${110 + index}`,
                     district: `Area ${index + 1}`,
                     whyStay: 'Fits the profile',
+                    officialUrl: `https://stay-${index + 1}.example.com`,
                 })),
             }),
             text: async () => '',
@@ -76,8 +77,10 @@ describe('trip suggestion normalization', () => {
             cuisine: 'Local',
         });
         expect(result.suggestion.accommodation?.[0]).toMatchObject({
+            name: 'Stay 1',
             area: 'Area 1',
             type: 'Mid-range',
+            officialWebsiteUrl: 'https://stay-1.example.com/',
         });
     });
 
@@ -102,6 +105,7 @@ describe('trip suggestion normalization', () => {
                     accommodationType: 'Boutique',
                     pricePerNight: `€${140 + index}`,
                     neighborhood: `Quarter ${index + 1}`,
+                    websiteUrl: `https://hotel-${index + 1}.example.com`,
                 })),
             }),
             text: async () => '',
@@ -120,6 +124,7 @@ describe('trip suggestion normalization', () => {
         expect(result.suggestion.accommodation).toHaveLength(10);
         expect(result.suggestion.restaurants?.[9]?.name).toBe('Food 10');
         expect(result.suggestion.accommodation?.[9]?.area).toBe('Quarter 10');
+        expect(result.suggestion.accommodation?.[9]?.officialWebsiteUrl).toBe('https://hotel-10.example.com/');
     });
 });
 

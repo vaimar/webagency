@@ -1,0 +1,14 @@
+{
+  "runtime": "claude",
+  "sourceManifest": "../manifest.json",
+  "wrapperIndex": "../../.claude/skills/skills-index.json",
+  "mappings": {
+    "slumber.senior-ui-expert": ".claude/skills/senior-ui-expert/SKILL.md",
+    "slumber.travel-auditor": ".claude/skills/travel-auditor/SKILL.md",
+    "slumber.flight-integrity": ".claude/skills/flight-integrity/SKILL.md",
+    "slumber.legend-architect": ".claude/skills/legend-architect/SKILL.md",
+    "slumber.agency-liaison": ".claude/skills/agency-liaison/SKILL.md",
+    "slumber.flight-first-frontend": ".claude/skills/flight-first-frontend/SKILL.md",
+    "slumber.package-booking": ".claude/skills/package-booking/SKILL.md"
+  }
+}

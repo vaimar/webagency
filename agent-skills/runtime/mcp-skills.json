@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "runtime": "custom-mcp-loader",
+  "project": "slumber-webagency",
+  "sharedRules": [
+    "agent-skills/shared/core-rules.md"
+  ],
+  "context": [
+    "agent-skills/context/frontend-surface.md",
+    "agent-skills/context/backend-contracts.md"
+  ],
+  "skills": [
+    {
+      "id": "slumber.senior-ui-expert",
+      "title": "Senior UI Expert",
+      "prompt": "agent-skills/skills/senior-ui-expert.md",
+      "wrappers": {
+        "claude": ".claude/skills/senior-ui-expert/SKILL.md",
+        "copilot": ".github/prompts/senior-ui-expert.prompt.md"
+      }
+    },
+    {
+      "id": "slumber.travel-auditor",
+      "title": "Travel Auditor",
+      "prompt": "agent-skills/skills/travel-auditor.md",
+      "wrappers": {
+        "claude": ".claude/skills/travel-auditor/SKILL.md",
+        "copilot": ".github/prompts/travel-auditor.prompt.md"
+      }
+    },
+    {
+      "id": "slumber.flight-integrity",
+      "title": "Flight Integrity",
+      "prompt": "agent-skills/skills/flight-integrity.md",
+      "wrappers": {
+        "claude": ".claude/skills/flight-integrity/SKILL.md",
+        "copilot": ".github/prompts/flight-integrity.prompt.md"
+      }
+    },
+    {
+      "id": "slumber.legend-architect",
+      "title": "Legend Architect",
+      "prompt": "agent-skills/skills/legend-architect.md",
+      "wrappers": {
+        "claude": ".claude/skills/legend-architect/SKILL.md",
+        "copilot": ".github/prompts/legend-architect.prompt.md"
+      }
+    },
+    {
+      "id": "slumber.agency-liaison",
+      "title": "Agency Liaison",
+      "prompt": "agent-skills/skills/agency-liaison.md",
+      "wrappers": {
+        "claude": ".claude/skills/agency-liaison/SKILL.md",
+        "copilot": ".github/prompts/agency-liaison.prompt.md"
+      }
+    },
+    {
+      "id": "slumber.flight-first-frontend",
+      "title": "Flight-First Frontend",
+      "prompt": "agent-skills/skills/flight-first-frontend.md",
+      "wrappers": {
+        "claude": ".claude/skills/flight-first-frontend/SKILL.md",
+        "copilot": ".github/prompts/flight-first-frontend.prompt.md"
+      }
+    },
+    {
+      "id": "slumber.package-booking",
+      "title": "Package Booking",
+      "prompt": "agent-skills/skills/package-booking.md",
+      "wrappers": {
+        "claude": ".claude/skills/package-booking/SKILL.md",
+        "copilot": ".github/prompts/package-booking.prompt.md"
+      }
+    }
+  ]
+}

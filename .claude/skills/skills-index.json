@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "sourceManifest": "../../agent-skills/manifest.json",
+  "skills": [
+    {
+      "id": "slumber.senior-ui-expert",
+      "path": ".claude/skills/senior-ui-expert/SKILL.md"
+    },
+    {
+      "id": "slumber.travel-auditor",
+      "path": ".claude/skills/travel-auditor/SKILL.md"
+    },
+    {
+      "id": "slumber.flight-integrity",
+      "path": ".claude/skills/flight-integrity/SKILL.md"
+    },
+    {
+      "id": "slumber.legend-architect",
+      "path": ".claude/skills/legend-architect/SKILL.md"
+    },
+    {
+      "id": "slumber.agency-liaison",
+      "path": ".claude/skills/agency-liaison/SKILL.md"
+    },
+    {
+      "id": "slumber.flight-first-frontend",
+      "path": ".claude/skills/flight-first-frontend/SKILL.md"
+    },
+    {
+      "id": "slumber.package-booking",
+      "path": ".claude/skills/package-booking/SKILL.md"
+    }
+  ]
+}
