@@ -6,6 +6,7 @@ import {
     ApiDiagnostics,
     ApiRequestError,
     FlightAvailable,
+    FirstMileAccessParams,
     fetchTripSuggestion,
     planTrip,
     TripSuggestion,
@@ -30,6 +31,7 @@ interface UseRouteSearchResult {
     noFlightsMessage: string | null;
     suggestionError: string | null;
     flightSource: 'live' | null;
+    flightNotice: string | null;
     flightDiagnostics: ApiDiagnostics | null;
     suggestionDiagnostics: ApiDiagnostics | null;
     hasSearched: boolean;
@@ -37,7 +39,7 @@ interface UseRouteSearchResult {
     setDestination: (value: string) => void;
     setDepartureDate: (value: string) => void;
     setReturnDate: (value: string) => void;
-    searchRoute: (options?: { refreshFlights?: boolean; date?: string; includeSuggestion?: boolean }) => Promise<void>;
+    searchRoute: (options?: { refreshFlights?: boolean; date?: string; includeSuggestion?: boolean; firstMile?: FirstMileAccessParams }) => Promise<void>;
     retrySuggestion: () => Promise<void>;
     clearResults: () => void;
 }
@@ -46,18 +48,18 @@ const buildFlightErrorMessage = (error: ApiRequestError): string => {
     const status = error.diagnostics.status;
 
     if (status === 429) {
-        return 'Ryanair flight search is rate limited right now. No trip guide can be generated yet.';
+        return 'Live SerpApi route search is rate limited right now. No trip guide can be generated yet.';
     }
 
     if (status !== null && status >= 500) {
-        return 'Live Ryanair flights are temporarily unavailable from the backend. No trip guide until flights are back.';
+        return 'Live SerpApi route search is temporarily unavailable from the backend. No trip guide until flights are back.';
     }
 
     if (error.message.toLowerCase().includes('timed out')) {
-        return 'Live Ryanair search timed out. Please try again.';
+        return 'Live SerpApi route search timed out. Please try again.';
     }
 
-    return 'Live Ryanair flights are unavailable for this search. No trip guide can be generated.';
+    return 'Live SerpApi routes are unavailable for this search. No trip guide can be generated.';
 };
 
 const buildSuggestionErrorMessage = (error: ApiRequestError): string => {
@@ -89,6 +91,7 @@ export const useRouteSearch = (): UseRouteSearchResult => {
     const [noFlightsMessage, setNoFlightsMessage] = useState<string | null>(null);
     const [suggestionError, setSuggestionError] = useState<string | null>(null);
     const [flightSource, setFlightSource] = useState<'live' | null>(null);
+    const [flightNotice, setFlightNotice] = useState<string | null>(null);
     const [flightDiagnostics, setFlightDiagnostics] = useState<ApiDiagnostics | null>(null);
     const [suggestionDiagnostics, setSuggestionDiagnostics] = useState<ApiDiagnostics | null>(null);
     const [hasSearched, setHasSearched] = useState(false);
@@ -110,9 +113,9 @@ export const useRouteSearch = (): UseRouteSearchResult => {
         };
     }), []);
 
-    const searchRoute = useCallback(async (options?: { refreshFlights?: boolean; date?: string; includeSuggestion?: boolean }) => {
+    const searchRoute = useCallback(async (options?: { refreshFlights?: boolean; date?: string; includeSuggestion?: boolean; firstMile?: FirstMileAccessParams }) => {
         const selectedDate = options?.date ?? state.departureDate;
-        if (!state.origin || !state.destination || !selectedDate || !state.returnDate) return;
+        if (!state.origin || !state.destination || !selectedDate) return;
         const shouldLoadSuggestion = options?.includeSuggestion ?? false;
 
         setHasSearched(true);
@@ -120,6 +123,7 @@ export const useRouteSearch = (): UseRouteSearchResult => {
         setFlights([]);
         setIsSearchingFlights(true);
         setFlightError(null);
+        setFlightNotice(null);
         setNoFlightsMessage(null);
         setFlightDiagnostics(null);
         setIsLoadingSuggestion(shouldLoadSuggestion);
@@ -133,14 +137,24 @@ export const useRouteSearch = (): UseRouteSearchResult => {
                 refreshFlightsFirst: options?.refreshFlights ?? false,
                 date: selectedDate,
                 includeSuggestion: shouldLoadSuggestion,
+                provider: 'serpapi',
+                firstMile: options?.firstMile,
             });
 
             setFlights(result.flights);
             setFlightSource(result.flightSource);
+            setFlightNotice(result.flightNotice);
             setFlightDiagnostics(result.flightDiagnostics);
             setTripSuggestion(result.tripSuggestion);
             setSuggestionDiagnostics(result.suggestionDiagnostics);
             setNoFlightsMessage(result.noFlightsMessage);
+
+            if (result.resolvedDate && result.resolvedDate !== selectedDate) {
+                setState((prev) => ({
+                    ...prev,
+                    ...normalizeTripDates(result.resolvedDate ?? prev.departureDate, prev.returnDate),
+                }));
+            }
 
             if (result.suggestionError instanceof ApiRequestError) {
                 const message = buildSuggestionErrorMessage(result.suggestionError);
@@ -161,7 +175,7 @@ export const useRouteSearch = (): UseRouteSearchResult => {
             } else {
                 const message = error instanceof Error
                     ? error.message
-                    : 'Live Ryanair flights are unavailable. No trip guide can be generated.';
+                    : 'Live SerpApi routes are unavailable. No trip guide can be generated.';
                 setFlightError(message);
                 showToast({ type: 'error', source: 'planner', title: 'Flight search error', message }, 'flight-search-error-generic');
             }
@@ -169,13 +183,14 @@ export const useRouteSearch = (): UseRouteSearchResult => {
             setIsSearchingFlights(false);
             setIsLoadingSuggestion(false);
         }
-    }, [showToast, state.departureDate, state.destination, state.origin, state.returnDate]);
+    }, [showToast, state.departureDate, state.destination, state.origin]);
 
     const clearResults = useCallback(() => {
         setFlights([]);
         setTripSuggestion(null);
         setFlightError(null);
         setNoFlightsMessage(null);
+        setFlightNotice(null);
         setSuggestionError(null);
         setFlightSource(null);
         setFlightDiagnostics(null);
@@ -236,6 +251,7 @@ export const useRouteSearch = (): UseRouteSearchResult => {
         noFlightsMessage,
         suggestionError,
         flightSource,
+        flightNotice,
         flightDiagnostics,
         suggestionDiagnostics,
         hasSearched,

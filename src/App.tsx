@@ -2,13 +2,13 @@ import React, { useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import About from './About';
 import './App.css';
-import Assistant from './Assistant';
 import { CacheProvider } from './CacheContext';
 import Home from './Home';
 import Main from './Main';
 import Profile from './Profile';
 import { ProfileProvider, useProfile } from './ProfileContext';
 import TravelForm from './TravelForm';
+import TripExploreWrapper from './components/TripExploreWrapper';
 
 const SessionRedirector: React.FC = () => {
     const { pendingLoginRedirect, consumePendingLoginRedirect } = useProfile();
@@ -39,7 +39,8 @@ const App: React.FC = () => {
                             <Route index element={<About />} />
                             <Route path="discover" element={<Home />} />
                             <Route path="planner" element={<TravelForm />} />
-                            <Route path="assistant" element={<Assistant />} />
+                            <Route path="explore" element={<TripExploreWrapper />} />
+                            <Route path="assistant" element={<Navigate to="/discover" replace />} />
                             <Route path="profile" element={<Profile />} />
                             <Route path="*" element={<Navigate to="/" replace />} />
                         </Route>

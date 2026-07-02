@@ -13,10 +13,10 @@ const popularDestinations = [
 ];
 
 const trustFeatures = [
-    { icon: faShieldAlt, title: 'Secure Booking', desc: 'Your payment is protected' },
-    { icon: faTag, title: 'Best Price Guarantee', desc: 'Found it cheaper? We\'ll match it' },
-    { icon: faHeadset, title: '24/7 Support', desc: 'Here when you need us' },
-    { icon: faCheckCircle, title: 'Free Cancellation', desc: 'On most bookings' },
+    { icon: faShieldAlt, title: 'Truth-first pricing', desc: 'Base fare, honest total, then door-to-trip' },
+    { icon: faTag, title: 'No fake bundle', desc: 'We label estimates and link out clearly' },
+    { icon: faHeadset, title: 'Real logistics', desc: 'Airport traps and hidden costs stay visible' },
+    { icon: faCheckCircle, title: 'Case-study ready', desc: 'Flights, stays, and local proof in one flow' },
 ];
 
 const stats = [
@@ -29,38 +29,38 @@ const stats = [
 const howItWorks = [
     {
         step: 1,
-        title: 'Search your destination',
-        description: 'Enter where you want to go and when. Our smart search finds you the best options.',
+        title: 'Start with the route truth',
+        description: 'Pick airports, dates, and first-mile context. We verify whether the route is real before anything else appears.',
     },
     {
         step: 2,
-        title: 'Compare & customize',
-        description: 'Filter by price, time, airline, or stops. Build your perfect itinerary with our planner.',
+        title: 'Add local proof',
+        description: 'Layer in practical base areas, stay pricing, and the real caveats that matter after landing.',
     },
     {
         step: 3,
-        title: 'Book with confidence',
-        description: 'Secure checkout with instant confirmation. Your adventure starts here.',
+        title: 'Book each part with clear labels',
+        description: 'Use provider-labelled links for flight, stay, and activities. No fake one-click checkout.',
     },
 ];
 
 const testimonials = [
     {
-        quote: "TravelHub made planning our honeymoon so easy. The AI assistant suggested amazing restaurants we would never have found!",
-        author: "Sarah & James",
-        location: "New York, USA",
+        quote: 'The useful part was seeing the real total, the airport warning, and the base area together — not being sent into another chat box.',
+        author: 'Case-study review',
+        location: 'Limerick → Nice',
         rating: 5,
     },
     {
-        quote: "Best flight prices I've found anywhere. Plus the trip planner helped me organize everything in one place.",
-        author: "Marco Rossi",
-        location: "Milan, Italy",
+        quote: 'Door-to-trip pricing made the route honest. The cheap fare stopped being fake the second the transfer and first mile were visible.',
+        author: 'Route audit',
+        location: 'Dublin → Beauvais',
         rating: 5,
     },
     {
-        quote: "The 24/7 support team helped me rebook when my flight was cancelled. Incredibly responsive!",
-        author: "Emily Chen",
-        location: "Singapore",
+        quote: 'The best part is that no trip shows up unless the flight is real. That kills a lot of brochure nonsense immediately.',
+        author: 'Planner feedback',
+        location: 'Flight-first workflow',
         rating: 5,
     },
 ];
@@ -72,34 +72,34 @@ const About: React.FC = () => {
             <section className="hero-card card">
                 <div className="hero-card__grid">
                     <div className="hero-card__content">
-                        <p className="eyebrow eyebrow--light">✈️ Explore the world with confidence</p>
-                        <h1>Find flights, plan trips, and discover your next adventure</h1>
+                        <p className="eyebrow eyebrow--light">✈️ Door-to-trip proof, not another flight search</p>
+                        <h1>See the real route, the real stay, and the real trip total in one place</h1>
                         <p className="hero-card__lede">
-                            Search hundreds of airlines and booking sites to find the best deals. 
-                            Let our AI assistant help you plan the perfect trip, personalized just for you.
+                            TravelHub is strongest when it combines live flight truth, hidden-cost auditing, practical base areas, and stay evidence.
+                            Start with the route, then add local proof only where it helps.
                         </p>
 
                         <div className="hero-card__actions">
                             <Link to="/discover" className="button button--white button--large">
                                 <FontAwesomeIcon icon={faPlane} />
-                                Search Flights
+                                Build a door-to-trip case
                             </Link>
                             <Link to="/planner" className="button button--ghost" style={{ color: 'white', borderColor: 'rgba(255,255,255,0.3)', border: '1px solid' }}>
                                 <FontAwesomeIcon icon={faGlobe} />
-                                Plan a Trip
+                                Planner workspace
                             </Link>
                         </div>
                     </div>
 
                     <div className="hero-card__panel">
-                        <p className="eyebrow eyebrow--light">🔥 Trending Now</p>
+                        <p className="eyebrow eyebrow--light">🔥 What works best right now</p>
                         <div className="stack-sm">
-                            <p><strong style={{ fontSize: '1.1rem' }}>Spring Sale: Up to 40% Off</strong></p>
+                            <p><strong style={{ fontSize: '1.1rem' }}>Case-study style discovery</strong></p>
                             <p style={{ opacity: 0.8, fontSize: '0.9rem' }}>
-                                Book by April 30 for travel through June. Limited availability.
+                                Best for trips where flight reality, local base choice, and honest totals matter more than marketing price.
                             </p>
                             <Link to="/discover" className="button button--small button--accent" style={{ alignSelf: 'flex-start', marginTop: '8px' }}>
-                                View Deals →
+                                Open discovery →
                             </Link>
                         </div>
                     </div>
@@ -123,8 +123,8 @@ const About: React.FC = () => {
             <section className="stack-lg">
                 <div className="section-card__header section-card__header--plain">
                     <div>
-                        <p className="eyebrow">Popular Destinations</p>
-                        <h2>Where travelers are heading</h2>
+                        <p className="eyebrow">Case-study starting points</p>
+                        <h2>Good routes to audit honestly</h2>
                     </div>
                     <Link to="/discover" className="button button--secondary button--small">View all →</Link>
                 </div>
@@ -140,7 +140,7 @@ const About: React.FC = () => {
                             <p className="muted-text">{dest.country}</p>
                             <div style={{ marginTop: 'auto', paddingTop: '12px' }}>
                                 <span className="flight-card__price">From €{dest.price}</span>
-                                <span className="flight-card__price-label" style={{ marginLeft: '4px' }}>round trip</span>
+                                <span className="flight-card__price-label" style={{ marginLeft: '4px' }}>headline fare only</span>
                             </div>
                         </Link>
                     ))}
@@ -164,7 +164,7 @@ const About: React.FC = () => {
                 <div className="section-card__header section-card__header--plain">
                     <div>
                         <p className="eyebrow">How It Works</p>
-                        <h2>Book your trip in 3 simple steps</h2>
+                        <h2>Build a trip like a case study, not a brochure</h2>
                     </div>
                 </div>
 
@@ -184,27 +184,27 @@ const About: React.FC = () => {
                 <div className="section-card__header section-card__header--plain">
                     <div>
                         <p className="eyebrow">Why TravelHub</p>
-                        <h2>Everything you need for the perfect trip</h2>
+                        <h2>What it does better than a plain flight search</h2>
                     </div>
                 </div>
 
                 <div className="info-grid">
                     <article className="card info-card info-card--highlight">
                         <FontAwesomeIcon icon={faPlane} style={{ fontSize: '1.5rem', color: 'var(--primary)', marginBottom: '8px' }} />
-                        <h3>Smart Flight Search</h3>
-                        <p>Compare prices across 500+ airlines instantly. Price alerts notify you when fares drop.</p>
+                            <h3>Flight truth first</h3>
+                            <p>Sort by honest price, keep theCatch visible, and stop the flow entirely when the route is missing.</p>
                     </article>
 
                     <article className="card info-card">
                         <FontAwesomeIcon icon={faGlobe} style={{ fontSize: '1.5rem', color: 'var(--primary)', marginBottom: '8px' }} />
-                        <h3>AI Trip Planner</h3>
-                        <p>Get personalized recommendations for hotels, restaurants, and activities based on your preferences.</p>
+                            <h3>Local proof, not AI filler</h3>
+                            <p>Use AI only where it helps: explaining the right base area, rhythm, and neighborhood fit after the route is already proven.</p>
                     </article>
 
                     <article className="card info-card">
                         <FontAwesomeIcon icon={faUserFriends} style={{ fontSize: '1.5rem', color: 'var(--primary)', marginBottom: '8px' }} />
-                        <h3>AI Travel Assistant</h3>
-                        <p>Ask anything about your destination - visa requirements, best neighborhoods, local tips.</p>
+                            <h3>Door-to-trip totals</h3>
+                            <p>Bring together flight, first mile, stay pricing, and exclusions so the user sees the trip — not just the plane ticket.</p>
                     </article>
                 </div>
             </section>
@@ -236,17 +236,17 @@ const About: React.FC = () => {
             <section className="hero-card card" style={{ textAlign: 'center' }}>
                 <div style={{ position: 'relative', zIndex: 1 }}>
                     <h2 style={{ fontSize: '1.75rem', color: 'white', marginBottom: '12px' }}>
-                        Ready to start your journey?
+                        Ready to prove the whole trip?
                     </h2>
                     <p style={{ color: 'rgba(255,255,255,0.85)', marginBottom: '24px', maxWidth: '500px', margin: '0 auto 24px' }}>
-                        Join millions of travelers who trust TravelHub to find the best deals and plan unforgettable trips.
+                        Start with a real route, then add the local proof layer that makes the trip usable in the real world.
                     </p>
                     <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
                         <Link to="/discover" className="button button--white button--large">
-                            Search Flights
+                            Open discovery
                         </Link>
-                        <Link to="/assistant" className="button button--large" style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)' }}>
-                            Try AI Assistant
+                        <Link to="/planner" className="button button--large" style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)' }}>
+                            Open planner
                         </Link>
                     </div>
                 </div>

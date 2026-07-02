@@ -26,8 +26,10 @@ describe('refreshFlights', () => {
             date: '2026-06-01',
         });
 
+        const requestUrl = fetchMock.mock.calls[0]?.[0];
+        expect(requestUrl).toBe('/api/flights/refresh?origin=DUB&destination=BVA&date=2026-06-01');
         expect(fetchMock).toHaveBeenCalledWith(
-            'https://slumber-production.up.railway.app/api/flights/refresh?origin=DUB&destination=BVA&date=2026-06-01',
+            requestUrl,
             expect.objectContaining({ method: 'POST' }),
         );
         expect(result.diagnostics.status).toBe(202);

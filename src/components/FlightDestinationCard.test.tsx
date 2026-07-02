@@ -21,6 +21,8 @@ describe('FlightDestinationCard', () => {
                 },
                 antiCauchemar: {
                     realWorldEntryPrice: 112,
+                    airportShuttleEstimate: 28,
+                    cabinBagEstimate: 15,
                     hiddenCostPenalty: 28,
                     theCatch: 'This is the Ryanair Paris truth: Beauvais is outside the city and late transfers can erase the cheap headline fare.',
                     logisticVerdict: 'A sharp entry price only stays honest if you budget the Beauvais coach or a late taxi.',
@@ -43,6 +45,11 @@ describe('FlightDestinationCard', () => {
         expect(screen.getAllByText(/anti-cauchemar/i).length).toBeGreaterThan(0);
         expect(screen.getByText((content, element) => content === '€112' && element?.classList.contains('flight-card__price') === true)).toBeInTheDocument();
         expect(screen.getByText((content, element) => content === '€69' && element?.classList.contains('flight-card__marketing-price') === true)).toBeInTheDocument();
+        expect(screen.getAllByText(/estimated one-way entry price/i).length).toBeGreaterThan(0);
+        // Transfer and cabin bag appear in TruthCard breakdown (content spread across child nodes)
+        expect(screen.getAllByText((_content, node) => (node?.textContent ?? '').toLowerCase().includes('airport transfer') || (node?.textContent ?? '').toLowerCase().includes('transfer'))[0]).toBeInTheDocument();
+        expect(screen.getAllByText((_content, node) => (node?.textContent ?? '').toLowerCase().includes('cabin bag'))[0]).toBeInTheDocument();
+        expect(screen.getByText(/one-way fare snapshot/i)).toBeInTheDocument();
         expect(screen.getByText(/this fare matches your selected date/i)).toBeInTheDocument();
         expect(screen.getByText(/offer-ready/i)).toBeInTheDocument();
         expect(screen.getByText(/this is the ryanair paris truth/i)).toBeInTheDocument();

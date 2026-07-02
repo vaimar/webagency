@@ -1,6 +1,7 @@
 import React from 'react';
 import { AirportDisplay, getAirportDisplay } from '../data/airportMetadata';
 import { FlightDestination } from '../model/FlightDestination';
+import { getAntiCauchemarPricingSummary } from '../services/antiCauchemarPricing';
 import TruthCard from './TruthCard';
 
 interface FlightDestinationCardProps {
@@ -48,9 +49,10 @@ const FlightDestinationCard: React.FC<FlightDestinationCardProps> = ({ destinati
     const arrival: AirportDisplay = getAirportDisplay(destination.destination);
     const fareChip = destination.links.flightOffers ? 'Offer-ready' : 'Preview fare';
     const currency = destination.antiCauchemar?.currency ?? destination.price.currency;
-    const honestPrice = destination.antiCauchemar?.realWorldEntryPrice ?? destination.antiCauchemar?.realCost;
-    const honestPriceLabel = formatMoney(honestPrice ?? destination.price.total, currency);
+    const pricing = getAntiCauchemarPricingSummary(destination.price.total, destination.antiCauchemar);
+    const honestPriceLabel = formatMoney(pricing.estimatedEntryPrice ?? destination.price.total, currency);
     const marketingPriceLabel = formatMoney(destination.price.total, currency);
+    const hasEstimatedEntryPrice = typeof pricing.estimatedEntryPrice === 'number';
 
     return (
         <article
@@ -85,12 +87,16 @@ const FlightDestinationCard: React.FC<FlightDestinationCardProps> = ({ destinati
             <div className="flight-card__eyebrow">{origin.city} → {arrival.city}</div>
             <div className="flight-card__price-row">
                 <div className="flight-card__price-stack">
-                    <span className="flight-card__price-caption">Real-world entry price</span>
+                    <span className="flight-card__price-caption">{hasEstimatedEntryPrice ? 'Estimated one-way entry price' : 'One-way flight fare'}</span>
                     <div className="flight-card__price">{honestPriceLabel}</div>
-                    <span className="flight-card__marketing-note">Marketing fare <span className="flight-card__marketing-price">{marketingPriceLabel}</span></span>
+                    <span className="flight-card__marketing-note">
+                        {hasEstimatedEntryPrice
+                            ? <>Flight fare <span className="flight-card__marketing-price">{marketingPriceLabel}</span></>
+                            : 'Anti-Cauchemar warnings stay visible, but no fixed airport or baggage cost is assumed without a clear breakdown.'}
+                    </span>
                 </div>
                 <div className="flight-card__chips">
-                    <span className="flight-card__chip flight-card__chip--fare">Truth-first fare</span>
+                    <span className="flight-card__chip flight-card__chip--fare">{hasEstimatedEntryPrice ? 'Breakdown-backed fare' : 'Warning-backed fare'}</span>
                     <span className="flight-card__chip flight-card__chip--status">{fareChip}</span>
                     {showsDateMatch && <span className="flight-card__chip flight-card__chip--match">This fare matches your selected date</span>}
                 </div>
@@ -99,9 +105,9 @@ const FlightDestinationCard: React.FC<FlightDestinationCardProps> = ({ destinati
             <p className="muted-text">
                 {arrival.airportName} ({arrival.code})
                 <br />
-                Depart {formatDate(destination.departureDate)} · Return {formatDate(destination.returnDate)}
+                Depart {formatDate(destination.departureDate)} · One-way fare snapshot
             </p>
-            <TruthCard truth={destination.antiCauchemar} className="truth-card--embedded" />
+            <TruthCard truth={destination.antiCauchemar} basePrice={destination.price.total} className="truth-card--embedded" />
             <dl className="flight-card__meta">
                 <div>
                     <dt>Fare type</dt>

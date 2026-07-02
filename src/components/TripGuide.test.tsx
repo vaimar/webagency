@@ -82,8 +82,8 @@ describe('TripGuide', () => {
     it('shows an honest package total and booking links for the trip components', () => {
         render(<TripGuide trip={buildTrip()} days={5} dailyBudget={100} preferredTransport="public_transport" />);
 
-        expect(screen.getByText(/your estimated trip package/i)).toBeInTheDocument();
-        expect(screen.getByText(/estimated total/i)).toBeInTheDocument();
+        expect(screen.getByText(/your door-to-trip estimate/i)).toBeInTheDocument();
+        expect(screen.getByText(/door-to-trip total/i)).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /ryanair/i })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /booking\.com/i })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /restaurants/i })).toBeInTheDocument();

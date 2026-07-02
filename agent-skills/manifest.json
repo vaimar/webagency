@@ -1,11 +1,14 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
+  "lastUpdated": "2026-05-17",
   "project": {
     "id": "slumber-webagency",
     "name": "Slumber Travel WebAgency Frontend",
     "repoRoot": "/Users/vaimar/src/apps/webagency",
+    "backendRoot": "/Users/vaimar/src/apps/slumber",
     "primaryGuide": "AGENTS.md",
-    "copilotGuide": ".github/copilot-instructions.md"
+    "copilotGuide": ".github/copilot-instructions.md",
+    "sessionNotes": ["docs/session-2026-05-15.md", "docs/session-2026-05-17.md"]
   },
   "sharedRules": [
     "agent-skills/shared/core-rules.md"
@@ -14,44 +17,70 @@
     "agent-skills/context/frontend-surface.md",
     "agent-skills/context/backend-contracts.md"
   ],
+  "priceHierarchy": {
+    "description": "Canonical order for displaying flight cost",
+    "steps": [
+      "antiCauchemar.auditedTotalCost — backend-computed, includes lateArrivalMarkup",
+      "recomputed: ticketPrice + airportShuttleEstimate + cabinBagEstimate",
+      "antiCauchemar.realWorldEntryPrice — legacy fallback",
+      "doorToTripPrice — additive only, parallel field, never replaces"
+    ]
+  },
+  "openWorkItems": [
+    "FirstMileAccess input UI in Home.tsx — collapsible 'home → airport' section",
+    "Combined trip total surface — transport + hotel + activities in one card",
+    "Hotel bbox search UI — getHotelsByBbox has no frontend consumer yet",
+    "Hotel occupancy-aware pricing — current nightly rate is not occupancy-specific",
+    "Return leg late-arrival overstatement for car users — flag when firstMileMode=rental_car and return airport = departure airport",
+    "Wakeboard / activity cost gap — excluded from all totals, must be noted explicitly",
+    "Wire /api/hotels/{xid}/enrichment to TripGuide.tsx accommodation tab",
+    "Wire /api/flight-search/departures and /routes to a UI consumer",
+    "Wire /api/ai/providers to provider selector in Assistant.tsx",
+    "Backend LATE_TAXI_EUR=60 — align with OSRM live data or firstMileAccess override",
+    "GBP→EUR fixed rate 1.17 in transferEstimate.ts"
+  ],
+  "casestudies": [
+    "docs/case-study-nice-wakeboard.md"
+  ],
   "skills": [
     {
       "id": "slumber.senior-ui-expert",
       "name": "Senior UI Expert",
       "source": "agent-skills/skills/senior-ui-expert.md",
-      "tags": ["ui", "design-system", "frozen-summer", "truth-first"],
+      "tags": ["ui", "design-system", "frozen-summer", "truth-first", "cost-line-badges"],
       "wrapper": {
         "load": ["agent-skills/context/frontend-surface.md"],
-        "claudeUsage": "for truth-first UI work, visual hierarchy, warning visibility, and Frozen Summer styling.",
+        "claudeUsage": "for truth-first UI work, visual hierarchy, CostLine badge rendering, warning visibility, and Frozen Summer styling.",
         "claudePrefer": [
-          "honest price hierarchy",
+          "honest price hierarchy (base fare → honest total → door-to-trip)",
           "dark crisp cards",
-          "minimal clutter",
-          "impossible-to-miss warning states"
+          "CostLine status badges",
+          "impossible-to-miss warning states",
+          "no var(--color-*) without confirmed tokens"
         ],
-        "copilotGoal": "enforce Frozen Summer, honest price hierarchy, and strong warning visibility."
+        "copilotGoal": "enforce Frozen Summer, honest price hierarchy, CostLine badge palette, and strong warning visibility."
       }
     },
     {
       "id": "slumber.travel-auditor",
       "name": "Travel Auditor",
       "source": "agent-skills/skills/travel-auditor.md",
-      "tags": ["auditing", "anti-cauchemar", "hidden-costs", "logistics"],
+      "tags": ["auditing", "anti-cauchemar", "hidden-costs", "logistics", "cost-line", "manual-check"],
       "wrapper": {
         "load": ["agent-skills/context/backend-contracts.md"],
-        "claudeUsage": "for hidden-cost auditing, recommendation quality checks, and backend-limit honesty.",
-        "copilotGoal": "surface hidden costs, backend shortages, and logistics traps."
+        "claudeUsage": "for hidden-cost auditing, CostLine status validation, recommendation quality checks, and backend-limit honesty.",
+        "copilotGoal": "surface hidden costs, MANUAL_CHECK_REQUIRED lines, backend shortages, and logistics traps."
       }
     },
     {
       "id": "slumber.flight-integrity",
       "name": "Flight Integrity",
       "source": "agent-skills/skills/flight-integrity.md",
-      "tags": ["flights", "real-world-entry-price", "cache", "sorting"],
+      "tags": ["flights", "audited-total-cost", "real-world-entry-price", "cache", "sorting", "door-to-trip"],
       "wrapper": {
         "load": ["agent-skills/context/backend-contracts.md"],
-        "claudeUsage": "when touching live flight refresh/search, cache honesty, or price ordering.",
-        "copilotGoal": "keep flight pricing, refresh flow, and honest sorting stable."
+        "claudeUsage": "when touching live flight refresh/search, cache honesty, auditedTotalCost ordering, or doorToTripPrice display.",
+        "copilotGoal": "keep flight pricing, refresh flow, and honest sorting stable. auditedTotalCost > realWorldEntryPrice > marketing."
       }
     },
     {
@@ -73,37 +102,36 @@
       "wrapper": {
         "load": [],
         "claudeUsage": "for client-facing architecture summaries and professional explanations of the Slumber frontend.",
-        "copilotGoal": "explain the technical value of the Slumber frontend to clients and partners."
+        "copilotGoal": "explain the technical value: Haversine estimator, PriceBreakdown CostLine stack, FirstMileAccess door-to-trip, Anti-Cauchemar pipeline."
       }
     },
     {
       "id": "slumber.flight-first-frontend",
       "name": "Flight-First Frontend",
       "source": "agent-skills/skills/flight-first-frontend.md",
-      "tags": ["frontend", "search", "home", "route-search"],
+      "tags": ["frontend", "search", "home", "route-search", "first-mile-access"],
       "wrapper": {
         "load": [
           "agent-skills/context/frontend-surface.md",
           "agent-skills/context/backend-contracts.md"
         ],
-        "claudeUsage": "for Home search flow, selector coverage, and no-flight/no-trip enforcement.",
-        "copilotGoal": "keep route search flight-first and no-flight/no-trip."
+        "claudeUsage": "for Home search flow, selector coverage, FirstMileAccess UI, and no-flight/no-trip enforcement.",
+        "copilotGoal": "keep route search flight-first, no-flight/no-trip, and FirstMileAccess-ready."
       }
     },
     {
       "id": "slumber.package-booking",
       "name": "Package Booking",
       "source": "agent-skills/skills/package-booking.md",
-      "tags": ["planner", "package", "booking-links", "totals"],
+      "tags": ["planner", "package", "booking-links", "totals", "hotel-enrichment"],
       "wrapper": {
         "load": [
           "agent-skills/context/frontend-surface.md",
           "agent-skills/context/backend-contracts.md"
         ],
-        "claudeUsage": "when editing planner totals, package summary tabs, booking links, and external booking handoff UX.",
-        "copilotGoal": "keep package totals honest and booking links explicit."
+        "claudeUsage": "when editing planner totals, package summary tabs, booking links, hotel enrichment wiring, and external booking handoff UX.",
+        "copilotGoal": "keep package totals honest (use auditedTotalCost), booking links explicit, and hotel enrichment data surfaced."
       }
     }
   ]
 }
-

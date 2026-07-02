@@ -1,51 +1,11 @@
-import { MOCK_FLIGHT_DESTINATIONS } from '../data/mockDestinations';
 import { LANDING_DISCOVERY_AIRPORT_OPTIONS, normalizeAirportCode } from '../data/airportMetadata';
 import { flightUrls } from './affiliates';
-import { FlightAvailable } from './api';
+import { getComparableFlightPrice } from './antiCauchemarPricing';
+import { FlightAvailable, FlightSearchResult as ExternalRouteResult, searchFlightsByDeparture } from './api';
 import { FlightDestination, FlightSearchParams, FlightSearchResult } from '../model/FlightDestination';
-import { loadPriorityFlights, NO_FLIGHT_NO_TRIP_MESSAGE } from './searchService';
+import { NO_FLIGHT_NO_TRIP_MESSAGE } from './searchService';
 
 const LANDING_SHOWCASE_LIMIT = 8;
-
-const addDaysToDateOnly = (value: string, days: number): string => {
-    const [year, month, day] = value.split('-').map((part) => Number.parseInt(part, 10));
-    const nextDate = new Date(Date.UTC(year, month - 1, day));
-    nextDate.setUTCDate(nextDate.getUTCDate() + days);
-    return nextDate.toISOString().slice(0, 10);
-};
-
-const buildDefaultSeed = (offsetDays: number): { departureDate: string; returnDate: string } => {
-    const nextDate = new Date();
-    nextDate.setUTCDate(nextDate.getUTCDate() + offsetDays);
-    const departureDate = nextDate.toISOString().slice(0, 10);
-
-    return {
-        departureDate,
-        returnDate: addDaysToDateOnly(departureDate, 4),
-    };
-};
-
-const ROUTE_SEEDS_BY_DESTINATION = new Map(
-    MOCK_FLIGHT_DESTINATIONS.map((destination) => [normalizeAirportCode(destination.destination), {
-        departureDate: destination.departureDate,
-        returnDate: destination.returnDate,
-    }]),
-);
-
-const LANDING_ROUTE_SEEDS = Array.from(
-    new Map(
-        LANDING_DISCOVERY_AIRPORT_OPTIONS.map((code, index) => {
-            const normalizedCode = normalizeAirportCode(code);
-            const seededDates = ROUTE_SEEDS_BY_DESTINATION.get(normalizedCode) ?? buildDefaultSeed(21 + index);
-
-            return [normalizedCode, {
-                destination: normalizedCode,
-                departureDate: seededDates.departureDate,
-                returnDate: seededDates.returnDate,
-            }] as const;
-        }),
-    ).values(),
-).slice(0, LANDING_SHOWCASE_LIMIT);
 
 const DATE_ONLY_PREFIX_RE = /^(\d{4}-\d{2}-\d{2})/;
 
@@ -68,13 +28,52 @@ const formatPriceTotal = (value: number | string): string => {
 };
 
 const getComparablePrice = (destination: FlightDestination): number => {
-    const honestPrice = destination.antiCauchemar?.realWorldEntryPrice ?? destination.antiCauchemar?.realCost;
-    if (typeof honestPrice === 'number' && Number.isFinite(honestPrice)) {
-        return honestPrice;
-    }
+    return getComparableFlightPrice(destination.price.total, destination.antiCauchemar);
+};
 
-    const marketingPrice = Number.parseFloat(destination.price.total);
-    return Number.isFinite(marketingPrice) ? marketingPrice : Number.MAX_SAFE_INTEGER;
+const addDaysToDateOnly = (value: string, days: number): string => {
+    const [year, month, day] = value.split('-').map((part) => Number.parseInt(part, 10));
+    const nextDate = new Date(Date.UTC(year, month - 1, day));
+    nextDate.setUTCDate(nextDate.getUTCDate() + days);
+    return nextDate.toISOString().slice(0, 10);
+};
+
+const mapExternalRouteToFlight = (origin: string, route: ExternalRouteResult): FlightAvailable => ({
+    origin: normalizeAirportCode(route.departureAirport ?? origin) || origin.toUpperCase(),
+    destination: normalizeAirportCode(route.arrivalAirport ?? ''),
+    departureDate: route.scheduledDeparture,
+    arrivalDate: route.scheduledArrival,
+    price: route.estimatedTicketPrice
+        ?? route.antiCauchemar?.ticketPrice
+        ?? route.antiCauchemar?.auditedTotalCost
+        ?? route.antiCauchemar?.realWorldEntryPrice
+        ?? 0,
+    currency: route.antiCauchemar?.currency ?? 'EUR',
+    flightNumber: route.flightNumber,
+    airline: route.airline,
+    antiCauchemar: route.antiCauchemar,
+});
+
+const pickBestFlightPerDestination = (origin: string, routes: ExternalRouteResult[]): FlightAvailable[] => {
+    const bestByDestination = new Map<string, FlightAvailable>();
+
+    routes.forEach((route) => {
+        const flight = mapExternalRouteToFlight(origin, route);
+        const destinationCode = normalizeAirportCode(flight.destination);
+        if (!destinationCode) {
+            return;
+        }
+
+        const existing = bestByDestination.get(destinationCode);
+        if (!existing || getComparableFlightPrice(flight.price, flight.antiCauchemar) < getComparableFlightPrice(existing.price, existing.antiCauchemar)) {
+            bestByDestination.set(destinationCode, {
+                ...flight,
+                destination: destinationCode,
+            });
+        }
+    });
+
+    return Array.from(bestByDestination.values());
 };
 
 const mapFlightToDestination = (
@@ -105,29 +104,16 @@ const mapFlightToDestination = (
 export const fetchFlightDestinations = async (params: FlightSearchParams): Promise<FlightSearchResult> => {
     const normalizedOrigin = normalizeAirportCode(params.origin) || 'DUB';
 
-    const destinations = (await Promise.all(
-        LANDING_ROUTE_SEEDS.map(async (seed) => {
-            try {
-                const { flights } = await loadPriorityFlights({
-                    origin: normalizedOrigin,
-                    destination: seed.destination,
-                    date: seed.departureDate,
-                    refreshFlightsFirst: true,
-                });
-
-                if (flights.length === 0) {
-                    return null;
-                }
-
-                return mapFlightToDestination(flights[0], seed.returnDate);
-            } catch {
-                return null;
-            }
-        }),
-    ))
-        .filter((destination): destination is FlightDestination => Boolean(destination))
+    const { results } = await searchFlightsByDeparture(normalizedOrigin, 'serpapi');
+    const destinations = pickBestFlightPerDestination(normalizedOrigin, results)
+        .filter((flight) => LANDING_DISCOVERY_AIRPORT_OPTIONS.includes(normalizeAirportCode(flight.destination)))
+        .map((flight) => {
+            const departureDate = extractDateOnly(flight.departureDate, new Date().toISOString().slice(0, 10));
+            return mapFlightToDestination(flight, addDaysToDateOnly(departureDate, 4));
+        })
         .filter((destination) => getComparablePrice(destination) <= params.maxPrice)
-        .sort((left, right) => getComparablePrice(left) - getComparablePrice(right));
+        .sort((left, right) => getComparablePrice(left) - getComparablePrice(right))
+        .slice(0, LANDING_SHOWCASE_LIMIT);
 
     return {
         destinations,

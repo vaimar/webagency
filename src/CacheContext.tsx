@@ -11,6 +11,8 @@ export const CACHE_TTL = {
     FLIGHT_DESTINATIONS: 6 * 60 * 60 * 1000,   // 6 hours
     /** AI-generated trip content — short; backend is source of truth */
     TRIP_SUGGESTION: 15 * 60 * 1000,             // 15 minutes
+    /** /api/trips/explore result — survives tab switches; prices go stale fast */
+    TRIP_EXPLORATION: 15 * 60 * 1000,            // 15 minutes
     /** AI provider list — changes rarely */
     AI_PROVIDERS: 60 * 60 * 1000,                // 1 hour
 } as const;

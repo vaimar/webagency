@@ -757,6 +757,30 @@ ul, ol {
     color: #cbd5e1;
 }
 
+.flight-card__warning-block {
+    display: grid;
+    gap: 8px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    border: 1px solid rgba(252, 165, 165, 0.38);
+    background: rgba(127, 29, 29, 0.22);
+    color: #fee2e2;
+}
+
+.flight-card__warning-label {
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #fca5a5;
+}
+
+.flight-card__warning-block p {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.5;
+}
+
 .flight-card__meta {
     display: grid;
     grid-template-columns: repeat(2, 1fr);

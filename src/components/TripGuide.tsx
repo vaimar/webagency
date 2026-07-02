@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import TruthCard from './TruthCard';
 import { AccommodationOption, Activity, ApiDiagnostics, DayPlan, Neighborhood, PreferredTransport, Restaurant, TripSuggestion } from '../services/api';
 import { accommodationUrls, activityUrls, flightUrls, placeUrls } from '../services/affiliates';
+import { getAntiCauchemarPricingSummary } from '../services/antiCauchemarPricing';
 
 /* ─── Helpers ──────────────────────────────────────────────────────────────── */
 
@@ -85,8 +86,8 @@ interface PackageEstimate {
 
 const estimatePackage = (trip: TripSuggestion, days: number, dailyBudget?: number, preferredTransport?: PreferredTransport): PackageEstimate | null => {
     const currency = trip.currency ?? trip.cheapestFlight?.antiCauchemar?.currency ?? trip.cheapestFlight?.currency ?? 'EUR';
-    const flight = trip.cheapestFlight?.antiCauchemar?.realWorldEntryPrice
-        ?? trip.cheapestFlight?.antiCauchemar?.realCost
+    const flightPricing = getAntiCauchemarPricingSummary(trip.cheapestFlight?.price, trip.cheapestFlight?.antiCauchemar);
+    const flight = flightPricing.estimatedEntryPrice
         ?? (typeof trip.cheapestFlight?.price === 'number' ? trip.cheapestFlight.price : Number.parseFloat(String(trip.cheapestFlight?.price ?? '')));
 
     if (!Number.isFinite(flight)) {
@@ -99,7 +100,7 @@ const estimatePackage = (trip: TripSuggestion, days: number, dailyBudget?: numbe
         : Math.max(18, Math.round((dailyBudget ?? 100) * 0.28));
     const food = averageMeal * 2 * days;
     const stay = nightlyStay * days;
-    const transport = Math.round((trip.cheapestFlight?.antiCauchemar?.hiddenCostPenalty ?? 0) + (transportDailyEstimate(preferredTransport) * days));
+    const transport = Math.round(transportDailyEstimate(preferredTransport) * days);
     const total = Math.round(flight + stay + food + transport);
 
     return {
@@ -267,11 +268,11 @@ const PackageSummary: React.FC<{
             <div className="trip-package__header">
                 <div>
                     <p className="eyebrow">❄️ Honest package</p>
-                    <h3>Your estimated trip package</h3>
-                    <p className="muted-text">Flight, where to sleep, food, and local transport for one traveller — then book each part on the right site.</p>
+                    <h3>Your door-to-trip estimate</h3>
+                    <p className="muted-text">Flight, where to sleep, food, and local transport for one traveller — then book each part on the right site with explicit provider handoff.</p>
                 </div>
                 <div className="trip-package__total">
-                    <span className="trip-package__total-label">Estimated total</span>
+                    <span className="trip-package__total-label">Door-to-trip total</span>
                     <strong>{formatMoney(estimate.total, estimate.currency)}</strong>
                     <span>{estimate.days} day{estimate.days !== 1 ? 's' : ''}</span>
                 </div>
@@ -285,7 +286,7 @@ const PackageSummary: React.FC<{
             </div>
 
             <div className="notice-banner trip-package__note">
-                <span>This total is an honest estimate, not a fake one-click bundle. It uses the real-world flight price, lead stay pricing, food signals, and transport friction.</span>
+                <span>This total is an honest estimate, not a fake one-click bundle. It uses the real-world flight price, lead stay pricing, food signals, and transport friction. Any excluded activity or parking costs should stay visible separately.</span>
             </div>
 
             <div className="trip-package__booking-groups">
@@ -305,7 +306,9 @@ const PackageSummary: React.FC<{
                         <h4>Book where to sleep</h4>
                         <p className="muted-text">Lead stay area: {leadStay?.area}</p>
                         <div className="trip-booking-links">
-                            <ExternalLink href={stayBookingUrls.booking} label="Booking.com" />
+                            {leadStay?.officialWebsiteUrl
+                                ? <ExternalLink href={leadStay.officialWebsiteUrl} label="Live hotel provider" />
+                                : <ExternalLink href={stayBookingUrls.booking} label="Booking.com" />}
                             <ExternalLink href={stayBookingUrls.airbnb} label="Airbnb" />
                             <ExternalLink href={stayBookingUrls.hostelworld} label="Hostelworld" />
                         </div>
@@ -446,9 +449,12 @@ const StayTab: React.FC<{ accommodation: AccommodationOption[]; destination?: st
                 <PriceTag price={a.pricePerNight} />
                 <span className="muted-text"> / night</span>
             </div>
+            <p className="muted-text" style={{ fontSize: '0.78rem' }}>Price may vary for group size.</p>
             {a.tip && <p className="trip-accommodation-card__tip">💡 {a.tip}</p>}
             <div className="trip-booking-links">
-                <ExternalLink href={urls.booking} label="Booking.com" />
+                {a.officialWebsiteUrl
+                    ? <ExternalLink href={a.officialWebsiteUrl} label="Live hotel provider" />
+                    : <ExternalLink href={urls.booking} label="Booking.com" />}
                 <ExternalLink href={urls.airbnb} label="Airbnb" />
                 <ExternalLink href={urls.hostelworld} label="Hostelworld" />
             </div>

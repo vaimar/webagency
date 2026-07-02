@@ -1,4 +1,15 @@
-export const API_BASE = 'https://slumber-production.up.railway.app';
+const DEFAULT_PRODUCTION_API_BASE = 'https://slumber-production.up.railway.app';
+const LOCAL_DEV_API_BASE = 'http://localhost:9090';
+const rawApiBase = (process.env.REACT_APP_API_BASE ?? '').trim();
+const isLocalBrowserHost = typeof window !== 'undefined'
+    && /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
+const useLocalDevProxy = process.env.NODE_ENV !== 'production'
+    && (!rawApiBase || /^https?:\/\/localhost:9090\/?$/i.test(rawApiBase));
+const resolvedApiBase = rawApiBase || (isLocalBrowserHost ? LOCAL_DEV_API_BASE : DEFAULT_PRODUCTION_API_BASE);
+
+export const API_BASE = useLocalDevProxy
+    ? ''
+    : resolvedApiBase.replace(/\/$/, '');
 
 const DEV_AUTH_DEBUG = process.env.NODE_ENV !== 'production';
 const AUTH_DEBUG_PATHS = new Set(['/api/accounts/login', '/api/accounts/profile']);
@@ -176,6 +187,48 @@ const ensureOk = async (response: Response, diagnostics: ApiDiagnostics, fallbac
 // ─── Flights — FlightAvailable (canonical) + BackendFlight alias ──────────────
 
 export type DataConfidence = 'live' | 'mixed' | 'estimated';
+export type CostLineStatus = 'EXACT' | 'ESTIMATED' | 'MANUAL_CHECK_REQUIRED' | 'OVERRIDDEN_BY_LOCAL_ACCESS_KNOWLEDGE';
+export type FirstMileStatus = 'USER_PROVIDED' | 'ESTIMATED' | 'UNAVAILABLE';
+export type FirstMileMode = 'walking' | 'public_transport' | 'taxi' | 'rental_car' | 'other';
+
+/**
+ * OpenAPI: CostLine — one line item in the price transparency stack.
+ */
+export interface CostLine {
+    /** Known amount in EUR. Null when status is MANUAL_CHECK_REQUIRED. */
+    amount?: number | null;
+    currency?: string;
+    status?: CostLineStatus;
+    note?: string;
+}
+
+/**
+ * OpenAPI: PriceBreakdown — frontend-ready price transparency stack.
+ */
+export interface PriceBreakdown {
+    baseFare?: CostLine;
+    shuttleFee?: CostLine;
+    baggageEstimate?: CostLine;
+    lateArrivalMarkup?: CostLine;
+    /** Optional first-mile access line item (home → departure airport). Present only when firstMileAccess is supplied. */
+    firstMileLine?: CostLine;
+    renderMode?: string;
+}
+
+/**
+ * OpenAPI: FirstMileAccess — home → departure-airport first-mile access.
+ * Additive context that extends the Anti-Nightmare analysis to full door-to-trip pricing.
+ */
+export interface FirstMileAccess {
+    /** Cost in EUR to reach the departure airport from the user's home. Null when only travel time is known. */
+    amount?: number | null;
+    durationMinutes?: number;
+    mode?: FirstMileMode;
+    currency?: string;
+    status?: FirstMileStatus;
+    source?: string;
+    note?: string;
+}
 
 /**
  * OpenAPI: AntiCauchemarAnalysis
@@ -191,10 +244,24 @@ export interface AntiCauchemarAnalysis {
     transferToCenterMinutes?: number;
     totalTravelTimeMinutes?: number;
     currency?: string;
-    hiddenCostPenalty?: number;
-    theCatch?: string;
     logisticVerdict?: string;
     dataConfidence?: DataConfidence;
+    // ── Travel Auditor fields ──────────────────────────────────────────────
+    hiddenCostPenalty?: number;
+    timePenaltyMinutes?: number;
+    /** realCost + hiddenCostPenalty + lateArrivalMarkup: the true transparent out-of-pocket cost. */
+    auditedTotalCost?: number;
+    /** 'The Catch' — non-null when the flight has significant hidden costs or logistic risks. */
+    theCatch?: string;
+    priceBreakdown?: PriceBreakdown;
+    manualCheckRequired?: boolean;
+    manualCheckReasons?: string[];
+    localAccessKnowledgeOverrideApplied?: boolean;
+    localAccessKnowledgeNote?: string;
+    // ── First-mile / Door-to-trip pricing ─────────────────────────────────
+    firstMileAccess?: FirstMileAccess;
+    /** auditedTotalCost + firstMileAccess.amount. Null when firstMileAccess is not supplied. */
+    doorToTripPrice?: number | null;
 }
 
 /**
@@ -214,6 +281,20 @@ export interface FlightAvailable {
     currency?: string;
     fetchDate?: string;
     antiCauchemar?: AntiCauchemarAnalysis;
+    /**
+     * Honest Price = price + mandatory shuttle + average cabin-bag fee.
+     * Sorted ascending on /api/flights responses. Never persisted.
+     */
+    realWorldEntryPrice?: number;
+    /** "Current" when data is fresh (< 12 h), "Estimated (Cached)" when stale. */
+    priceLabel?: string;
+    /** Non-null only when priceLabel is "Estimated (Cached)". */
+    priceDisclaimer?: string;
+    /**
+     * Richer home-to-trip price when firstMileAccess was supplied.
+     * Never redefines realWorldEntryPrice — parallel field.
+     */
+    doorToTripPrice?: number | null;
     // Legacy / Ryanair live-flight fields — may be absent on cached flights
     flightNumber?: string;
     airline?: string;
@@ -401,6 +482,20 @@ const asString = (value: unknown): string => {
     return '';
 };
 
+const asNumber = (value: unknown): number | null => {
+    if (typeof value === 'number') {
+        return Number.isFinite(value) ? value : null;
+    }
+
+    if (typeof value === 'string') {
+        const normalized = value.replace(/[^\d.,-]/g, '').replace(',', '.');
+        const parsed = Number.parseFloat(normalized);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    return null;
+};
+
 const asStringArray = (value: unknown): string[] => (
     Array.isArray(value)
         ? value.map((item) => asString(item)).filter(Boolean)
@@ -408,6 +503,49 @@ const asStringArray = (value: unknown): string[] => (
 );
 
 const asArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
+
+const normalizeHotelResult = (value: unknown): HotelResult | null => {
+    const record = asRecord(value);
+    if (!record) {
+        return null;
+    }
+
+    const point = asRecord(record.point);
+    const xid = asString(record.xid ?? record.id ?? record.placeId);
+    const name = asString(record.name ?? record.title ?? record.hotelName ?? record.propertyName);
+    const latitude = asNumber(record.latitude ?? record.lat ?? point?.lat ?? point?.latitude);
+    const longitude = asNumber(record.longitude ?? record.lon ?? record.lng ?? point?.lon ?? point?.lng ?? point?.longitude);
+
+    if (!name && !xid) {
+        return null;
+    }
+
+    return {
+        xid: xid || undefined,
+        name: name || undefined,
+        latitude: latitude ?? undefined,
+        longitude: longitude ?? undefined,
+        kinds: asString(record.kinds ?? record.kind) || undefined,
+        provider: asString(record.provider ?? record.source) || undefined,
+        rating: asNumber(record.rating ?? record.stars ?? record.reviewScore),
+        reviewsCount: asNumber(record.reviewsCount ?? record.reviewCount ?? record.totalReviews),
+        pricePerNight: asNumber(record.pricePerNight ?? record.nightlyRate ?? record.price),
+        priceCurrency: asString(record.priceCurrency ?? record.currency) || undefined,
+        bookingLink: asHttpUrl(record.bookingLink ?? record.bookingUrl ?? record.booking_url ?? record.url),
+        thumbnailUrl: asHttpUrl(record.thumbnailUrl ?? record.imageUrl ?? record.image ?? record.thumbnail),
+        reviewSummary: asString(record.reviewSummary ?? record.summary) || undefined,
+    };
+};
+
+const normalizeHotelResults = (value: unknown): HotelResult[] => {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    return value
+        .map(normalizeHotelResult)
+        .filter((hotel): hotel is HotelResult => Boolean(hotel));
+};
 
 const dedupeBy = <T,>(items: T[], getKey: (item: T) => string): T[] => {
     const seen = new Set<string>();
@@ -530,6 +668,60 @@ export interface HotelResult {
     latitude?: number;
     longitude?: number;
     kinds?: string;
+    provider?: string;
+    // SerpApi enrichment fields (additive — present when enrichment is enabled)
+    rating?: number | null;
+    reviewsCount?: number | null;
+    pricePerNight?: number | null;
+    priceCurrency?: string;
+    bookingLink?: string;
+    thumbnailUrl?: string;
+    reviewSummary?: string;
+}
+
+export interface ReviewSnippet {
+    title?: string;
+    text?: string;
+    rating?: number;
+    date?: string;
+}
+
+export interface ReviewCategoryRating {
+    category?: string;
+    rating?: number;
+}
+
+export interface ReviewBreakdown {
+    source?: string;
+    averageRating?: number | null;
+    totalReviews?: number | null;
+    summary?: string;
+    snippets?: ReviewSnippet[];
+    positiveMentions?: string[];
+    criticalMentions?: string[];
+    categoryRatings?: ReviewCategoryRating[];
+}
+
+/** OpenAPI: HotelEnrichmentResponse — SerpApi-backed enrichment for a single OpenTripMap place. */
+export interface HotelEnrichmentResponse {
+    xid?: string;
+    name?: string;
+    provider?: string;
+    matched?: boolean;
+    matchStrategy?: string;
+    matchedPropertyName?: string;
+    propertyToken?: string;
+    rating?: number | null;
+    reviewsCount?: number | null;
+    reviewSummary?: string;
+    reviewHighlights?: string[];
+    reviewBreakdown?: ReviewBreakdown;
+    pricePerNight?: number | null;
+    priceCurrency?: string;
+    bookingLink?: string;
+    thumbnailUrl?: string;
+    amenities?: string[];
+    nearbyPlaces?: string[];
 }
 
 export type GenericJsonObject = Record<string, unknown>;
@@ -690,6 +882,17 @@ export interface FlightSearchParams {
     date?: string;
 }
 
+/** Optional first-mile access query params for flight endpoints. */
+export interface FirstMileAccessParams {
+    firstMileAmount?: number;
+    firstMileDurationMinutes?: number;
+    firstMileMode?: FirstMileMode;
+    firstMileCurrency?: string;
+    firstMileStatus?: FirstMileStatus;
+    firstMileSource?: string;
+    firstMileNote?: string;
+}
+
 export interface FlightsRefreshResult {
     message?: string;
     origin?: string;
@@ -711,15 +914,31 @@ const resolveFlightDate = (date?: string): string => {
     return target.toISOString().slice(0, 10);
 };
 
+const buildFirstMileQuery = (fm?: FirstMileAccessParams): Record<string, string> => {
+    if (!fm) return {};
+    const out: Record<string, string> = {};
+    if (fm.firstMileAmount != null) out.firstMileAmount = String(fm.firstMileAmount);
+    if (fm.firstMileDurationMinutes != null) out.firstMileDurationMinutes = String(fm.firstMileDurationMinutes);
+    if (fm.firstMileMode) out.firstMileMode = fm.firstMileMode;
+    if (fm.firstMileCurrency) out.firstMileCurrency = fm.firstMileCurrency;
+    if (fm.firstMileStatus) out.firstMileStatus = fm.firstMileStatus;
+    if (fm.firstMileSource) out.firstMileSource = fm.firstMileSource;
+    if (fm.firstMileNote) out.firstMileNote = fm.firstMileNote;
+    return out;
+};
+
 const fetchFlightsFromPath = async (
     path: string,
     params: FlightSearchParams,
     init?: RequestInit,
+    firstMile?: FirstMileAccessParams,
 ): Promise<FlightsResult> => {
-    const url = buildApiUrl(path, {
+    const query: Record<string, string> = {
         origin: params.origin.toUpperCase(),
         destination: params.destination.toUpperCase(),
-    });
+        ...buildFirstMileQuery(firstMile),
+    };
+    const url = buildApiUrl(path, query);
 
     const { response, diagnostics } = await fetchWithDiagnostics(url, init);
     await ensureOk(response, diagnostics, 'Flights failed');
@@ -731,8 +950,11 @@ const fetchFlightsFromPath = async (
     };
 };
 
-export const searchFlights = async (params: FlightSearchParams): Promise<FlightsResult> => {
-    return fetchFlightsFromPath('/api/flights', params);
+export const searchFlights = async (
+    params: FlightSearchParams,
+    firstMile?: FirstMileAccessParams,
+): Promise<FlightsResult> => {
+    return fetchFlightsFromPath('/api/flights', params, undefined, firstMile);
 };
 
 export const refreshFlights = async (params: FlightSearchParams): Promise<FlightsRefreshResult> => {
@@ -759,6 +981,78 @@ export const refreshFlights = async (params: FlightSearchParams): Promise<Flight
         date: payload.date ?? resolvedDate,
         diagnostics,
     };
+};
+
+// ─── Flight by date  GET /api/flights/by-date ─────────────────────────────────
+
+export interface FlightByDateResult {
+    flight: FlightAvailable;
+    diagnostics: ApiDiagnostics;
+}
+
+/**
+ * DateGuard: returns 404 (throws) when no cached flight departs on the exact requested date.
+ */
+export const getFlightByDate = async (
+    params: FlightSearchParams & { date: string },
+    firstMile?: FirstMileAccessParams,
+): Promise<FlightByDateResult> => {
+    const query: Record<string, string> = {
+        origin: params.origin.toUpperCase(),
+        destination: params.destination.toUpperCase(),
+        date: params.date,
+        ...buildFirstMileQuery(firstMile),
+    };
+    const url = buildApiUrl('/api/flights/by-date', query);
+    const { response, diagnostics } = await fetchWithDiagnostics(url);
+    await ensureOk(response, diagnostics, 'Flight by date failed');
+    const data = normalizeFlight((await response.json()) as RawFlightAvailable);
+    return { flight: data, diagnostics };
+};
+
+// ─── External flight search  GET /api/flight-search/* ────────────────────────
+
+export type FlightSearchProvider = 'serpapi' | 'aviationstack' | 'kiwi';
+
+export interface ExternalFlightSearchResult {
+    results: FlightSearchResult[];
+    diagnostics: ApiDiagnostics;
+}
+
+/**
+ * Search live/scheduled departures from an airport via SerpApi / AviationStack / Kiwi.
+ * GET /api/flight-search/departures?iata=DUB&provider=serpapi
+ */
+export const searchFlightsByDeparture = async (
+    iata: string,
+    provider?: FlightSearchProvider,
+): Promise<ExternalFlightSearchResult> => {
+    const query: Record<string, string> = { iata: iata.toUpperCase() };
+    if (provider) query.provider = provider;
+    const url = buildApiUrl('/api/flight-search/departures', query);
+    const { response, diagnostics } = await fetchWithDiagnostics(url);
+    await ensureOk(response, diagnostics, 'Flight departures search failed');
+    return { results: (await response.json()) as FlightSearchResult[], diagnostics };
+};
+
+/**
+ * Search live/scheduled flights between two airports.
+ * GET /api/flight-search/routes?from=DUB&to=BCN&provider=serpapi
+ */
+export const searchFlightRoutes = async (
+    from: string,
+    to: string,
+    provider?: FlightSearchProvider,
+): Promise<ExternalFlightSearchResult> => {
+    const query: Record<string, string> = {
+        from: from.toUpperCase(),
+        to: to.toUpperCase(),
+    };
+    if (provider) query.provider = provider;
+    const url = buildApiUrl('/api/flight-search/routes', query);
+    const { response, diagnostics } = await fetchWithDiagnostics(url);
+    await ensureOk(response, diagnostics, 'Flight routes search failed');
+    return { results: (await response.json()) as FlightSearchResult[], diagnostics };
 };
 
 // ─── Trip suggestion  GET /api/trips/suggestions ──────────────────────────────
@@ -954,5 +1248,79 @@ export const updatePreferences = async (request: UpdateUserProfileRequest): Prom
     }, { requiresAuth: true });
     await ensureOk(response, diagnostics, 'Failed to update preferences');
     return (await response.json()) as UserProfile;
+};
+
+// ─── Hotels  /api/hotels/* ────────────────────────────────────────────────────
+
+export interface HotelsResult {
+    hotels: HotelResult[];
+    diagnostics: ApiDiagnostics;
+}
+
+export interface HotelEnrichmentResult {
+    enrichment: HotelEnrichmentResponse;
+    diagnostics: ApiDiagnostics;
+}
+
+/**
+ * Find nearby hotels via OpenTripMap with optional SerpApi enrichment.
+ * GET /api/hotels/nearby?lat=48.8566&lon=2.3522&radius=2000
+ */
+export const getHotelsNearby = async (
+    lat: number,
+    lon: number,
+    radius: number = 2000,
+): Promise<HotelsResult> => {
+    const url = buildApiUrl('/api/hotels/nearby', {
+        lat: String(lat),
+        lon: String(lon),
+        radius: String(radius),
+    });
+    const { response, diagnostics } = await fetchWithDiagnostics(url);
+    await ensureOk(response, diagnostics, 'Hotels nearby failed');
+    return { hotels: normalizeHotelResults(await response.json()), diagnostics };
+};
+
+/**
+ * Find hotels inside a bounding box.
+ * GET /api/hotels/search/bbox?lonMin=...&latMin=...&lonMax=...&latMax=...
+ */
+export const getHotelsByBbox = async (
+    lonMin: number,
+    latMin: number,
+    lonMax: number,
+    latMax: number,
+): Promise<HotelsResult> => {
+    const url = buildApiUrl('/api/hotels/search/bbox', {
+        lonMin: String(lonMin),
+        latMin: String(latMin),
+        lonMax: String(lonMax),
+        latMax: String(latMax),
+    });
+    const { response, diagnostics } = await fetchWithDiagnostics(url);
+    await ensureOk(response, diagnostics, 'Hotels bbox search failed');
+    return { hotels: normalizeHotelResults(await response.json()), diagnostics };
+};
+
+/**
+ * Get raw OpenTripMap place details for a single hotel.
+ * GET /api/hotels/{xid}
+ */
+export const getHotelDetails = async (xid: string): Promise<{ details: GenericJsonObject; diagnostics: ApiDiagnostics }> => {
+    const url = buildApiUrl(`/api/hotels/${encodeURIComponent(xid)}`);
+    const { response, diagnostics } = await fetchWithDiagnostics(url);
+    await ensureOk(response, diagnostics, 'Hotel details failed');
+    return { details: (await response.json()) as GenericJsonObject, diagnostics };
+};
+
+/**
+ * Get SerpApi-backed enrichment (reviews, rating, price, amenities) for a single place.
+ * GET /api/hotels/{xid}/enrichment
+ */
+export const getHotelEnrichment = async (xid: string): Promise<HotelEnrichmentResult> => {
+    const url = buildApiUrl(`/api/hotels/${encodeURIComponent(xid)}/enrichment`);
+    const { response, diagnostics } = await fetchWithDiagnostics(url);
+    await ensureOk(response, diagnostics, 'Hotel enrichment failed');
+    return { enrichment: (await response.json()) as HotelEnrichmentResponse, diagnostics };
 };
 

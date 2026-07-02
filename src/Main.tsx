@@ -1,4 +1,4 @@
-import { faCompass, faComments, faDatabase, faHome, faPlane, faUser } from '@fortawesome/free-solid-svg-icons';
+import { faBolt, faCompass, faDatabase, faHome, faRoute, faUser } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
@@ -25,9 +25,9 @@ const footerSections = [
 
 const navItems = [
 	{ to: '/',          label: 'Home',         icon: faHome,     end: true  },
-	{ to: '/discover',  label: 'Flights',      icon: faPlane,    end: false },
+	{ to: '/discover',  label: 'Door-to-trip', icon: faRoute,    end: false },
 	{ to: '/planner',   label: 'Planner',      icon: faCompass,  end: false },
-	{ to: '/assistant', label: 'Assistant',    icon: faComments, end: false },
+	{ to: '/explore',   label: 'Plan de ouf',  icon: faBolt,     end: false },
 ];
 
 const toastMeta = (toast: GlobalToast) => {
@@ -35,7 +35,7 @@ const toastMeta = (toast: GlobalToast) => {
 		case 'planner':
 			return { icon: faCompass, label: 'Planner' };
 		case 'assistant':
-			return { icon: faComments, label: 'Assistant' };
+				return { icon: faRoute, label: 'Guide' };
 		case 'auth':
 				return { icon: faUser, label: 'Account' };
 		default:

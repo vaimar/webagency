@@ -1,15 +1,14 @@
+import { searchFlightsByDeparture } from './api';
 import { fetchFlightDestinations } from './flightService';
-import { loadPriorityFlights } from './searchService';
 
-jest.mock('./searchService', () => ({
-    loadPriorityFlights: jest.fn(),
-    NO_FLIGHT_NO_TRIP_MESSAGE: 'No Honest Routes Found. No flight data means no trip guide.',
+jest.mock('./api', () => ({
+    searchFlightsByDeparture: jest.fn(),
 }));
 
-const mockedLoadPriorityFlights = loadPriorityFlights as jest.MockedFunction<typeof loadPriorityFlights>;
+const mockedSearchFlightsByDeparture = searchFlightsByDeparture as jest.MockedFunction<typeof searchFlightsByDeparture>;
 
 const diagnostics = {
-    url: 'https://slumber-production.up.railway.app/api/flights',
+    url: 'https://slumber-production.up.railway.app/api/flight-search/departures?iata=DUB&provider=serpapi',
     method: 'GET',
     ok: true,
     status: 200,
@@ -23,82 +22,63 @@ describe('fetchFlightDestinations', () => {
         jest.resetAllMocks();
     });
 
-    it('builds live DUB showcase cards from backend flights and sorts them by honest price', async () => {
-        mockedLoadPriorityFlights.mockImplementation(async (params) => {
-            if (params.destination === 'BVA') {
-                return {
-                    flights: [
-                        {
-                            origin: 'DUB',
-                            destination: 'BVA',
-                            departureDate: '2026-06-01T07:10:00Z',
-                            price: 69,
-                            currency: 'EUR',
-                            antiCauchemar: {
-                                realWorldEntryPrice: 112,
-                                theCatch: 'Beauvais adds a bus bill.',
-                                logisticVerdict: 'Still viable if the coach is budgeted.',
-                                currency: 'EUR',
-                            },
-                        },
-                    ],
-                    diagnostics,
-                    source: 'live',
-                };
-            }
-
-            if (params.destination === 'LIS') {
-                return {
-                    flights: [
-                        {
-                            origin: 'DUB',
-                            destination: 'LIS',
-                            departureDate: '2026-06-08T08:10:00Z',
-                            price: 89,
-                            currency: 'EUR',
-                            antiCauchemar: {
-                                realWorldEntryPrice: 98,
-                                theCatch: 'The airport metro saves this route.',
-                                logisticVerdict: 'Cleaner entry than the headline fare suggests.',
-                                currency: 'EUR',
-                            },
-                        },
-                    ],
-                    diagnostics,
-                    source: 'live',
-                };
-            }
-
-            return {
-                flights: [],
-                diagnostics,
-                source: 'live',
-            };
+    it('builds live DUB showcase cards from backend departures and sorts them by honest price', async () => {
+        mockedSearchFlightsByDeparture.mockResolvedValue({
+            diagnostics,
+            results: [
+                {
+                    flightNumber: 'FR 24',
+                    departureAirport: 'DUB',
+                    arrivalAirport: 'BVA',
+                    scheduledDeparture: '2026-06-01T07:10:00Z',
+                    scheduledArrival: '2026-06-01T09:35:00Z',
+                    estimatedTicketPrice: 69,
+                    antiCauchemar: {
+                        realWorldEntryPrice: 112,
+                        airportShuttleEstimate: 28,
+                        cabinBagEstimate: 15,
+                        auditedTotalCost: 112,
+                        theCatch: 'Beauvais adds a bus bill.',
+                        logisticVerdict: 'Still viable if the coach is budgeted.',
+                        currency: 'EUR',
+                    },
+                },
+                {
+                    flightNumber: 'FR 9',
+                    departureAirport: 'DUB',
+                    arrivalAirport: 'LIS',
+                    scheduledDeparture: '2026-06-08T08:10:00Z',
+                    scheduledArrival: '2026-06-08T10:55:00Z',
+                    estimatedTicketPrice: 89,
+                    antiCauchemar: {
+                        realWorldEntryPrice: 98,
+                        airportShuttleEstimate: 9,
+                        auditedTotalCost: 98,
+                        theCatch: 'The airport metro saves this route.',
+                        logisticVerdict: 'Cleaner entry than the headline fare suggests.',
+                        currency: 'EUR',
+                    },
+                },
+            ],
         });
 
         const result = await fetchFlightDestinations({ origin: 'DUB', maxPrice: 180 });
 
-        expect(mockedLoadPriorityFlights).toHaveBeenCalledWith(expect.objectContaining({
-            origin: 'DUB',
-            destination: 'BVA',
-            refreshFlightsFirst: true,
-            date: '2026-06-01',
-        }));
+        expect(mockedSearchFlightsByDeparture).toHaveBeenCalledWith('DUB', 'serpapi');
         expect(result.source).toBe('live');
         expect(result.destinations.map((destination) => destination.destination)).toEqual(['LIS', 'BVA']);
         expect(result.destinations[0]).toMatchObject({
             antiCauchemar: {
-                realWorldEntryPrice: 98,
+                auditedTotalCost: 98,
             },
         });
         expect(result.destinations[0].links.flightOffers).toContain('https://');
     });
 
     it('returns the honest empty notice when the backend yields no landing flights', async () => {
-        mockedLoadPriorityFlights.mockResolvedValue({
-            flights: [],
+        mockedSearchFlightsByDeparture.mockResolvedValue({
             diagnostics,
-            source: 'live',
+            results: [],
         });
 
         const result = await fetchFlightDestinations({ origin: 'DUB', maxPrice: 180 });
@@ -107,5 +87,3 @@ describe('fetchFlightDestinations', () => {
         expect(result.notice).toBe('No Honest Routes Found. No flight data means no trip guide.');
     });
 });
-
-
