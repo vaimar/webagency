@@ -1,0 +1,386 @@
+.trip-explore-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 28px;
+    border-radius: 24px;
+    background:
+        radial-gradient(circle at top left, rgba(125, 211, 252, 0.16), transparent 24%),
+        linear-gradient(135deg, #070b16 0%, #0f172a 100%);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    box-shadow: 0 24px 60px rgba(2, 8, 23, 0.45);
+    color: #f8fafc;
+}
+
+.trip-explore-dashboard__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.trip-explore-dashboard__eyebrow {
+    margin: 0 0 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #7dd3fc;
+}
+
+.trip-explore-dashboard__title {
+    margin: 0;
+    font-size: clamp(1.55rem, 2.1vw, 2.2rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: #ffffff;
+}
+
+.trip-explore-dashboard__subtitle {
+    margin: 6px 0 0;
+    color: #94a3b8;
+    font-size: 0.95rem;
+}
+
+.trip-explore-dashboard__status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(125, 211, 252, 0.14);
+    color: #e0f2fe;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: 1px solid rgba(125, 211, 252, 0.25);
+}
+
+.trip-explore-dashboard__status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #34d399;
+    box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.18);
+}
+
+.trip-explore-dashboard__warning-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(245, 158, 11, 0.16);
+    color: #fde68a;
+    border: 1px solid rgba(245, 158, 11, 0.26);
+    font-size: 0.95rem;
+}
+
+.trip-explore-dashboard__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    gap: 18px;
+}
+
+.trip-explore-dashboard__column {
+    display: flex;
+}
+
+.trip-explore-dashboard__card {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px;
+    border-radius: 20px;
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.trip-explore-dashboard__card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.trip-explore-dashboard__label {
+    margin: 0 0 4px;
+    color: #7dd3fc;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-weight: 700;
+    font-size: 0.72rem;
+}
+
+.trip-explore-dashboard__card-title {
+    margin: 0;
+    font-size: 1.18rem;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+.trip-explore-dashboard__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 7px 10px;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.trip-explore-dashboard__badge--warn {
+    background: rgba(248, 113, 113, 0.16);
+    color: #fecaca;
+    border: 1px solid rgba(248, 113, 113, 0.26);
+}
+
+.trip-explore-dashboard__badge--accent {
+    background: rgba(125, 211, 252, 0.14);
+    color: #e0f2fe;
+    border: 1px solid rgba(125, 211, 252, 0.24);
+}
+
+.trip-explore-dashboard__flight-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 18px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(31, 41, 55, 0.95), rgba(8, 15, 32, 0.95));
+}
+
+.trip-explore-dashboard__flight-airline {
+    margin: 0;
+    font-size: 0.84rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #cbd5e1;
+}
+
+.trip-explore-dashboard__flight-number {
+    margin: 6px 0 0;
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: #ffffff;
+}
+
+.trip-explore-dashboard__price-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    text-align: right;
+    gap: 2px;
+}
+
+.trip-explore-dashboard__price-caption {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #cbd5e1;
+}
+
+.trip-explore-dashboard__price {
+    font-size: 1.85rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    color: #fbbf24;
+}
+
+.trip-explore-dashboard__price--pending {
+    font-size: 1.02rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    color: #fde68a;
+}
+
+.trip-explore-dashboard__price-secondary {
+    color: #22d3ee;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.trip-explore-dashboard__meta-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.trip-explore-dashboard__meta-row > div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(125, 211, 252, 0.07);
+}
+
+.trip-explore-dashboard__meta-row > div strong {
+    color: #ffffff;
+    font-size: 0.95rem;
+}
+
+.trip-explore-dashboard__meta-label {
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #cbd5e1;
+}
+
+.trip-explore-dashboard__alert-block {
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: rgba(248, 113, 113, 0.12);
+    border: 1px solid rgba(248, 113, 113, 0.22);
+}
+
+.trip-explore-dashboard__alert-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #fecaca;
+}
+
+.trip-explore-dashboard__alert-block p {
+    margin: 0;
+    color: #fef2f2;
+    line-height: 1.5;
+}
+
+.trip-explore-dashboard__warning-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.trip-explore-dashboard__tiny-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.12);
+    color: #fde68a;
+    font-size: 0.74rem;
+    border: 1px solid rgba(245, 158, 11, 0.16);
+}
+
+.trip-explore-dashboard__hotel-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.trip-explore-dashboard__hotel-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.trip-explore-dashboard__hotel-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.trip-explore-dashboard__hotel-name {
+    margin: 0 0 6px;
+    font-size: 1.08rem;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+.trip-explore-dashboard__hotel-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 0.86rem;
+    font-weight: 700;
+}
+
+.trip-explore-dashboard__hotel-rating {
+    color: #fbbf24;
+}
+
+.trip-explore-dashboard__hotel-distance {
+    color: #22d3ee;
+}
+
+.trip-explore-dashboard__hotel-price {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    text-align: right;
+    gap: 2px;
+}
+
+.trip-explore-dashboard__hotel-price-value {
+    font-size: 1.12rem;
+    font-weight: 800;
+    color: #fbbf24;
+}
+
+.trip-explore-dashboard__hotel-price-value--pending {
+    font-size: 0.86rem;
+    font-weight: 800;
+    color: #fde68a;
+}
+
+.trip-explore-dashboard__reason-pill {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    padding: 8px 10px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(52, 211, 153, 0.16), rgba(125, 211, 252, 0.16));
+    color: #d1fae5;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: 1px solid rgba(52, 211, 153, 0.16);
+}
+
+@media (max-width: 900px) {
+    .trip-explore-dashboard__grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .trip-explore-dashboard {
+        padding: 18px;
+    }
+
+    .trip-explore-dashboard__header,
+    .trip-explore-dashboard__flight-hero,
+    .trip-explore-dashboard__hotel-main {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .trip-explore-dashboard__price-stack,
+    .trip-explore-dashboard__hotel-price {
+        align-items: flex-start;
+        text-align: left;
+    }
+
+    .trip-explore-dashboard__meta-row {
+        grid-template-columns: 1fr;
+    }
+}
+
