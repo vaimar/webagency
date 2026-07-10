@@ -3,11 +3,10 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from
 import About from './About';
 import './App.css';
 import { CacheProvider } from './CacheContext';
-import Home from './Home';
+import IslandHop from './IslandHop';
 import Main from './Main';
 import Profile from './Profile';
 import { ProfileProvider, useProfile } from './ProfileContext';
-import TravelForm from './TravelForm';
 import { TripExplorationProvider } from './TripExplorationContext';
 import TripExploreWrapper from './components/TripExploreWrapper';
 
@@ -39,10 +38,12 @@ const App: React.FC = () => {
                         <Routes>
                             <Route element={<Main />}>
                                 <Route index element={<About />} />
-                                <Route path="discover" element={<Home />} />
-                                <Route path="planner" element={<TravelForm />} />
+                                {/* Unified into /explore — the single door-to-door trip flow. */}
+                                <Route path="discover" element={<Navigate to="/explore" replace />} />
+                                <Route path="planner" element={<Navigate to="/explore" replace />} />
                                 <Route path="explore" element={<TripExploreWrapper />} />
-                                <Route path="assistant" element={<Navigate to="/discover" replace />} />
+                                <Route path="island-hop" element={<IslandHop />} />
+                                <Route path="assistant" element={<Navigate to="/explore" replace />} />
                                 <Route path="profile" element={<Profile />} />
                                 <Route path="*" element={<Navigate to="/" replace />} />
                             </Route>

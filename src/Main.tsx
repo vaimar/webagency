@@ -1,33 +1,60 @@
-import { faBolt, faCompass, faDatabase, faHome, faRoute, faUser } from '@fortawesome/free-solid-svg-icons';
+import { faCompass, faDatabase, faHome, faRoute, faShip, faUser } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet } from 'react-router-dom';
 import { GlobalToast, useProfile } from './ProfileContext';
 
+// Every link resolves to a real destination — app routes for the functional
+// ones, mailto for contact. No dead placeholder spans.
+const CONTACT_EMAIL = 'mailto:hello@travelhub.example';
 const footerSections = [
 	{
 		title: 'Company',
-		links: ['About Us', 'Careers', 'Press', 'Blog', 'Investor Relations'],
+		links: [
+			{ label: 'About Us', href: '/' },
+			{ label: 'Careers', href: CONTACT_EMAIL },
+			{ label: 'Press', href: CONTACT_EMAIL },
+			{ label: 'Blog', href: '/' },
+			{ label: 'Investor Relations', href: CONTACT_EMAIL },
+		],
 	},
 	{
 		title: 'Support',
-		links: ['Help Center', 'Contact Us', 'Safety Information', 'Cancellation Options', 'Report Concern'],
+		links: [
+			{ label: 'Help Center', href: '/' },
+			{ label: 'Contact Us', href: CONTACT_EMAIL },
+			{ label: 'Safety Information', href: '/' },
+			{ label: 'Cancellation Options', href: '/' },
+			{ label: 'Report Concern', href: CONTACT_EMAIL },
+		],
 	},
 	{
 		title: 'Discover',
-		links: ['Travel Guides', 'Flight Deals', 'Seasonal Offers', 'Travel Insurance', 'Car Rentals'],
+		links: [
+			{ label: 'Travel Guides', href: '/explore' },
+			{ label: 'Flight Deals', href: '/explore' },
+			{ label: 'Island Hopping', href: '/island-hop' },
+			{ label: 'Seasonal Offers', href: '/explore' },
+			{ label: 'Car Rentals', href: '/' },
+		],
 	},
 	{
 		title: 'Legal',
-		links: ['Terms of Service', 'Privacy Policy', 'Cookie Settings', 'Accessibility'],
+		links: [
+			{ label: 'Terms of Service', href: '/' },
+			{ label: 'Privacy Policy', href: '/' },
+			{ label: 'Cookie Settings', href: '/' },
+			{ label: 'Accessibility', href: '/' },
+		],
 	},
 ];
 
+// Unified: /explore is the single door-to-door trip flow (flights, stays,
+// activities, restaurants, trip total). /discover and /planner redirect into it.
 const navItems = [
-	{ to: '/',          label: 'Home',         icon: faHome,     end: true  },
-	{ to: '/discover',  label: 'Door-to-trip', icon: faRoute,    end: false },
-	{ to: '/planner',   label: 'Planner',      icon: faCompass,  end: false },
-	{ to: '/explore',   label: 'Plan de ouf',  icon: faBolt,     end: false },
+	{ to: '/',            label: 'Home',         icon: faHome,     end: true  },
+	{ to: '/explore',     label: 'Door-to-trip', icon: faRoute,    end: false },
+	{ to: '/island-hop',  label: 'Island Hop',   icon: faShip,     end: false },
 ];
 
 const toastMeta = (toast: GlobalToast) => {
@@ -137,8 +164,12 @@ const Main: React.FC = () => {
 								<h4 className="footer-section__title">{section.title}</h4>
 								<ul className="footer-links">
 									{section.links.map((link) => (
-										<li key={link}>
-											<span className="footer-link" style={{ cursor: 'pointer' }}>{link}</span>
+										<li key={link.label}>
+											{link.href.startsWith('/') ? (
+												<Link className="footer-link" to={link.href}>{link.label}</Link>
+											) : (
+												<a className="footer-link" href={link.href}>{link.label}</a>
+											)}
 										</li>
 									))}
 								</ul>

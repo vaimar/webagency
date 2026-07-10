@@ -1,0 +1,450 @@
+.island-hop {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 28px;
+    border-radius: 24px;
+    background:
+        radial-gradient(circle at top left, rgba(125, 211, 252, 0.16), transparent 24%),
+        linear-gradient(135deg, #070b16 0%, #0f172a 100%);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    color: #f8fafc;
+}
+
+.island-hop__eyebrow {
+    margin: 0 0 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #7dd3fc;
+}
+
+.island-hop__title {
+    margin: 0;
+    font-size: clamp(1.6rem, 2.4vw, 2.3rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+}
+
+.island-hop__subtitle {
+    margin: 8px 0 0;
+    color: #94a3b8;
+    font-size: 0.95rem;
+    line-height: 1.55;
+}
+
+.island-hop__label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #cbd5e1;
+    margin-bottom: 8px;
+}
+
+.island-hop__controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+}
+
+.island-hop__input {
+    width: 100%;
+    padding: 11px 14px;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(148, 163, 184, 0.24);
+    color: #f8fafc;
+    font-size: 0.95rem;
+}
+
+.island-hop__hint {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.78rem;
+    color: #64748b;
+}
+
+.island-hop__chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.island-hop__chip {
+    appearance: none;
+    border: 1px solid rgba(125, 211, 252, 0.3);
+    background: rgba(125, 211, 252, 0.08);
+    color: #e0f2fe;
+    padding: 9px 14px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 120ms ease, border-color 120ms ease;
+}
+
+.island-hop__chip:hover {
+    background: rgba(125, 211, 252, 0.18);
+    border-color: rgba(125, 211, 252, 0.5);
+}
+
+.island-hop__editor {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    border-radius: 16px;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.island-hop__stop-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(125, 211, 252, 0.06);
+}
+
+.island-hop__stop-order {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.island-hop__stop-order button,
+.island-hop__nights button,
+.island-hop__remove {
+    appearance: none;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    background: rgba(15, 23, 42, 0.9);
+    color: #e2e8f0;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.island-hop__stop-order button:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.island-hop__stop-name {
+    flex: 1;
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+.island-hop__nights {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #cbd5e1;
+}
+
+.island-hop__remove {
+    color: #fca5a5;
+    border-color: rgba(248, 113, 113, 0.3);
+}
+
+.island-hop__add {
+    margin-top: 4px;
+}
+
+.island-hop__loading,
+.island-hop__error {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    font-size: 0.92rem;
+}
+
+.island-hop__loading {
+    background: rgba(125, 211, 252, 0.08);
+    color: #cbd5e1;
+}
+
+.island-hop__error {
+    background: rgba(248, 113, 113, 0.12);
+    border: 1px solid rgba(248, 113, 113, 0.24);
+    color: #fecaca;
+}
+
+.island-hop__spinner {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid rgba(125, 211, 252, 0.25);
+    border-top-color: #7dd3fc;
+    animation: island-hop-spin 0.8s linear infinite;
+}
+
+@keyframes island-hop-spin { to { transform: rotate(360deg); } }
+
+.island-hop__result {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.island-hop__summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    padding: 18px 20px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(31, 41, 55, 0.95), rgba(8, 15, 32, 0.95));
+    border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.island-hop__total {
+    margin: 4px 0 0;
+    font-size: 1.9rem;
+    font-weight: 800;
+    color: #fbbf24;
+    letter-spacing: -0.03em;
+}
+
+.island-hop__total-caption {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #94a3b8;
+    letter-spacing: 0;
+}
+
+.island-hop__summary-lines {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+.island-hop__summary-lines > div {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    text-align: right;
+}
+
+.island-hop__summary-lines span {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #cbd5e1;
+}
+
+.island-hop__summary-lines em {
+    font-style: normal;
+    color: #64748b;
+}
+
+.island-hop__summary-lines strong {
+    font-size: 1.1rem;
+    color: #ffffff;
+}
+
+.island-hop__warnings {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.island-hop__warn-pill {
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.12);
+    color: #fde68a;
+    font-size: 0.78rem;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.island-hop__timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+}
+
+.island-hop__leg {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    position: relative;
+}
+
+/* Continuous dashed accent line threading every transport node, so a
+   multi-stop itinerary reads as one seamless flow. Each leg draws the
+   segment through its own left rail and bridges the 8px gap to the next. */
+.island-hop__leg::before {
+    content: '';
+    position: absolute;
+    left: 25px;
+    top: 0;
+    bottom: -8px;
+    width: 0;
+    border-left: 1.5px dashed rgba(125, 211, 252, 0.35);
+    z-index: 0;
+}
+
+.island-hop__leg:first-child::before {
+    top: 24px;
+}
+
+.island-hop__leg:last-child::before {
+    bottom: auto;
+    height: 24px;
+}
+
+.island-hop__leg > div {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.island-hop__leg strong {
+    color: #ffffff;
+    font-size: 0.98rem;
+}
+
+.island-hop__leg-sub,
+.island-hop__leg-price {
+    font-size: 0.86rem;
+    color: #94a3b8;
+}
+
+.island-hop__leg-price {
+    color: #fbbf24;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.island-hop__leg--stay {
+    background: rgba(52, 211, 153, 0.08);
+    border-color: rgba(52, 211, 153, 0.18);
+}
+
+.island-hop__stays {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(148, 163, 184, 0.18);
+}
+
+.island-hop__stays-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #94a3b8;
+}
+
+.island-hop__stay {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.island-hop__stay-name {
+    font-weight: 700;
+    color: #e2e8f0;
+    font-size: 0.9rem;
+}
+
+.island-hop__stay-meta {
+    color: #94a3b8;
+    font-size: 0.84rem;
+    flex: 1;
+    min-width: 120px;
+}
+
+.island-hop__stay-book {
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(52, 211, 153, 0.14);
+    border: 1px solid rgba(52, 211, 153, 0.3);
+    color: #a7f3d0;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.island-hop__stay-book:hover {
+    background: rgba(52, 211, 153, 0.24);
+}
+
+.island-hop__stay-search {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 2px;
+    font-size: 0.82rem;
+    color: #94a3b8;
+}
+
+.island-hop__stay-search a {
+    color: #7dd3fc;
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.island-hop__stay-search a:hover {
+    text-decoration: underline;
+}
+
+.island-hop__leg--ferry {
+    background: rgba(34, 211, 238, 0.07);
+    border-color: rgba(34, 211, 238, 0.16);
+}
+
+.island-hop__leg-icon {
+    flex: none;
+    position: relative;
+    z-index: 1;
+    width: 24px;
+    height: 24px;
+    line-height: 24px;
+    text-align: center;
+    font-size: 0.95rem;
+    border-radius: 50%;
+    background: #0f172a;
+    border: 1px solid rgba(125, 211, 252, 0.4);
+    box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.9);
+}
+
+.island-hop__note {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.84rem;
+    line-height: 1.5;
+}
+
+@media (max-width: 600px) {
+    .island-hop__summary { flex-direction: column; align-items: flex-start; }
+    .island-hop__summary-lines > div { text-align: left; }
+}

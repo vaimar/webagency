@@ -34,6 +34,8 @@ export interface TripExplorationResponse {
     bestSameFlightComparison?: SameFlightComparison | null;
     routeSelectionSummary?: string | null;
     activityCandidates?: ActivityPlace[] | null;
+    /** Nearby dining POIs (OpenTripMap foods) in the destination city. */
+    restaurantCandidates?: ActivityPlace[] | null;
     primaryActivity?: ActivityPlace | null;
     accommodationTradeoffs?: AccommodationTradeoff[] | null;
     hiddenGemHotels?: HiddenGemHotel[] | null;
@@ -71,9 +73,29 @@ export interface UnifiedFlightOption {
     selectionReason?: string | null;
     sourcePriority?: number | null;
     sameFlightQuoteStatus?: string | null;
+    // Fly-drive expansion (origin-alternatives.json): this option departs from
+    // a hub the traveller drives to, not from their nearest airport.
+    alternativeOrigin?: boolean | null;
+    originDriveMinutes?: number | null;
+    originAccessNote?: string | null;
+    // Connection detail: 0/absent = direct; otherwise the layover airports + waits.
+    stops?: number | null;
+    totalDurationMinutes?: number | null;
+    layovers?: FlightLayover[] | null;
+}
+
+/** A stop on a non-direct itinerary. */
+export interface FlightLayover {
+    airport?: string | null;
+    name?: string | null;
+    durationMinutes?: number | null;
+    overnight?: boolean | null;
 }
 
 export interface FlightResult {
+    stops?: number | null;
+    totalDurationMinutes?: number | null;
+    layovers?: FlightLayover[] | null;
     flightNumber?: string | null;
     airline?: string | null;
     provider?: string | null;
@@ -122,6 +144,13 @@ export interface SameFlightComparison {
     comparisonSummary?: string | null;
 }
 
+/** One OTA's nightly quote for the same room (XoteloRateService.XoteloRateQuote). */
+export interface HotelRateQuote {
+    code?: string | null;
+    name?: string | null;
+    ratePerNight?: number | null;
+}
+
 export interface HotelResult {
     xid?: string | null;
     name?: string | null;
@@ -139,6 +168,10 @@ export interface HotelResult {
     bookingLink?: string | null;
     thumbnailUrl?: string | null;
     reviewSummary?: string | null;
+    /** Per-OTA quotes (TripAdvisor via Xotelo), cheapest first — null when never looked up. */
+    rateQuotes?: HotelRateQuote[] | null;
+    /** Curated TripAdvisor key (g{geo}-d{hotel}) resolved for this hotel, or null. */
+    tripadvisorKey?: string | null;
 }
 
 /** Hotel details are nested under `hotel`; the composite-score fields live on

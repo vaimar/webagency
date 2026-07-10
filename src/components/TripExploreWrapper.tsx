@@ -1,75 +1,38 @@
-import React, { useMemo, useState } from 'react';
-import { CACHE_TTL, useCache } from '../CacheContext';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useTripExploration } from '../TripExplorationContext';
 import {
-    StoredTripExploration,
-    TRIP_EXPLORE_CACHE_KEY,
-    TripExplorationResponse,
-    TripExploreRequestPayload,
-} from '../types/tripExploration';
+    getDestinationSuggestions,
+    resolveDestinationHint,
+    resolveOriginAirport,
+} from '../services/destinationDirectory';
+import { TripExploreRequestPayload } from '../types/tripExploration';
 import TripExploreDashboard from './TripExploreDashboard';
 import './TripExploreWrapper.css';
 
 type TransportMode = 'car' | 'public';
 
-interface RideSpotOption {
+const ACTIVITIES = ['wakeboard', 'snowboard', 'surf', 'kitesurf'] as const;
+
+// One-click ride spots — every one resolves end-to-end on the backend, so the
+// wakeboard/snowboard flow works without the user knowing what to type. Free
+// text still works for anything else.
+interface RideSpotPreset {
     label: string;
     destination: string;
     activity: string;
-    latitude: number;
-    longitude: number;
+    emoji: string;
 }
 
-const rideSpots: RideSpotOption[] = [
-    {
-        label: 'EXO 84 (Wakeboard, Geneva)',
-        destination: 'EXO 84',
-        activity: 'wakeboard',
-        latitude: 46.218,
-        longitude: 6.153,
-    },
-    {
-        label: 'Ibiza Cable Park (Wakeboard)',
-        destination: 'Ibiza Cable Park',
-        activity: 'wakeboard',
-        latitude: 38.912,
-        longitude: 1.433,
-    },
-    {
-        label: 'Les Houches (Snowboard)',
-        destination: 'Les Houches',
-        activity: 'snowboard',
-        latitude: 45.892,
-        longitude: 6.796,
-    },
-    {
-        label: '313 Cable Park (Prague)',
-        destination: '313 Cable Park',
-        activity: 'wakeboard',
-        latitude: 50.086,
-        longitude: 14.418,
-    },
+const RIDE_SPOT_PRESETS: RideSpotPreset[] = [
+    { label: 'EXO 84', destination: 'EXO 84', activity: 'wakeboard', emoji: '🌊' },
+    { label: 'Ibiza Cable Park', destination: 'Ibiza Cable Park', activity: 'wakeboard', emoji: '🌊' },
+    { label: '313 Cable Park', destination: '313 Cable Park', activity: 'wakeboard', emoji: '🌊' },
+    { label: 'Hypnotics', destination: 'Hypnotics', activity: 'wakeboard', emoji: '🌊' },
+    { label: 'Paris Wakepark', destination: 'Paris Wakepark', activity: 'wakeboard', emoji: '🌊' },
+    { label: 'Les Houches', destination: 'Les Houches', activity: 'snowboard', emoji: '🏂' },
 ];
 
-// Rough hub lookup — the backend/geocoder does the real work,
-// this is only a lightweight frontend fallback so we never send a blank origin.
-const resolveOriginAirport = (homeAddress: string): string => {
-    const normalized = homeAddress.toLowerCase();
-
-    const hubMap: Array<[string, string]> = [
-        ['limerick', 'SNN'],
-        ['dublin', 'DUB'],
-        ['paris', 'CDG'],
-        ['london', 'LHR'],
-        ['nice', 'NCE'],
-        ['lyon', 'LYS'],
-        ['berlin', 'BER'],
-        ['cork', 'ORK'],
-        ['galway', 'NOC'],
-    ];
-
-    const match = hubMap.find(([city]) => normalized.includes(city));
-    return match ? match[1] : 'DUB';
-};
+const destinationSuggestions = getDestinationSuggestions();
 
 // Zero manual cost/time entry. The backend's TripExploreRequest only reads a
 // nested firstMileAccess object (mode/amount/durationMinutes) — flat fields
@@ -83,81 +46,65 @@ const buildFirstMileAccess = (mode: TransportMode) => (
 );
 
 const TripExploreWrapper: React.FC = () => {
-    const { getCachedResult, updateCache } = useCache();
+    // Fetch lifecycle and the full exploration payload live in the app-wide
+    // TripExplorationContext (persisted via CacheProvider), so switching
+    // routes/tabs never loses the backend data.
+    const { status, tripData, lastRequest, fallbackStays, error, explore } = useTripExploration();
 
     const [homeAddress, setHomeAddress] = useState('Limerick, Ireland');
-    const [rideDestination, setRideDestination] = useState(rideSpots[0].label);
+    const [destination, setDestination] = useState('Ibiza');
+    const [activity, setActivity] = useState<string>(ACTIVITIES[0]);
     const [departureDate, setDepartureDate] = useState('2026-07-10');
     const [returnDate, setReturnDate] = useState('2026-07-13');
     const [transportMode, setTransportMode] = useState<TransportMode>('car');
 
-    // Route changes unmount this tab; rehydrate the last full exploration
-    // result from the app-wide cache so nothing downstream receives undefined.
-    const [tripData, setTripData] = useState<TripExplorationResponse | null>(
-        () => getCachedResult<StoredTripExploration>(TRIP_EXPLORE_CACHE_KEY)?.response ?? null,
-    );
-    const [isLoading, setIsLoading] = useState(false);
-    const [loadingStage, setLoadingStage] = useState('');
-    const [error, setError] = useState('');
+    const isLoading = status === 'fetching';
 
-    const selectedSpot = useMemo(
-        () => rideSpots.find((spot) => spot.label === rideDestination) ?? rideSpots[0],
-        [rideDestination],
-    );
+    // Nights between the chosen dates (drives parking cost + stay/food totals).
+    const tripNights = useMemo(() => {
+        const start = new Date(departureDate);
+        const end = new Date(returnDate);
+        const diff = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+        return Number.isFinite(diff) && diff > 0 ? diff : 3;
+    }, [departureDate, returnDate]);
 
-    const handleSearch = async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        setIsLoading(true);
-        setError('');
-        setTripData(null);
-
-        const originAirport = resolveOriginAirport(homeAddress);
+    // Shared search path — takes explicit destination/activity so preset chips
+    // don't depend on async setState landing first.
+    const runExplore = useCallback(async (destinationValue: string, activityValue: string) => {
+        const trimmedDestination = destinationValue.trim();
+        if (!trimmedDestination) {
+            return;
+        }
+        const hint = resolveDestinationHint(trimmedDestination);
 
         // Mirrors the backend's TripExploreRequest exactly — extra keys are
         // ignored by Jackson, so anything not listed there never took effect.
+        // For non-curated destinations we attach the arrivalAirport hint the
+        // backend requires (400 DESTINATION_AIRPORT_REQUIRED otherwise).
         const payload: TripExploreRequestPayload = {
-            origin: originAirport,
-            destination: selectedSpot.destination,
-            activity: selectedSpot.activity,
+            origin: resolveOriginAirport(homeAddress),
+            destination: trimmedDestination,
+            activity: activityValue,
             travelDate: departureDate,
+            ...(hint && !hint.curatedByBackend ? { arrivalAirport: hint.arrivalAirport } : {}),
             firstMileAccess: buildFirstMileAccess(transportMode),
             activityRadiusMeters: 5000,
             hotelRadiusMeters: 10000,
             providers: ['serpapi'],
         };
 
-        try {
-            setLoadingStage('Resolving your nearest hub…');
-            const response = await fetch('http://localhost:9090/api/trips/explore', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload),
-            });
+        await explore(payload, hint);
+    }, [homeAddress, departureDate, transportMode, explore]);
 
-            setLoadingStage('Cross-checking flights and hidden-gem stays…');
+    const handleSearch = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        await runExplore(destination, activity);
+    };
 
-            if (!response.ok) {
-                setError(`The request could not be completed. Trip search failed with status ${response.status}`);
-                setTripData(null);
-                return;
-            }
-
-            const data = (await response.json()) as TripExplorationResponse;
-            setTripData(data);
-            updateCache<StoredTripExploration>(
-                TRIP_EXPLORE_CACHE_KEY,
-                { request: payload, response: data, storedAt: new Date().toISOString() },
-                CACHE_TTL.TRIP_EXPLORATION,
-            );
-        } catch (requestError) {
-            const message = requestError instanceof Error ? requestError.message : 'Unable to reach the trip engine.';
-            setError(`The request could not be completed. ${message}`);
-        } finally {
-            setIsLoading(false);
-            setLoadingStage('');
-        }
+    const selectPresetAndSearch = (preset: RideSpotPreset) => {
+        setDestination(preset.destination);
+        setActivity(preset.activity);
+        void runExplore(preset.destination, preset.activity);
     };
 
     const loadingMessage = transportMode === 'car'
@@ -169,10 +116,10 @@ const TripExploreWrapper: React.FC = () => {
             <form onSubmit={handleSearch} className="trip-explore-wrapper__form">
                 <div className="trip-explore-wrapper__header">
                     <p className="trip-explore-wrapper__eyebrow">Plan de ouf</p>
-                    <h2 className="trip-explore-wrapper__title">Four fields. Zero spreadsheet math.</h2>
+                    <h2 className="trip-explore-wrapper__title">Door to ride spot. Zero spreadsheet math.</h2>
                     <p className="trip-explore-wrapper__subtitle">
-                        No airport codes, no manual taxi fares, no timers to calculate. Tell us where you start,
-                        where you ride, when — and how you'll reach the airport. We handle the rest.
+                        Type where you start and where you want to ride — city or cable park. We resolve the
+                        airports, flights, transfers, and stays; you just pick your favourite.
                     </p>
                 </div>
 
@@ -189,15 +136,53 @@ const TripExploreWrapper: React.FC = () => {
                     </label>
 
                     <label className="trip-explore-wrapper__field">
-                        <span className="trip-explore-wrapper__label">To the spot</span>
+                        <span className="trip-explore-wrapper__label">To</span>
+                        <input
+                            type="text"
+                            list="trip-explore-destinations"
+                            value={destination}
+                            onChange={(event) => setDestination(event.target.value)}
+                            placeholder="Ibiza, Nice, EXO 84…"
+                            className="trip-explore-wrapper__input"
+                        />
+                        <datalist id="trip-explore-destinations">
+                            {destinationSuggestions.map((suggestion) => (
+                                <option key={suggestion} value={suggestion} />
+                            ))}
+                        </datalist>
+                    </label>
+
+                    <div className="trip-explore-wrapper__field trip-explore-wrapper__field--wide">
+                        <span className="trip-explore-wrapper__label">Popular ride spots — one tap</span>
+                        <div className="trip-explore-wrapper__preset-row">
+                            {RIDE_SPOT_PRESETS.map((preset) => (
+                                <button
+                                    key={preset.label}
+                                    type="button"
+                                    onClick={() => selectPresetAndSearch(preset)}
+                                    disabled={isLoading}
+                                    className={
+                                        destination === preset.destination
+                                            ? 'trip-explore-wrapper__preset trip-explore-wrapper__preset--active'
+                                            : 'trip-explore-wrapper__preset'
+                                    }
+                                >
+                                    {preset.emoji} {preset.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <label className="trip-explore-wrapper__field">
+                        <span className="trip-explore-wrapper__label">Riding</span>
                         <select
-                            value={rideDestination}
-                            onChange={(event) => setRideDestination(event.target.value)}
+                            value={activity}
+                            onChange={(event) => setActivity(event.target.value)}
                             className="trip-explore-wrapper__input"
                         >
-                            {rideSpots.map((spot) => (
-                                <option key={spot.label} value={spot.label}>
-                                    {spot.label}
+                            {ACTIVITIES.map((option) => (
+                                <option key={option} value={option}>
+                                    {option}
                                 </option>
                             ))}
                         </select>
@@ -265,20 +250,49 @@ const TripExploreWrapper: React.FC = () => {
                 <div className="trip-explore-wrapper__loading" role="status" aria-live="polite">
                     <div className="trip-explore-wrapper__spinner" />
                     <div>
-                        <p className="trip-explore-wrapper__loading-title">{loadingStage || 'We’re shaping a clean plan for you.'}</p>
+                        <p className="trip-explore-wrapper__loading-title">We’re shaping a clean plan for you.</p>
                         <p className="trip-explore-wrapper__loading-text">{loadingMessage}</p>
                     </div>
                 </div>
             )}
 
-            {error && (
+            {status === 'error' && error && (
                 <div className="trip-explore-wrapper__error" role="alert">
-                    <strong className="trip-explore-wrapper__error-title">Trip request failed</strong>
-                    <p className="trip-explore-wrapper__error-text">{error}</p>
+                    <strong className="trip-explore-wrapper__error-title">
+                        Trip request failed{error.code ? ` — ${error.code}` : ''}
+                    </strong>
+                    <p className="trip-explore-wrapper__error-text">{error.message}</p>
+                    {error.suggestions.length > 0 && (
+                        <div className="trip-explore-wrapper__suggestion-row">
+                            <span className="trip-explore-wrapper__suggestion-hint">Destinations that work:</span>
+                            {error.suggestions.map((suggestion) => {
+                                // Backend format is "City/IATA" (e.g. "Nice/NCE").
+                                const label = suggestion.split('/')[0];
+                                return (
+                                    <button
+                                        key={suggestion}
+                                        type="button"
+                                        className="trip-explore-wrapper__suggestion-chip"
+                                        onClick={() => setDestination(label)}
+                                    >
+                                        {label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
             )}
 
-            {tripData && <TripExploreDashboard tripData={tripData} />}
+            {!isLoading && tripData && (
+                <TripExploreDashboard
+                    tripData={tripData}
+                    extraStays={fallbackStays}
+                    activity={lastRequest?.activity}
+                    nights={tripNights}
+                    driveMode={lastRequest?.firstMileAccess?.mode === 'rental_car'}
+                />
+            )}
         </div>
     );
 };

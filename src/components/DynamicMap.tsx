@@ -1,22 +1,39 @@
-import React from 'react';
-import { MapContainer, TileLayer } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
+import React, { useEffect, useRef } from 'react';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import { getMapStyleUrl } from '../services/mapStyle';
 
-const DynamicMap = () => {
-  return (
-    <MapContainer
-      center={[51.505, -0.09]} // Default center
-      zoom={13}                // Default zoom level
-      style={{ height: '100vh', width: '100%' }} // Map dimensions
-      attributionControl={true} // Ensures attribution control is shown
-    >
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        // Attribution added directly to the tile provider URL
-        attribution="&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors"
-      />
-    </MapContainer>
-  );
+const DEFAULT_CENTER: [number, number] = [-0.09, 51.505]; // MapLibre order: [lng, lat]
+const DEFAULT_ZOOM = 13;
+
+const DynamicMap: React.FC = () => {
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const mapRef = useRef<maplibregl.Map | null>(null);
+
+    useEffect(() => {
+        if (!containerRef.current) {
+            return undefined;
+        }
+
+        const map = new maplibregl.Map({
+            container: containerRef.current,
+            style: getMapStyleUrl(),
+            center: DEFAULT_CENTER,
+            zoom: DEFAULT_ZOOM,
+            attributionControl: { compact: true },
+        });
+        map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+        mapRef.current = map;
+
+        // Destroys the WebGL context on unmount — required so switching away
+        // from this view doesn't leak a GPU context per visit.
+        return () => {
+            map.remove();
+            mapRef.current = null;
+        };
+    }, []);
+
+    return <div ref={containerRef} style={{ height: '100vh', width: '100%' }} />;
 };
 
 export default DynamicMap;
