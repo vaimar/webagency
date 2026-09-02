@@ -1,0 +1,74 @@
+.legal-page {
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: var(--space-8, 2rem) var(--space-4, 1rem) var(--space-12, 4rem);
+}
+
+.legal-page__eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--color-text-muted, #5a6472);
+    margin: 0 0 0.5rem;
+}
+
+.legal-page__header h1 {
+    font-size: clamp(1.9rem, 4vw, 2.6rem);
+    margin: 0 0 0.5rem;
+}
+
+.legal-page__standfirst {
+    font-size: 1.05rem;
+    color: var(--color-text-muted, #5a6472);
+    margin: 0 0 0.75rem;
+}
+
+.legal-page__meta {
+    font-size: 0.85rem;
+    color: var(--color-text-muted, #5a6472);
+    margin: 0 0 2rem;
+}
+
+.legal-section {
+    margin-bottom: 2rem;
+}
+
+.legal-section h2 {
+    font-size: 1.15rem;
+    margin: 0 0 0.6rem;
+}
+
+.legal-section p,
+.legal-section li {
+    line-height: 1.65;
+    color: var(--color-text, #1d2530);
+}
+
+.legal-section p { margin: 0 0 0.85rem; }
+
+/* The global reset strips list markers from every ul; prose lists need them
+   back, or the bullets read as unrelated indented paragraphs. */
+.legal-section ul {
+    margin: 0 0 0.85rem;
+    padding-left: 1.2rem;
+    list-style: disc outside;
+}
+
+.legal-section li { margin-bottom: 0.45rem; }
+
+.legal-section code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.88em;
+    background: var(--color-surface-muted, #eef1f5);
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+}
+
+/* An unfinished legal requirement should look unfinished, not blend in. */
+.legal-page__gap {
+    border-left: 3px solid var(--color-warning, #b8860b);
+    padding-left: 0.85rem;
+    color: var(--color-text-muted, #5a6472);
+    font-size: 0.92rem;
+}

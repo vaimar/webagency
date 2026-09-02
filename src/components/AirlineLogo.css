@@ -1,0 +1,21 @@
+/* Carrier mark — square, rounded, on its own tile so a logo with a white
+   background and one with a coloured background sit at the same weight. */
+
+.airline-logo {
+    flex: 0 0 auto;
+    border-radius: 5px;
+    object-fit: contain;
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+    box-sizing: border-box;
+}
+
+.airline-logo--fallback {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    color: var(--text-secondary);
+    line-height: 1;
+}

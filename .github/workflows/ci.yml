@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Vite 8 requires ^20.19 || >=22.12; keep this in step with
+          # netlify.toml's NODE_VERSION and the Dockerfile's base image.
+          node-version: '22'
+          cache: npm
+
+      # Not `npm install`: `npm ci` installs the exact tree in
+      # package-lock.json and fails if the lockfile and package.json disagree,
+      # so CI can never pass against dependencies a deploy would not get.
+      - name: Install (clean, from lockfile)
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      # netlify.toml and nginx-security-headers.conf are generated from
+      # security-headers.js. If someone edited one by hand, the deployed policy
+      # would differ from the reviewed one.
+      - name: Security headers in sync
+        run: npm run headers:check
+
+      - name: Build
+        run: npm run build
+
+      # The reason for the Vite migration: react-scripts 5 pulled 3 critical and
+      # 35 high advisories into the production tree. Fail the build if that
+      # comes back.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      # Serve the real build and run the post-deploy smoke test against it.
+      # --skip-api because there is no backend in CI; the API checks are what
+      # the deploy-gate workflow runs against a live environment.
+      - name: Smoke test the built app
+        run: |
+          npm run preview -- --port 3002 --strictPort &
+          npx --yes wait-on http://localhost:3002 --timeout 60000
+          npm run smoke -- http://localhost:3002 --skip-api

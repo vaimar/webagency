@@ -1,0 +1,267 @@
+/* Resort vendor catalogue — menus, prices and hire rates. */
+
+.rv {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.rv__status {
+    color: var(--text-secondary);
+    padding: var(--space-4);
+}
+
+.rv__status--error {
+    color: var(--error);
+    background: var(--error-light);
+    border-radius: var(--radius-md);
+}
+
+.rv__controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+}
+
+.rv__controls input {
+    width: 4.5rem;
+    padding: var(--space-2);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+}
+
+.rv__controls-note {
+    color: var(--text-muted);
+    font-size: var(--text-xs);
+}
+
+.rv__warnings {
+    list-style: none;
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    background: var(--warning-light);
+    border: 1px solid var(--warning);
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.rv__section-title {
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+}
+
+.rv__list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+/* ── Vendor card ──────────────────────────────────────────────────────────── */
+
+.rv-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.rv-card__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+}
+
+.rv-card__name {
+    display: block;
+    font-size: var(--text-lg);
+    color: var(--text);
+}
+
+.rv-card__type {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.rv-card__summary {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    text-align: right;
+}
+
+.rv-card__range {
+    font-size: var(--text-md);
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+}
+
+.rv-card__party {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.rv-card__toggle {
+    align-self: flex-start;
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--primary);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.rv-card__body {
+    border-top: 1px solid var(--divider);
+    padding-top: var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+/* ── Menu sections ────────────────────────────────────────────────────────── */
+
+.rv-group__title {
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+}
+
+.rv-group__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.rv-item__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-4);
+}
+
+.rv-item__name {
+    color: var(--text);
+    font-size: var(--text-base);
+}
+
+.rv-item__price {
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.rv-item__desc {
+    margin: var(--space-1) 0 0;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    line-height: 1.45;
+}
+
+.rv-item__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+}
+
+.rv-item__conditions {
+    font-size: var(--text-xs);
+    color: var(--text-light);
+    font-style: italic;
+}
+
+.rv-item__choices {
+    list-style: none;
+    margin: var(--space-2) 0 0;
+    padding: 0 0 0 var(--space-3);
+    border-left: 2px solid var(--divider);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+}
+
+/* Shown greyed rather than hidden: a two-person fondue vanishing from a solo
+   diner's list reads as "they don't serve fondue". */
+.rv-item--unorderable {
+    opacity: 0.55;
+}
+
+.rv-item__blocked {
+    margin: var(--space-1) 0 0;
+    font-size: var(--text-xs);
+    color: var(--text-light);
+}
+
+@media (max-width: 640px) {
+    .rv-card__summary {
+        align-items: flex-start;
+        text-align: left;
+    }
+
+    .rv-item__head {
+        flex-direction: column;
+        gap: var(--space-1);
+    }
+
+    .rv-item__price {
+        white-space: normal;
+    }
+}
+
+/* Lift pass headline. The one number most people actually came for. */
+.rv-lift {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.rv-lift__headline {
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    background: var(--primary-light);
+    border: 1px solid var(--primary);
+    border-radius: var(--radius-md);
+    color: var(--text);
+    font-size: var(--text-md);
+}
+
+.rv-lift__headline strong {
+    font-size: var(--text-xl);
+    color: var(--primary-dark);
+}
+
+.rv-lift__detail {
+    display: block;
+    margin-top: var(--space-1);
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+}

@@ -1,0 +1,463 @@
+/* Stay Guide — standalone accommodation directory.
+   Light system: the page is a plain flow container, panels carry the elevation,
+   and the only saturated surface is the brand header. Primitives live in
+   index.css — reach for .panel/.btn/.field before adding anything here. */
+
+.stay-guide {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    color: var(--text);
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+
+.stay-guide__header {
+    padding: var(--space-6);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: var(--text-inverse);
+}
+
+.stay-guide__eyebrow {
+    margin: 0 0 6px;
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.82);
+}
+
+.stay-guide__title {
+    margin: 0 0 8px;
+    font-size: var(--text-2xl);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text-inverse);
+}
+
+.stay-guide__subtitle {
+    margin: 0;
+    max-width: 60ch;
+    color: rgba(255, 255, 255, 0.88);
+    line-height: 1.5;
+}
+
+/* ── Search row ──────────────────────────────────────────────────────────── */
+
+.stay-guide__search {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.stay-guide__search .airport-select {
+    flex: 1 1 320px;
+    min-width: 240px;
+}
+
+.stay-guide__refresh {
+    flex: 0 0 auto;
+    padding: 12px 18px;
+    border-radius: 12px;
+    border: 1px solid var(--primary);
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.stay-guide__refresh:hover {
+    background: var(--primary-light);
+    border-color: var(--primary);
+}
+
+/* ── Status lines ────────────────────────────────────────────────────────── */
+
+.stay-guide__status {
+    margin: 4px 0;
+    color: var(--text-secondary);
+}
+
+.stay-guide__status--muted {
+    color: var(--text-muted);
+}
+
+.stay-guide__status--error {
+    color: var(--truth-warn);
+}
+
+/* ── Results ─────────────────────────────────────────────────────────────── */
+
+.stay-guide__summary {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding-bottom: 4px;
+}
+
+.stay-guide__summary-count {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.stay-guide__summary-place {
+    color: var(--text-secondary);
+}
+
+.stay-guide__summary-note {
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    background: var(--surface-sunken);
+    color: var(--text-secondary);
+}
+
+.stay-guide__summary-priced {
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--success-light);
+    color: var(--truth-transfer);
+}
+
+.stay-guide__results {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+.stay-guide__group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Verified (curated + live-rate) tier gets a green-tinted panel to set it apart. */
+.stay-guide__group--verified {
+    padding: 16px;
+    border-radius: 16px;
+    background: var(--success-light);
+    border: 1px solid rgba(0, 135, 90, 0.3);
+}
+
+.stay-guide__group-sub {
+    margin: -4px 0 0;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
+.stay-guide__group-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+}
+
+.stay-guide__group-count {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--truth-total);
+    background: var(--primary-light);
+    border-radius: 999px;
+    padding: 2px 9px;
+}
+
+/* ── Category tabs ───────────────────────────────────────────────────────── */
+
+.stay-guide__tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-bottom: 4px;
+}
+
+.stay-guide__tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.stay-guide__tab:hover {
+    border-color: var(--primary);
+    color: var(--text);
+}
+
+.stay-guide__tab--active {
+    background: var(--primary-light);
+    border-color: var(--primary);
+    color: var(--primary-dark);
+}
+
+.stay-guide__tab-count {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    background: var(--surface-sunken);
+    border-radius: 999px;
+    padding: 1px 7px;
+}
+
+.stay-guide__tab--active .stay-guide__tab-count {
+    color: var(--truth-total);
+    background: var(--primary-light);
+}
+
+/* ── Pagination ──────────────────────────────────────────────────────────── */
+
+.stay-guide__pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding-top: 4px;
+}
+
+.stay-guide__page-btn {
+    padding: 8px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--primary);
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.stay-guide__page-btn:hover:not(:disabled) {
+    background: var(--primary-light);
+}
+
+.stay-guide__page-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.stay-guide__page-status {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    min-width: 8rem;
+    text-align: center;
+}
+
+/* ── Cards ───────────────────────────────────────────────────────────────── */
+
+.stay-guide__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+}
+
+.stay-guide__card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.stay-guide__card:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+}
+
+/* Curated (TripAdvisor-matched) stays get a subtle green edge. */
+.stay-guide__card--curated,
+.stay-guide__card--verified {
+    border-color: rgba(0, 135, 90, 0.3);
+    background: linear-gradient(180deg, var(--success-light), transparent 40%),
+        var(--surface);
+}
+
+.stay-guide__card-photo {
+    display: block;
+    width: 100%;
+    height: 130px;
+    object-fit: cover;
+    border-radius: 10px;
+    background: var(--surface-sunken);
+}
+
+.stay-guide__card-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.stay-guide__card-emoji {
+    font-size: 1.2rem;
+    line-height: 1.4;
+}
+
+.stay-guide__card-titles {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.stay-guide__card-name {
+    margin: 0;
+    font-size: 0.98rem;
+    font-weight: 600;
+    color: var(--text);
+    overflow-wrap: anywhere;
+}
+
+.stay-guide__card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    margin-top: 2px;
+}
+
+.stay-guide__card-distance {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.stay-guide__card-rating {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--truth-estimated);
+}
+
+.stay-guide__card-price {
+    flex: 0 0 auto;
+    align-self: flex-start;
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+    color: var(--truth-transfer);
+    white-space: nowrap;
+}
+
+.stay-guide__card-price strong {
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.stay-guide__card-price-unit {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.stay-guide__card-note {
+    margin: 0;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    color: var(--text-secondary);
+}
+
+.stay-guide__card-noprice {
+    flex: 0 0 auto;
+    align-self: flex-start;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    background: var(--surface-sunken);
+    border-radius: 999px;
+    padding: 3px 9px;
+    white-space: nowrap;
+}
+
+.stay-guide__card-details {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: var(--surface-sunken);
+}
+
+.stay-guide__card-address {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    overflow-wrap: anywhere;
+}
+
+.stay-guide__card-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.stay-guide__link {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--truth-total);
+    text-decoration: none;
+    padding: 6px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--primary);
+    transition: background 0.15s ease;
+}
+
+.stay-guide__link:hover {
+    background: var(--primary-light);
+}
+
+.stay-guide__link--primary {
+    color: #052e16;
+    background: var(--success);
+    border-color: var(--success);
+}
+
+.stay-guide__link--primary:hover {
+    background: #6ee7b7;
+}
+
+/* The "Details" affordance is a <button>, so it needs the anchor styling reset. */
+.stay-guide__link--button {
+    font-family: inherit;
+    cursor: pointer;
+    background: transparent;
+}
+
+.stay-guide__link--muted {
+    color: var(--text-muted);
+    border-color: var(--border);
+}
+
+/* Resolved property site — distinct from the OTA links beside it. */
+.stay-guide__link--site {
+    color: var(--truth-estimated);
+    border-color: rgba(245, 166, 35, 0.35);
+}
+
+.stay-guide__link--site:hover {
+    background: var(--warning-light);
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+    .stay-guide {
+        padding: 18px;
+    }
+
+    .stay-guide__list {
+        grid-template-columns: 1fr;
+    }
+}

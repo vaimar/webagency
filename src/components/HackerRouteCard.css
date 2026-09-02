@@ -1,0 +1,298 @@
+/* Route Hacker card — same Frozen Summer dark chrome as the self-connect card. */
+
+.hacker-route-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    transition: border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+}
+
+.hacker-route-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+}
+
+.hacker-route-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+/* Date + stop count, right-aligned against the route. */
+.hacker-route-card__head-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.hacker-route-card__head-date {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+/* Only present when the journey ends on a later day than it starts. */
+.hacker-route-card__head-until {
+    color: var(--primary-dark);
+}
+
+.hacker-route-card__route {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--text);
+}
+
+.hacker-route-card__code--hub {
+    color: var(--truth-total);
+}
+
+.hacker-route-card__arrow {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.hacker-route-card__type-badge {
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #eef2ff;
+    border: 1px solid rgba(67, 56, 202, 0.28);
+    color: var(--truth-door);
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.hacker-route-card__type-badge--direct {
+    background: var(--success-light);
+    border-color: rgba(0, 135, 90, 0.3);
+    color: var(--truth-transfer);
+}
+
+/* Codeshare operators for a single (merged) flight. */
+.hacker-route-card__operated {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.hacker-route-card__layover {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--primary-light);
+    border: 1px solid var(--primary);
+    color: var(--primary-dark);
+    font-size: 0.9rem;
+}
+
+.hacker-route-card__layover--direct {
+    background: var(--success-light);
+    border-color: rgba(0, 135, 90, 0.3);
+    color: var(--truth-transfer);
+}
+
+.hacker-route-card__layover strong {
+    color: var(--text);
+}
+
+.hacker-route-card__airlines {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.hacker-route-card__airline {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px 4px 6px;
+    border-radius: 999px;
+    background: var(--success-light);
+    border: 1px solid rgba(0, 135, 90, 0.3);
+    color: var(--truth-transfer);
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.hacker-route-card__legs {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.hacker-route-card__leg {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--primary-light);
+}
+
+.hacker-route-card__leg-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.hacker-route-card__leg-top strong {
+    color: var(--text);
+    font-size: 0.95rem;
+}
+
+.hacker-route-card__leg-label {
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+/* The leg's own calendar date — the thing that tells you leg 2 is tomorrow. */
+.hacker-route-card__leg-date {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.hacker-route-card__next-day {
+    margin-left: 2px;
+    padding: 1px 4px;
+    border-radius: 4px;
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    font-size: 0.62rem;
+    font-weight: 800;
+    vertical-align: super;
+}
+
+.hacker-route-card__leg-times {
+    margin-left: auto;
+    font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.hacker-route-card__price-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding-top: 4px;
+}
+
+.hacker-route-card__price-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 999px;
+    border: none;
+    background: linear-gradient(90deg, var(--success), var(--truth-total));
+    color: var(--text-inverse);
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(52, 211, 153, 0.24);
+}
+
+.hacker-route-card__price-cta:hover:not(:disabled) {
+    filter: brightness(1.06);
+}
+
+.hacker-route-card__price-cta:disabled {
+    opacity: 0.7;
+    cursor: progress;
+}
+
+.hacker-route-card__price {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.hacker-route-card__price-total {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--truth-estimated);
+}
+
+.hacker-route-card__price-note {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
+.hacker-route-card__price-note--error {
+    color: var(--truth-warn);
+}
+
+/* A fare that is genuinely THIS itinerary's, rather than the day's floor
+   borrowed from another departure. */
+.hacker-route-card__price--exact .hacker-route-card__price-total {
+    color: var(--truth-transfer, var(--primary-dark));
+}
+
+/* A part-priced journey must not read like a total. */
+.hacker-route-card__price-total--partial {
+    color: var(--text-secondary);
+}
+
+/* A total that leans on a price the traveller supplied. Marked with ≈ and a
+   softer weight than a fetched fare, because part of it is a sighting. */
+.hacker-route-card__price-total--observed {
+    color: var(--text-secondary);
+}
+
+.hacker-route-card__observed {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--border);
+}
+
+/* Time in the air for one flight — quieter than the clock times it follows,
+   so the row still reads "when", with "how long" as the supporting detail. */
+.hacker-route-card__leg-duration {
+    margin-left: 8px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: var(--surface-sunken);
+    color: var(--text-muted);
+    font-size: 0.74rem;
+    font-weight: 700;
+}
+
+/* The honest total's provenance: fare vs the costs nobody quotes. */
+.hacker-route-card__honest {
+    width: 100%;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--truth-transfer, var(--primary-dark));
+}

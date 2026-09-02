@@ -1,0 +1,102 @@
+/* Traveller-entered fares. Deliberately quieter than a fetched price and always
+   badged, so a sighting can never be mistaken for a quote. */
+
+.observed-fare {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+.observed-fare__badge {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--surface-sunken);
+    border: 1px dashed var(--border-strong);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.66rem;
+    color: var(--text-secondary);
+}
+
+.observed-fare__age {
+    font-style: italic;
+}
+
+.observed-fare__prompt,
+.observed-fare__action {
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--primary);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.observed-fare__prompt:hover,
+.observed-fare__action:hover {
+    color: var(--primary-dark);
+}
+
+.observed-fare__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.observed-fare__label-text {
+    font-weight: 700;
+}
+
+.observed-fare__field {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+}
+
+.observed-fare__input {
+    width: 72px;
+    border: none;
+    background: none;
+    font: inherit;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.observed-fare__input:focus {
+    outline: none;
+}
+
+.observed-fare__field:focus-within {
+    outline: 2px solid var(--primary);
+    outline-offset: 1px;
+}
+
+.observed-fare__action--save {
+    text-decoration: none;
+    padding: 3px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--primary);
+    color: var(--text-inverse);
+}
+
+.observed-fare__action--save:hover {
+    background: var(--primary-dark);
+    color: var(--text-inverse);
+}
+
+.observed-fare__error {
+    color: var(--danger, #b3261e);
+    font-weight: 700;
+}

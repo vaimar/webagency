@@ -1,0 +1,90 @@
+/* Headline trip costs, shown above the tabs so they are never hunted for. */
+
+.rcs {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.rcs__row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-6);
+}
+
+.rcs__item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 180px;
+    flex: 1 1 180px;
+}
+
+/* The gaps are deliberately quieter than the known numbers, but present. */
+.rcs__item--gap {
+    padding-left: var(--space-4);
+    border-left: 1px dashed var(--border-strong);
+}
+
+.rcs__label {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+}
+
+.rcs__value {
+    font-size: var(--text-2xl);
+    color: var(--primary-dark);
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+}
+
+.rcs__value--muted {
+    font-size: var(--text-md);
+    color: var(--text-light);
+}
+
+.rcs__note {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    line-height: 1.45;
+}
+
+.rcs__link {
+    align-self: flex-start;
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--primary);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+    .rcs__item--gap {
+        padding-left: 0;
+        border-left: none;
+        border-top: 1px dashed var(--border-strong);
+        padding-top: var(--space-3);
+    }
+}
+
+/* The actual week being planned, so every figure below has a date attached. */
+.rcs__week {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    padding-bottom: var(--space-2);
+    border-bottom: 1px solid var(--divider);
+}
+
+.rcs__week strong {
+    color: var(--text);
+}

@@ -1,0 +1,1440 @@
+.spot-finder {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+}
+
+.spot-finder__count {
+    color: var(--text-muted);
+}
+
+/* ── Search bar ───────────────────────────────────────────────────────────────
+   The three inputs sit on one line at desktop width, the way a booking site's
+   search does, and stack in source order below it. The activity control is the
+   widest because it is the only one with four options visible at once. */
+
+.spot-search {
+    padding: var(--space-5);
+}
+
+.spot-search__row {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) minmax(320px, 2fr) minmax(160px, 1fr);
+    gap: var(--space-4);
+    align-items: end;
+}
+
+.spot-search__field {
+    min-width: 0;
+}
+
+/* 2px of padding around a 36px option makes the control exactly as tall as the
+   40px selects either side of it, so the three fields share one baseline. */
+.spot-search__field--activity .segmented {
+    width: 100%;
+    padding: 2px;
+}
+
+.spot-search__field--activity .segmented__option svg {
+    font-size: 1rem;
+}
+
+@media (max-width: 900px) {
+    .spot-search__row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Four activities in a row need ~460px. Below that they wrap to a 2×2 block
+   rather than overflowing the panel — a segmented control that scrolls
+   sideways hides options the user is supposed to be choosing between. */
+@media (max-width: 560px) {
+    .spot-search__field--activity .segmented {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-1);
+    }
+
+    .spot-search__field--activity .segmented__option {
+        justify-content: flex-start;
+    }
+}
+
+/* ── Results header ───────────────────────────────────────────────────────── */
+
+.spot-results__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+}
+
+.spot-results__count {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.spot-results__meta {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+}
+
+/* Compact spot rows */
+.spot-finder__list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.spot-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    text-align: left;
+    padding: 10px 14px;
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 10px;
+    background: var(--surface, #fff);
+    cursor: pointer;
+    transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.spot-row:hover {
+    border-color: var(--primary, #2563eb);
+}
+
+.spot-row--selected {
+    border: 2px solid var(--primary, #2563eb);
+    padding: 9px 13px;
+}
+
+.spot-row__name {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.3;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.spot-row__pin {
+    font-size: 0.75rem;
+}
+
+.spot-row__meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-secondary, #6b7280);
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.spot-row__badge {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: var(--primary-tint, #eff6ff);
+    color: var(--primary, #2563eb);
+    text-transform: capitalize;
+}
+
+/* Machine-discovered, no checked access block yet. Muted rather than alarming —
+   it is a real spot, we just have not verified how you get in. */
+.spot-row__badge--unverified {
+    background: var(--warning-tint, #fef3c7);
+    color: var(--warning, #92400e);
+}
+
+.spot-row__modes {
+    display: flex;
+    gap: 6px;
+}
+
+.spot-row__ways {
+    font-size: 0.72rem;
+    color: var(--text-muted, #9ca3af);
+}
+
+.spot-finder__plan-cta {
+    margin-top: 12px;
+    width: 100%;
+    padding: 12px 16px;
+    border: none;
+    border-radius: 10px;
+    background: var(--primary, #2563eb);
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: filter 0.12s ease;
+}
+
+.spot-finder__plan-cta:hover {
+    filter: brightness(1.08);
+}
+
+.spot-finder__muted {
+    color: var(--text-muted, #9ca3af);
+    font-size: 0.85rem;
+    margin: 4px 0;
+}
+
+/* ─── Spot detail card ──────────────────────────────────────────────────── */
+
+.spot-detail {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+
+.spot-detail__header {
+    padding: var(--space-5) var(--space-5) 0;
+}
+
+.spot-detail__name {
+    font-size: var(--text-xl);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    margin: 0 0 var(--space-2);
+}
+
+.spot-detail__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.spot-detail__badge {
+    font-size: var(--text-xs);
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-sm);
+    background: var(--surface-sunken);
+    color: var(--text-secondary);
+    text-transform: capitalize;
+    font-weight: 700;
+}
+
+.spot-detail__badge--verified {
+    background: var(--success-light);
+    color: var(--success);
+}
+
+.spot-detail__coords {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    padding: 0 var(--space-5) var(--space-2);
+    font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.spot-detail__airport {
+    color: var(--text-muted, #9ca3af);
+}
+
+.spot-detail__ski-preview {
+    display: grid;
+    grid-template-columns: minmax(150px, 0.65fr) 1fr;
+    gap: var(--space-4);
+    align-items: center;
+    padding: var(--space-4) var(--space-5);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-sunken);
+}
+
+.spot-detail__ski-preview .spot-tile {
+    min-height: 110px;
+}
+
+.spot-detail__ski-preview-copy {
+    margin: 0 0 var(--space-3);
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+}
+
+.spot-detail__ski-preview-cta {
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: #1d4ed8;
+    color: #f8fafc;
+    padding: 9px 12px;
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.spot-detail__ski-preview-cta:hover {
+    background: #1e40af;
+}
+
+@media (max-width: 560px) {
+    .spot-detail__ski-preview {
+        grid-template-columns: 1fr;
+    }
+
+    .ski-cost-boundary__grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Map */
+.spot-map {
+    width: 100%;
+    height: 220px;
+    border-top: 1px solid var(--border, #e5e7eb);
+    border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+/* Getting there */
+.spot-detail__section {
+    padding: 12px 16px;
+}
+
+.spot-detail__section-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted, #9ca3af);
+    margin: 0 0 10px;
+}
+
+.spot-detail__ways {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.spot-detail__way {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.spot-detail__way-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: var(--primary-tint, #eff6ff);
+    color: var(--primary, #2563eb);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+}
+
+.spot-detail__way-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+}
+
+.spot-detail__way-hub {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.spot-detail__way-hint {
+    font-size: 0.78rem;
+    color: var(--text-secondary, #6b7280);
+    line-height: 1.4;
+}
+
+/* Section head: title on the left, "flights from €X" headline on the right */
+.spot-detail__section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.spot-detail__from {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--primary, #2563eb);
+    margin-bottom: 10px;
+    white-space: nowrap;
+}
+
+/* Fare column — right-aligned so prices line up down the list */
+.spot-detail__way-fare {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    flex-shrink: 0;
+    text-align: right;
+}
+
+.spot-detail__fare-price {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.spot-detail__fare-note {
+    font-size: 0.7rem;
+    color: var(--text-secondary, #6b7280);
+    white-space: nowrap;
+}
+
+.spot-detail__fare-none {
+    font-size: 0.72rem;
+    color: var(--text-muted, #9ca3af);
+    font-style: italic;
+}
+
+.spot-detail__ways-footnote {
+    font-size: 0.72rem;
+    color: var(--text-muted, #9ca3af);
+    line-height: 1.45;
+    margin: 12px 0 0;
+}
+
+@media (max-width: 520px) {
+    .spot-detail__way {
+        flex-wrap: wrap;
+    }
+
+    .spot-detail__way-fare {
+        align-items: flex-start;
+        text-align: left;
+        padding-left: 38px;
+        flex-basis: 100%;
+    }
+}
+
+/* ─── Where to sleep ──────────────────────────────────────────────────────── */
+
+/* Same three-column rhythm as a "way in" (icon · content · price) so the two
+   sections read as one card rather than two pasted-together lists. */
+.spot-stays {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.spot-stay {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+/* A curated, live-priced stay: marked by a rail rather than a badge, so the
+   distinction is visible without adding another word to every row. */
+.spot-stay--curated {
+    border-left: 2px solid var(--primary, #2563eb);
+    padding-left: 8px;
+    margin-left: -10px;
+}
+
+.spot-stay__links {
+    display: flex;
+    gap: 12px;
+    font-size: 0.76rem;
+    margin-top: 2px;
+}
+
+.spot-stays__more {
+    margin-top: 12px;
+    background: none;
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: var(--radius-sm, 8px);
+    padding: 7px 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--primary, #2563eb);
+    cursor: pointer;
+}
+
+.spot-stays__more:hover {
+    background: var(--primary-tint, #eff6ff);
+}
+
+/* Icon-badge markers on the detail map. */
+.spot-map-pin {
+    cursor: pointer;
+}
+
+.spot-map-pin__badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid var(--surface, #fff);
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.15);
+    transition: transform 0.15s ease;
+}
+
+.spot-map-pin__badge svg {
+    width: 14px;
+    height: 14px;
+}
+
+.spot-map-pin:hover .spot-map-pin__badge {
+    transform: scale(1.2);
+}
+
+.spot-map-pin__badge--spot {
+    width: 32px;
+    height: 32px;
+    box-shadow: 0 0 0 4px rgba(244, 114, 182, 0.3), 0 2px 8px rgba(15, 23, 42, 0.12);
+}
+
+.spot-map-pin__badge--spot svg {
+    width: 17px;
+    height: 17px;
+}
+
+@media (max-width: 520px) {
+    .spot-stay {
+        flex-wrap: wrap;
+    }
+
+    .spot-stay .spot-detail__way-fare {
+        align-items: flex-start;
+        text-align: left;
+        padding-left: 38px;
+        flex-basis: 100%;
+    }
+}
+
+/* Link to full spot page */
+.spot-finder__page-link {
+    display: block;
+    text-align: center;
+    padding: 10px 16px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--primary, #2563eb);
+    text-decoration: none;
+    border-top: 1px solid var(--border, #e5e7eb);
+}
+
+.spot-finder__page-link:hover {
+    background: var(--primary-light, #eff6ff);
+}
+
+/* CTA inside detail card */
+.spot-detail .spot-finder__plan-cta {
+    margin: 0;
+    border-radius: 0 0 13px 13px;
+}
+
+@media (max-width: 520px) {
+    .spot-finder__activities {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .spot-map {
+        height: 180px;
+    }
+}
+
+/* ─── Overview map: every spot in the country, clickable ──────────────────── */
+
+.spot-overview {
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+}
+
+.spot-overview__map {
+    width: 100%;
+    /* Tall enough to be the primary picker on this page — the list below it was
+       removed precisely because the map is the better way to choose. */
+    height: 460px;
+}
+
+.spot-overview__legend {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+}
+
+.spot-overview__dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid var(--surface);
+    box-shadow: 0 0 0 1px var(--border-strong);
+    margin-right: 5px;
+    vertical-align: middle;
+}
+
+/* Must track VERIFIED_COLOR / UNVERIFIED_COLOR in SpotFinder.tsx — these drifted
+   once already when the markers changed and the legend kept the old pink/blue. */
+.spot-overview__dot--verified { background: #047857; }
+.spot-overview__dot--unverified { background: #475569; }
+
+/* Pushed right so the honest "how much of this is actually plotted" number sits
+   apart from the legend keys rather than reading as another key. */
+.spot-overview__count {
+    margin-left: auto;
+}
+
+@media (max-width: 640px) {
+    .spot-overview__map { height: 320px; }
+}
+
+/* ─── Detail map: 3D terrain toggle ───────────────────────────────────────── */
+
+.spot-map-wrap {
+    position: relative;
+}
+
+.spot-map__controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 10px;
+    background: var(--surface-raised, #fff);
+    border-top: 1px solid var(--border, #e5e7eb);
+}
+
+.spot-map__3d {
+    padding: 4px 10px;
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 6px;
+    background: var(--surface, #f8fafc);
+    color: var(--text, #1e293b);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.spot-map__3d:hover {
+    background: var(--surface-hover, #f1f5f9);
+}
+
+.spot-map__3d--on {
+    background: #34d399;
+    border-color: #34d399;
+    color: #052e21;
+}
+
+.spot-map__layers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    margin-left: 4px;
+}
+
+.spot-map__layer-toggle {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--text-muted, #64748b);
+    cursor: pointer;
+    user-select: none;
+}
+
+.spot-map__layer-toggle input {
+    display: none;
+}
+
+.spot-map__layer-toggle input:checked + .spot-map__layer-dot {
+    box-shadow: 0 0 0 2px var(--surface, #fff), 0 0 0 3.5px currentColor;
+}
+
+.spot-map__layer-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* Derived (not curated) arrival options — labelled so the two can never be
+   confused with each other in the same panel. */
+.spot-detail__derived {
+    font-size: 0.7rem;
+    color: var(--text-muted, #9ca3af);
+    font-style: italic;
+    margin-bottom: 10px;
+}
+
+.spot-detail__link {
+    color: var(--primary, #2563eb);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.spot-detail__link:hover {
+    text-decoration: underline;
+}
+
+/* ─── Park photo ──────────────────────────────────────────────────────────── */
+
+/* Hotlinked from the park's own site, so it stays their copyright — the credit
+   below is a requirement, not a caption. Fixed aspect so a portrait hero and a
+   wide banner both sit in the same slot without shifting the layout. */
+.spot-photo {
+    margin: 0;
+    position: relative;
+    background: var(--surface-2, #e5e7eb);
+}
+
+.spot-photo img {
+    display: block;
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+}
+
+.spot-photo figcaption {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    padding: 3px 8px;
+    font-size: 0.62rem;
+    color: #e2e8f0;
+    background: rgba(15, 23, 42, 0.72);
+    border-top-left-radius: 6px;
+    max-width: 70%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.spot-photo figcaption a { color: inherit; text-decoration: none; }
+.spot-photo figcaption a:hover { text-decoration: underline; }
+
+/* ─── The setup ───────────────────────────────────────────────────────────── */
+
+.spot-setup__facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.spot-setup__fact {
+    font-size: 0.76rem;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: var(--surface, #fff);
+    border: 1px solid var(--border, #e5e7eb);
+    color: var(--text-secondary, #4b5563);
+}
+
+.spot-setup__fact b { color: var(--text); font-weight: 700; }
+
+/* Obstacles read as a distinct group — they are the thing a rider scans for. */
+.spot-setup__modules {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 8px;
+}
+
+.spot-setup__module {
+    font-size: 0.72rem;
+    padding: 2px 9px;
+    border-radius: 6px;
+    background: #d1fae5;
+    color: #065f46;
+    font-weight: 600;
+}
+
+.spot-setup__notes {
+    font-size: 0.78rem;
+    color: var(--text-secondary, #6b7280);
+    line-height: 1.45;
+    margin: 0 0 8px;
+}
+
+.spot-setup__site {
+    font-size: 0.74rem;
+    color: var(--text-muted, #9ca3af);
+    margin: 0;
+}
+
+.spot-setup__site a {
+    color: var(--primary, #2563eb);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.spot-setup__site a:hover { text-decoration: underline; }
+
+/* ─── Ski resort facts ──────────────────────────────────────────────────────
+   Piste blue / red / black are domain colours, not brand ones: they are the
+   grading painted on the markers at the top of every European run. They live
+   here rather than in the global tokens because nothing outside this panel
+   should be reaching for them. Each one carries white numerals at AA. */
+
+.ski-facts {
+    --piste-easy: #1d63c9;
+    --piste-mid: #c0261f;
+    --piste-hard: #1f2937;
+
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    /* Matches the inset every other section of the card uses; without it the
+       price ran under the card's right border. */
+    padding: var(--space-4) var(--space-5) var(--space-2);
+}
+
+/* ── Mountain profile ─────────────────────────────────────────────────────── */
+
+/* Capped and centred rather than full-bleed. At 1222px of card the 640×190
+   artwork scales to ~360px tall, which pushes the stats the user came for below
+   the fold — the same trap the type scale warns about for oversized headings. */
+.ski-hero {
+    margin: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    /* Same sky as the artwork paints, so capping its width leaves no seam. */
+    background: linear-gradient(180deg, #e8f1fb 0%, #f7fafd 100%);
+    display: flex;
+    justify-content: center;
+}
+
+.ski-hero__svg {
+    display: block;
+    width: 100%;
+    max-width: 660px;
+    height: auto;
+}
+
+.ski-hero__label {
+    font-size: 13px;
+    font-weight: 700;
+    fill: #12325c;
+}
+
+.ski-hero__drop {
+    font-size: 14px;
+    font-weight: 800;
+    fill: #12325c;
+}
+
+.ski-hero__sub {
+    font-size: 10px;
+    font-weight: 600;
+    fill: #46618a;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+}
+
+/* ── Head: identity left, the one price right ─────────────────────────────── */
+
+.ski-facts__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+}
+
+.ski-facts__identity {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-width: 0;
+}
+
+.ski-facts__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+/* Badges capitalise every word by default, which is right for a tow type and
+   wrong for "#300 of 3,284" and for region names that carry their own casing. */
+.ski-facts__badges .spot-detail__badge { text-transform: none; }
+
+/* The day pass is the number resorts get compared on, so it is the only figure
+   here allowed to shout — and it says in the same breath where it came from. */
+.ski-facts__price {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    line-height: 1.15;
+}
+
+.ski-facts__price b {
+    font-size: var(--text-3xl);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text);
+}
+
+.ski-facts__price span {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+}
+
+.ski-facts__price-note {
+    font-size: var(--text-xs);
+    font-style: normal;
+    font-weight: 700;
+    color: var(--truth-estimated);
+    margin-top: 2px;
+}
+
+.ski-cost-boundary {
+    display: grid;
+    gap: var(--space-3);
+    margin-top: var(--space-5);
+    padding: var(--space-4);
+    border: 1px solid rgba(252, 211, 77, 0.45);
+    border-radius: var(--radius-md);
+    background: #172033;
+    color: #e2e8f0;
+}
+
+.ski-cost-boundary > strong {
+    color: #fcd34d;
+}
+
+.ski-cost-boundary__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+}
+
+.ski-cost-boundary__grid span {
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.06);
+    color: #cbd5e1;
+    font-size: var(--text-sm);
+    line-height: 1.45;
+}
+
+.ski-cost-boundary__grid b {
+    display: block;
+    color: #f8fafc;
+}
+
+.ski-cost-boundary p {
+    margin: 0;
+    color: #94a3b8;
+    font-size: var(--text-sm);
+}
+
+/* ── Amenities ────────────────────────────────────────────────────────────── */
+
+.ski-amenities {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.ski-amenity {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--text-sm);
+    font-weight: 650;
+    color: var(--primary-dark);
+    background: var(--primary-light);
+    border-radius: var(--radius-full);
+    padding: 5px var(--space-3);
+}
+
+.ski-amenity svg { font-size: 0.85em; }
+
+/* ── Groups and stats ─────────────────────────────────────────────────────── */
+
+.ski-facts__group-title {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+    margin: 0 0 var(--space-3);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ski-facts__count {
+    background: var(--surface-sunken);
+    color: var(--text-secondary);
+    border-radius: var(--radius-full);
+    padding: 1px 7px;
+    font-size: var(--text-xs);
+    letter-spacing: 0;
+}
+
+/* Flex rather than auto-fit grid: a row that holds one stat (common, because
+   the two catalogues carry different columns) stretched that single card the
+   full width of the panel and read as a broken layout. */
+.ski-facts__stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.ski-facts__stats > * {
+    flex: 1 1 132px;
+    max-width: 240px;
+}
+
+.ski-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+.ski-stat__label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}
+
+.ski-stat__value {
+    font-size: var(--text-md);
+    font-weight: 700;
+    color: var(--text);
+}
+
+.ski-stat__hint {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+/* ── Piste difficulty ─────────────────────────────────────────────────────── */
+
+.ski-pistes {
+    margin-top: var(--space-4);
+    max-width: 620px;
+}
+
+/* One continuous bar rather than three cards: difficulty is a split of a single
+   pool of runs, and three separate tiles read as three unrelated numbers. */
+.ski-pistes__bar {
+    display: flex;
+    height: 26px;
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    box-shadow: var(--shadow-xs);
+}
+
+.ski-pistes__seg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    color: #fff;
+    font-size: var(--text-xs);
+    font-weight: 750;
+}
+
+/* A percentage in a 20px sliver is unreadable smudge. Below the width that fits
+   "100%" the label goes, and the key underneath still carries the number. */
+.ski-pistes__seg-pct {
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.ski-pistes__seg { container-type: inline-size; }
+
+@container (max-width: 42px) {
+    .ski-pistes__seg-pct { display: none; }
+}
+
+.ski-pistes__seg--easy { background: var(--piste-easy); }
+.ski-pistes__seg--mid { background: var(--piste-mid); }
+.ski-pistes__seg--hard { background: var(--piste-hard); }
+
+.ski-pistes__key {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+}
+
+.ski-piste {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    grid-template-areas:
+        "swatch count label"
+        "swatch count hint";
+    align-items: center;
+    column-gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+}
+
+.ski-piste__swatch {
+    grid-area: swatch;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.ski-piste--easy .ski-piste__swatch { background: var(--piste-easy); }
+.ski-piste--mid .ski-piste__swatch { background: var(--piste-mid); }
+.ski-piste--hard .ski-piste__swatch { background: var(--piste-hard); }
+
+.ski-piste__count {
+    grid-area: count;
+    font-size: var(--text-lg);
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1.05;
+}
+
+.ski-piste__label {
+    grid-area: label;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.2;
+}
+
+.ski-piste__hint {
+    grid-area: hint;
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    line-height: 1.2;
+}
+
+/* ── Elevation ────────────────────────────────────────────────────────────── */
+
+.ski-elevation {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: var(--space-3);
+    max-width: 480px;
+    margin-bottom: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+}
+
+.ski-elevation__end {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.ski-elevation__end--top { text-align: right; }
+
+.ski-elevation__label {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}
+
+.ski-elevation__value {
+    font-size: var(--text-md);
+    font-weight: 700;
+    color: var(--text);
+}
+
+/* The drop is the number that decides whether a mountain is worth the flight,
+   so it outranks the two altitudes it sits between. */
+.ski-elevation__drop {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    padding: 0 var(--space-4);
+    border-left: 1px solid var(--divider);
+    border-right: 1px solid var(--divider);
+}
+
+.ski-elevation__drop-value {
+    font-size: var(--text-xl);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--primary);
+    line-height: 1.05;
+}
+
+/* ── Lifts ────────────────────────────────────────────────────────────────── */
+
+.ski-lifts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+    max-width: 420px;
+}
+
+.ski-lift {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: var(--space-3) var(--space-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+}
+
+.ski-lift__icon {
+    font-size: var(--text-lg);
+    color: var(--primary);
+}
+
+.ski-lift__count {
+    font-size: var(--text-lg);
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1.1;
+}
+
+.ski-lift__label {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}
+
+/* ── Package offers ───────────────────────────────────────────────────────── */
+
+.ski-offers {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ski-offer {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    text-decoration: none;
+    transition: border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.ski-offer:hover {
+    border-color: var(--primary);
+    transform: translateX(2px);
+}
+
+.ski-offer:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+.ski-offer__name {
+    font-size: var(--text-base);
+    font-weight: 650;
+    color: var(--text);
+    text-transform: capitalize;
+    flex: 1;
+}
+
+.ski-offer__meta {
+    display: flex;
+    gap: var(--space-3);
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.ski-offer__price {
+    font-size: var(--text-md);
+    font-weight: 800;
+    color: var(--text);
+    white-space: nowrap;
+}
+
+/* The overview legend recolours with the ski pins. */
+.spot-overview__legend--ski .spot-overview__dot--verified { background: #1d4ed8; }
+.spot-overview__legend--ski .spot-overview__dot--unverified { background: #6366f1; }
+
+@media (max-width: 560px) {
+    .ski-offer { flex-wrap: wrap; }
+    .ski-offer__name { flex-basis: 100%; }
+    .ski-piste__disc { width: 36px; height: 36px; font-size: var(--text-md); }
+}
+/* ─── Photo drop zone ─────────────────────────────────────────────────────── */
+
+.spot-drop {
+    margin: 0 16px 10px;
+    padding: 14px;
+    border: 2px dashed var(--border, #d1d5db);
+    border-radius: 10px;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-muted, #9ca3af);
+    cursor: pointer;
+    transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+
+.spot-drop:hover { border-color: var(--primary, #2563eb); color: var(--primary, #2563eb); }
+
+.spot-drop--over {
+    border-color: #34d399;
+    background: #ecfdf5;
+    color: #065f46;
+    font-weight: 600;
+}
+
+.spot-drop--busy { opacity: 0.6; cursor: progress; }
+
+.spot-drop__error {
+    margin: -4px 16px 10px;
+    font-size: 0.76rem;
+    color: #b91c1c;
+}
+
+/* Status for the Overpass-backed POI layers — slow, and often legitimately
+   empty, so the toggle has to say which of those is happening. */
+.spot-map__layer-status {
+    margin: 6px 0 0;
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    line-height: 1.35;
+}
+
+.spot-map__layer-retry {
+    border: none;
+    background: none;
+    padding: 0;
+    font: inherit;
+    color: var(--primary);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+/* ─── Spot gallery ───────────────────────────────────────────────────────────
+   The finder used to end at the map with "click a spot on the map", which gave a
+   first-time visitor a grey rectangle and no reason to stay. The grid is the
+   browsing surface: photograph where the catalogue has one, generated tile where
+   it does not, and the same two facts under each — how it tows and how many ways
+   in there are. */
+
+.spot-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 16px;
+    margin: 16px 0 8px;
+}
+
+.spot-gallery__card {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    text-align: left;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+    transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.spot-gallery__card:hover,
+.spot-gallery__card:focus-visible {
+    transform: translateY(-2px);
+    border-color: var(--border-strong);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.1);
+}
+
+.spot-gallery__card--selected {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px var(--color-primary) inset;
+}
+
+/* The tile is edge-to-edge; only the text block is inset. */
+.spot-gallery__card .spot-tile {
+    border-radius: 0;
+}
+
+.spot-gallery__body {
+    display: block;
+    padding: 10px 12px 12px;
+}
+
+.spot-gallery__name {
+    display: block;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.35;
+}
+
+.spot-gallery__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.spot-gallery__badge {
+    font-size: 0.68rem;
+    padding: 1px 8px;
+    border-radius: var(--radius-full);
+    background: var(--surface-sunken);
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.spot-gallery__ways {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.spot-gallery__more {
+    margin-top: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .spot-gallery__card { transition: none; }
+    .spot-gallery__card:hover,
+    .spot-gallery__card:focus-visible { transform: none; }
+}

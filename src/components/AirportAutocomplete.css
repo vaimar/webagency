@@ -1,0 +1,133 @@
+/* Typeahead airport picker — matches the Frozen Summer dark chrome of the
+   hack-flights form fields, with an overlaid results panel. */
+
+.airport-select {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.airport-select__label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.airport-select__input {
+    appearance: none;
+    width: 100%;
+    padding: 11px 12px;
+    border-radius: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color-scheme: dark;
+    box-sizing: border-box;
+}
+
+.airport-select__input::placeholder {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.airport-select__input:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+.airport-select__list {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    z-index: 40;
+    margin: 0;
+    padding: 6px;
+    list-style: none;
+    max-height: 320px;
+    overflow-y: auto;
+    border-radius: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+}
+
+.airport-select__option {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 9px;
+    cursor: pointer;
+    color: var(--text);
+}
+
+.airport-select__option--active {
+    background: var(--primary-light);
+}
+
+.airport-select__code {
+    flex: 0 0 auto;
+    min-width: 2.6em;
+    font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: var(--truth-total);
+}
+
+.airport-select__name {
+    flex: 1 1 auto;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.airport-select__muni {
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.airport-select__country {
+    flex: 0 0 auto;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+}
+
+.airport-select__hint {
+    padding: 10px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* Country header rows in the browse (curated) view. */
+.airport-select__group {
+    position: sticky;
+    top: -6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px 4px;
+    margin-top: 2px;
+    background: var(--surface);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.airport-select__group-flag {
+    font-size: 0.95rem;
+}
+
+.airport-select__flag {
+    margin-right: 8px;
+}

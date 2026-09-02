@@ -1,0 +1,543 @@
+/* Hack Flights — standalone Self-Transfer / creative-routing view.
+   Light system, same as every other route: white panels on --bg, blue accents,
+   shared .btn/.field/.badge primitives from index.css. The page used to be a
+   slate-900 slab dropped onto a light shell, which is what made the product
+   read as several different sites. */
+
+.hack-flights {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 0;
+    color: var(--text);
+}
+
+/* ── Hero header ─────────────────────────────────────────────────────────── */
+
+.hack-flights__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: var(--space-6);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: var(--text-inverse);
+    overflow: hidden;
+}
+
+.hack-flights__header-copy {
+    min-width: 0;
+}
+
+.hack-flights__header-photo {
+    flex: 0 0 auto;
+    width: min(300px, 34%);
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    box-shadow: var(--shadow-lg);
+}
+
+@media (max-width: 720px) {
+    .hack-flights__header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .hack-flights__header-photo {
+        width: 100%;
+        transform: none;
+    }
+}
+
+.hack-flights__eyebrow {
+    margin: 0 0 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.82);
+}
+
+.hack-flights__title {
+    margin: 0;
+    font-size: clamp(1.55rem, 2.1vw, 2.2rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--text-inverse);
+}
+
+.hack-flights__subtitle {
+    margin: 8px 0 0;
+    max-width: 640px;
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 0.95rem;
+    line-height: 1.55;
+}
+
+/* ── Tabs ────────────────────────────────────────────────────────────────── */
+
+.hack-flights__tabs {
+    display: inline-flex;
+    gap: 6px;
+    padding: var(--space-1);
+    border-radius: var(--radius-md);
+    background: var(--surface-sunken);
+    align-self: flex-start;
+}
+
+.hack-flights__tab {
+    padding: 9px 18px;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 120ms ease, color 120ms ease;
+}
+
+.hack-flights__tab:hover {
+    color: var(--text);
+}
+
+.hack-flights__tab--active {
+    background: var(--surface);
+    color: var(--primary);
+    box-shadow: var(--shadow-xs);
+}
+
+.hack-flights__serp-warning--info {
+    background: var(--primary-light);
+    border-color: rgba(0, 87, 184, 0.2);
+    color: var(--primary-dark);
+}
+
+.hack-flights__hacker-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* ── Route Hacker stops filter ───────────────────────────────────────────── */
+
+.hack-flights__hacker-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.hack-flights__filter-chip {
+    padding: 7px 14px;
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+}
+
+.hack-flights__filter-chip:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.hack-flights__filter-chip--active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--text-inverse);
+}
+
+/* ── Result sort (cheapest / take-off / landing / shortest) ──────────────── */
+
+.hack-flights__sort {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.hack-flights__sort-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.hack-flights__sort-hint {
+    margin: -6px 0 14px;
+    font-size: 0.84rem;
+    color: var(--text-secondary);
+}
+
+/* ── Search form ─────────────────────────────────────────────────────────── */
+
+.hack-flights__form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: var(--space-6);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+}
+
+.hack-flights__fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+}
+
+/* From / swap / To share one grid cell pair, so the swap button sits between
+   the two airport boxes instead of stealing a column from the date fields. */
+.hack-flights__route-fields {
+    grid-column: span 2;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: end;
+    gap: 10px;
+}
+
+.hack-flights__swap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 42px;
+    flex: 0 0 auto;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--primary);
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background 120ms ease, border-color 120ms ease, color 120ms ease, transform 160ms ease;
+}
+
+.hack-flights__swap:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--text-inverse);
+}
+
+.hack-flights__swap:active {
+    transform: rotate(180deg);
+}
+
+.hack-flights__swap:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+    /* Stacked fields: the arrows point down the column, not across it. */
+    .hack-flights__route-fields {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .hack-flights__swap {
+        justify-self: center;
+        transform: rotate(90deg);
+    }
+
+    .hack-flights__swap:active {
+        transform: rotate(270deg);
+    }
+}
+
+.hack-flights__field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.hack-flights__field-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.hack-flights__input {
+    appearance: none;
+    padding: 0 var(--space-3);
+    height: 40px;
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    color: var(--text);
+    font: inherit;
+    font-size: var(--text-base);
+    font-weight: 500;
+}
+
+.hack-flights__input:focus-visible,
+.hack-flights__input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: var(--focus-ring);
+}
+
+/* ── Checkbox controls ───────────────────────────────────────────────────── */
+
+.hack-flights__controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.hack-flights__checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    cursor: pointer;
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--text);
+    transition: border-color 120ms ease, background 120ms ease;
+}
+
+.hack-flights__checkbox:hover {
+    border-color: var(--primary);
+}
+
+.hack-flights__checkbox input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.hack-flights__checkbox-hint {
+    font-style: normal;
+    font-weight: 600;
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+}
+
+/* Micro-copy shown only when live partner routing is explicitly enabled. */
+.hack-flights__serp-warning {
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--warning-light);
+    border: 1px solid rgba(245, 166, 35, 0.35);
+    color: var(--color-warning-text);
+    font-size: 0.86rem;
+    line-height: 1.5;
+}
+
+.hack-flights__form-error {
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--error-light);
+    border: 1px solid rgba(217, 48, 37, 0.26);
+    color: var(--error);
+    font-size: var(--text-base);
+}
+
+.hack-flights__submit {
+    align-self: flex-start;
+    height: 44px;
+    padding: 0 var(--space-6);
+    border-radius: var(--radius-md);
+    border: none;
+    background: var(--primary);
+    color: var(--text-inverse);
+    font: inherit;
+    font-size: var(--text-md);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.hack-flights__submit:hover {
+    background: var(--primary-hover);
+}
+
+.hack-flights__submit:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+/* ── Leg result sections ─────────────────────────────────────────────────── */
+
+.hack-flights__leg {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.hack-flights__leg-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.hack-flights__leg-heading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.hack-flights__leg-photo {
+    width: 52px;
+    height: 52px;
+    object-fit: cover;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+}
+
+.hack-flights__leg-title {
+    margin: 0;
+    font-size: 1.12rem;
+    font-weight: 800;
+    color: var(--text);
+}
+
+.hack-flights__leg-date {
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+}
+
+.hack-flights__muted {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.hack-flights__error {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: var(--error-light);
+    border: 1px solid rgba(217, 48, 37, 0.22);
+    color: var(--error);
+}
+
+.hack-flights__error p {
+    margin: 0;
+}
+
+.hack-flights__retry {
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: transparent;
+    border: 1px solid currentColor;
+    color: inherit;
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.hack-flights__fares {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 14px;
+}
+
+@media (max-width: 640px) {
+    .hack-flights {
+        padding: 18px;
+    }
+
+    .hack-flights__submit {
+        align-self: stretch;
+        text-align: center;
+    }
+}
+
+/* ── Hub filter ──────────────────────────────────────────────────────────── */
+
+.hack-flights__hubs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 14px;
+    padding: 0;
+    border: none;
+}
+
+.hack-flights__hubs-legend {
+    padding: 0;
+    margin-right: 4px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.hack-flights__hub {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px 5px 8px;
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text);
+    cursor: pointer;
+    transition: border-color 120ms ease, background 120ms ease, opacity 120ms ease;
+}
+
+.hack-flights__hub:hover {
+    border-color: var(--primary);
+}
+
+/* An unticked hub stays legible — it is a control, not a disabled thing. */
+.hack-flights__hub--off {
+    background: var(--surface-sunken);
+    color: var(--text-muted);
+}
+
+.hack-flights__hub-count {
+    font-style: normal;
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: var(--text-muted);
+}
+
+.hack-flights__hubs-reset {
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--primary);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
