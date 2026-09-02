@@ -1,0 +1,544 @@
+/* Trip Ledger — light system, shared primitives from index.css.
+   The CostLine badge palette keeps its semantics (exact / estimated / manual
+   check) but uses the --truth-* tokens, which are the same hues re-mixed to
+   pass contrast on white. */
+
+.trip-ledger {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    color: var(--text);
+}
+
+.trip-ledger__eyebrow {
+    margin: 0 0 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--truth-door);
+}
+
+.trip-ledger__title {
+    margin: 0;
+    font-size: clamp(1.5rem, 2vw, 2.1rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--text);
+}
+
+.trip-ledger__subtitle {
+    margin: 8px 0 0;
+    max-width: 720px;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.55;
+}
+
+/* ── Summary strip ───────────────────────────────────────────────────────── */
+
+.trip-ledger__summary {
+    position: sticky;
+    top: 12px;
+    z-index: 5;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 18px;
+    padding: var(--space-4) var(--space-5);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-md);
+}
+
+.trip-ledger__summary-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.trip-ledger__summary-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.trip-ledger__summary-value {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--truth-total);
+}
+
+.trip-ledger__summary-value--exact { color: var(--truth-exact); }
+.trip-ledger__summary-value--est { color: var(--truth-estimated); }
+.trip-ledger__summary-value--check { color: var(--truth-warn); }
+
+.trip-ledger__reset {
+    margin-left: auto;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.trip-ledger__reset:hover {
+    border-color: var(--primary);
+    color: var(--text);
+}
+
+.trip-ledger__honesty {
+    margin: 0;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: var(--error-light);
+    border: 1px solid rgba(217, 48, 37, 0.3);
+    color: var(--truth-warn);
+    font-size: 0.88rem;
+}
+
+/* ── Phases & segments ──────────────────────────────────────────────────── */
+
+.trip-ledger__phase {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.trip-ledger__phase-title {
+    margin: 10px 0 0;
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--truth-total);
+}
+
+.trip-ledger__segment {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+.trip-ledger__segment-photo {
+    position: relative;
+    margin: -14px -16px 4px;
+    height: 104px;
+    overflow: hidden;
+    border-radius: 16px 16px 0 0;
+}
+
+.trip-ledger__segment-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    filter: saturate(0.94);
+}
+
+.trip-ledger__segment-photo::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, var(--surface) 35%, var(--surface) 100%);
+}
+
+.trip-ledger__segment-photo-caption {
+    position: absolute;
+    left: 14px;
+    bottom: 8px;
+    z-index: 1;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--text);
+    text-shadow: 0 1px 6px rgba(2, 8, 23, 0.85);
+}
+
+.trip-ledger__segment-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.trip-ledger__segment-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    background: var(--primary-light);
+    border: 1px solid var(--primary);
+    color: var(--truth-total);
+}
+
+.trip-ledger__segment-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--text);
+}
+
+.trip-ledger__segment-when {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+}
+
+/* ── Cost lines ─────────────────────────────────────────────────────────── */
+
+.trip-ledger__line {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--surface-sunken);
+}
+
+.trip-ledger__line-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.trip-ledger__badge {
+    flex: 0 0 auto;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.trip-ledger__badge--exact {
+    background: rgba(110, 231, 183, 0.14);
+    border: 1px solid rgba(110, 231, 183, 0.35);
+    color: var(--truth-transfer);
+}
+
+.trip-ledger__badge--est {
+    background: var(--warning-light);
+    border: 1px solid rgba(245, 166, 35, 0.35);
+    color: var(--truth-estimated);
+}
+
+.trip-ledger__badge--check {
+    background: rgba(252, 165, 165, 0.12);
+    border: 1px solid rgba(252, 165, 165, 0.35);
+    color: var(--truth-warn);
+}
+
+.trip-ledger__line-label {
+    flex: 1 1 220px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.trip-ledger__pax {
+    font-style: normal;
+    font-weight: 800;
+    color: var(--truth-door);
+    white-space: nowrap;
+}
+
+.trip-ledger__pax-input {
+    width: 44px;
+    margin: 0 4px;
+    padding: 3px 6px;
+    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid rgba(67, 56, 202, 0.28);
+    color: var(--truth-door);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 800;
+    text-align: center;
+    color-scheme: dark;
+}
+
+.trip-ledger__pax-input:focus-visible {
+    outline: 2px solid rgba(67, 56, 202, 0.28);
+    outline-offset: 2px;
+}
+
+.trip-ledger__pax-hint {
+    font-style: normal;
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.trip-ledger__line-amounts {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+}
+
+.trip-ledger__amount-input {
+    width: 96px;
+    padding: 7px 10px;
+    border-radius: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-align: right;
+    color-scheme: dark;
+}
+
+.trip-ledger__amount-input:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+.trip-ledger__amount-input::placeholder {
+    color: var(--truth-warn);
+}
+
+.trip-ledger__line-total {
+    min-width: 64px;
+    text-align: right;
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--text);
+}
+
+.trip-ledger__line-note {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    line-height: 1.5;
+}
+
+.trip-ledger__segment-info {
+    margin: 0;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: #eef2ff;
+    border: 1px solid rgba(67, 56, 202, 0.28);
+    color: var(--truth-door);
+    font-size: 0.84rem;
+    line-height: 1.5;
+}
+
+/* ── Builder controls ───────────────────────────────────────────────────── */
+
+.trip-ledger__segment-heading {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.trip-ledger__remove {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 120ms ease, border-color 120ms ease;
+}
+
+.trip-ledger__remove:hover {
+    color: var(--truth-warn);
+    border-color: rgba(252, 165, 165, 0.5);
+}
+
+.trip-ledger__remove--line {
+    width: 24px;
+    height: 24px;
+    border: none;
+}
+
+.trip-ledger__label-input {
+    width: min(260px, 100%);
+    padding: 5px 8px;
+    border-radius: 8px;
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.trip-ledger__add-line {
+    align-self: flex-start;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: transparent;
+    border: 1px dashed var(--border);
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.trip-ledger__add-line:hover {
+    color: var(--truth-total);
+    border-color: var(--primary);
+}
+
+.trip-ledger__add-stop-toggle {
+    align-self: flex-start;
+    padding: 10px 16px;
+    border-radius: 12px;
+    background: var(--primary-light);
+    border: 1px dashed var(--primary);
+    color: var(--truth-total);
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.trip-ledger__add-stop-toggle:hover {
+    background: var(--primary-light);
+}
+
+.trip-ledger__add-stop {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: var(--surface);
+    border: 1px dashed var(--primary);
+}
+
+.trip-ledger__add-stop-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.trip-ledger__add-input {
+    padding: 9px 11px;
+    border-radius: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color-scheme: dark;
+}
+
+.trip-ledger__add-input--grow {
+    flex: 1 1 220px;
+}
+
+.trip-ledger__add-input--iata {
+    width: 110px;
+    text-transform: uppercase;
+}
+
+.trip-ledger__add-input:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+.trip-ledger__add-hint {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.trip-ledger__add-confirm {
+    padding: 9px 16px;
+    border-radius: 999px;
+    border: none;
+    background: var(--primary);
+    color: var(--text-inverse);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.trip-ledger__add-cancel {
+    padding: 9px 14px;
+    border-radius: 999px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.trip-ledger__add-phase {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 16px;
+    background: var(--surface);
+    border: 1px dashed var(--border);
+}
+
+/* ── Excluded costs ─────────────────────────────────────────────────────── */
+
+.trip-ledger__excluded {
+    padding: 12px 16px;
+    border-radius: 12px;
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    color: var(--text-muted);
+    font-size: 0.86rem;
+}
+
+.trip-ledger__excluded strong {
+    color: var(--text-secondary);
+}
+
+.trip-ledger__excluded ul {
+    margin: 6px 0 0;
+    padding-left: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+@media (max-width: 640px) {
+    .trip-ledger {
+        padding: 18px;
+    }
+
+    .trip-ledger__summary {
+        gap: 12px;
+    }
+
+    .trip-ledger__line-amounts {
+        margin-left: 0;
+        width: 100%;
+        justify-content: space-between;
+    }
+}

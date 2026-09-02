@@ -1,0 +1,485 @@
+/* ─── Spot Detail Page ────────────────────────────────────────────────────── */
+
+.sdp {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: var(--space-5) var(--space-4);
+}
+
+/* Breadcrumb */
+.sdp-breadcrumb {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    margin-bottom: var(--space-4);
+}
+
+.sdp-breadcrumb a {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.sdp-breadcrumb a:hover { text-decoration: underline; }
+
+.sdp-breadcrumb__sep {
+    margin: 0 var(--space-2);
+    color: var(--text-light);
+}
+
+/* Hero */
+.sdp-hero {
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: var(--space-5);
+}
+
+.sdp-hero__photo {
+    position: relative;
+    background: var(--surface-sunken);
+}
+
+/* The hero spans the card, so height is fixed and the aspect ratio is dropped.
+   Left on 21:9 the tile sizes its own width from its height and stops short of the
+   right edge, which reads as a broken image rather than a banner. */
+.sdp-hero__photo .spot-tile--hero {
+    aspect-ratio: auto;
+    width: 100%;
+    height: 260px;
+    border-radius: 0;
+}
+
+.sdp-hero__photo .spot-tile__img {
+    height: 100%;
+}
+
+/* SpotTile carries its own credit chip; the hero's is separate because it links
+   to the park. Hide the tile's so the two do not stack. */
+.sdp-hero__photo .spot-tile__credit {
+    display: none;
+}
+
+.sdp-hero__credit {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    padding: 3px 8px;
+    font-size: 0.62rem;
+    color: #e2e8f0;
+    background: rgba(15, 23, 42, 0.72);
+    border-top-left-radius: 6px;
+}
+
+.sdp-hero__credit a { color: inherit; text-decoration: none; }
+.sdp-hero__credit a:hover { text-decoration: underline; }
+
+.sdp-hero__info {
+    padding: var(--space-5);
+}
+
+.sdp-hero__name {
+    font-size: var(--text-2xl);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin: 0 0 var(--space-2);
+}
+
+.sdp-hero__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: var(--space-2);
+}
+
+.sdp-badge {
+    font-size: var(--text-xs);
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-sm);
+    background: var(--surface-sunken);
+    color: var(--text-secondary);
+    text-transform: capitalize;
+    font-weight: 700;
+}
+
+.sdp-badge--verified {
+    background: var(--success-light);
+    color: var(--success);
+}
+
+.sdp-hero__coords {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    margin: 0;
+}
+
+/* Departure selector bar */
+.sdp-origin-bar {
+    margin-bottom: var(--space-4);
+}
+
+.sdp-origin-bar__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.sdp-origin-bar__select {
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    color: var(--text);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* Cards */
+.sdp-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+    padding: var(--space-4);
+}
+
+/* Sections */
+.sdp-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.sdp-section__title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.sdp-section__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+}
+
+.sdp-section__meta {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+/* Map + Tabs card */
+.sdp-map-tabs {
+    padding: 0;
+    overflow: hidden;
+}
+
+.sdp-map {
+    width: 100%;
+    height: 300px;
+    overflow: hidden;
+}
+
+/* Tabs */
+.sdp-tabs {
+    display: flex;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-sunken);
+}
+
+.sdp-tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 12px;
+    border: none;
+    background: none;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.15s, box-shadow 0.15s;
+    position: relative;
+}
+
+.sdp-tab:hover { color: var(--text); }
+
+.sdp-tab--active {
+    color: var(--primary);
+    box-shadow: inset 0 -2px 0 var(--primary);
+    background: var(--surface);
+}
+
+.sdp-tab__count {
+    font-size: 0.65rem;
+    font-weight: 700;
+    background: var(--surface-sunken);
+    color: var(--text-muted);
+    padding: 1px 6px;
+    border-radius: var(--radius-full);
+    line-height: 1.2;
+}
+
+.sdp-tab--active .sdp-tab__count {
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+/* Tab panel */
+.sdp-tab-panel {
+    padding: var(--space-4);
+}
+
+.sdp-tab-panel__meta {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    margin: 0 0 var(--space-3);
+}
+
+/* Clickable airport rows */
+.spot-detail__way--clickable {
+    cursor: pointer;
+    border: none;
+    text-align: left;
+    width: 100%;
+    background: none;
+    transition: background 0.12s;
+}
+
+.spot-detail__way--clickable:hover {
+    background: var(--surface-sunken);
+}
+
+.spot-detail__way--selected {
+    background: var(--primary-light);
+    border-radius: var(--radius-md);
+}
+
+.spot-detail__way-action {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--primary);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Nearby POI links */
+.sdp-nearby__intro {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.sdp-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.sdp-link-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    color: var(--text);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-decoration: none;
+    transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.sdp-link-pill:hover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+.sdp-link-pill--food {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+/* Flight teaser */
+.sdp-flights {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.sdp-flight {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.sdp-flight:last-child { border-bottom: none; }
+
+.sdp-flight__info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.sdp-flight__date {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text);
+}
+
+.sdp-flight__airline {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.sdp-flight__label {
+    font-size: 0.65rem;
+    color: var(--text-light);
+}
+
+.sdp-flight__prices {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.sdp-flight__price {
+    font-size: var(--text-base);
+    font-weight: 700;
+    color: var(--text);
+}
+
+.sdp-flight__honest {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+
+/* Not found state */
+.sdp-empty {
+    text-align: center;
+    padding: var(--space-16) var(--space-5);
+}
+
+.sdp-empty h2 {
+    font-size: var(--text-xl);
+    color: var(--text);
+    margin: 0 0 var(--space-2);
+}
+
+.sdp-empty p {
+    color: var(--text-muted);
+    margin: 0 0 var(--space-5);
+}
+
+.sdp-back {
+    display: inline-block;
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-md);
+    background: var(--primary);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+/* ─── Labelled setup facts ───────────────────────────────────────────────────
+   Replaces the row of undifferentiated pills the setup card used to carry. A
+   pill can hold a value but not what the value is: "5 towers" and "gear rental"
+   looked identical, so the one fact that decides whether a rider books — full
+   cable or two-tower shuttle — had to be hunted for. Label above value fixes
+   that at the cost of a little more vertical space, which this card has. */
+
+.sdp-facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px 20px;
+    margin: 0 0 14px;
+}
+
+.sdp-fact {
+    min-width: 0;
+}
+
+.sdp-fact__label {
+    margin: 0 0 2px;
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.sdp-fact__value {
+    margin: 0;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.4;
+}
+
+/* The qualifier under the headline value — tower counts, "linked as a transfer
+   line". Secondary weight so the value itself still reads first. */
+.sdp-fact__detail {
+    display: block;
+    margin-top: 1px;
+    font-size: var(--text-xs);
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+/* ─── On-site amenities ──────────────────────────────────────────────────────
+   These facts used to reach the page only as a clause inside the setup
+   paragraph — "changing rooms, showers, shaded terrace with seating, playground
+   and picnic area" — despite each one already being a column. As icons on a grid
+   they answer the question a rider is actually asking (can I sleep here, can I
+   eat here, can I rent a wetsuit) in one pass instead of a close read. */
+
+.sdp-amenities {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+    gap: 6px 16px;
+    list-style: none;
+    margin: 0 0 14px;
+    padding: 0;
+}
+
+.sdp-amenity {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+}
+
+.sdp-amenity__icon {
+    flex: 0 0 auto;
+    width: 14px;
+    color: var(--truth-transfer);
+}

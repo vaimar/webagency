@@ -1,0 +1,462 @@
+/* Low-crowd ski window finder. Uses the shared tokens in index.css. */
+
+.lcw {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: var(--space-6) var(--space-4) var(--space-12);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+}
+
+.lcw__title {
+    margin: 0;
+    font-size: var(--text-2xl);
+    color: var(--text);
+}
+
+.lcw__subtitle {
+    margin: var(--space-2) 0 0;
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+}
+
+/* ── Controls ─────────────────────────────────────────────────────────────── */
+
+.lcw__controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-5);
+}
+
+.lcw__field {
+    border: none;
+    margin: 0;
+    padding: 0;
+    min-width: 260px;
+    flex: 1 1 260px;
+}
+
+.lcw__field legend {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: var(--space-2);
+    padding: 0;
+}
+
+.lcw__options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.lcw__option {
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text-secondary);
+    border-radius: var(--radius-full);
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.lcw__option:hover {
+    background: var(--surface-hover);
+}
+
+.lcw__option--active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--text-inverse);
+}
+
+/* ── Status and warnings ──────────────────────────────────────────────────── */
+
+.lcw__status {
+    color: var(--text-secondary);
+    font-size: var(--text-base);
+    padding: var(--space-4);
+}
+
+.lcw__status--error {
+    color: var(--error);
+    background: var(--error-light);
+    border-radius: var(--radius-md);
+}
+
+.lcw__warnings {
+    list-style: none;
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    background: var(--warning-light);
+    border: 1px solid var(--warning);
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+/* ── Cards ────────────────────────────────────────────────────────────────── */
+
+.lcw__list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.lcw-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.lcw-card--excluded {
+    background: var(--surface-hover);
+    border-style: dashed;
+    box-shadow: none;
+}
+
+.lcw-card__head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+}
+
+.lcw-card__rank {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: var(--primary);
+    min-width: 2.5rem;
+}
+
+.lcw-card--excluded .lcw-card__rank {
+    color: var(--text-light);
+}
+
+.lcw-card__dates {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.lcw-card__dates strong {
+    font-size: var(--text-lg);
+    color: var(--text);
+}
+
+.lcw-card__year {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.lcw-card__score {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    text-align: right;
+}
+
+.lcw-card__score strong {
+    font-size: var(--text-xl);
+    color: var(--text);
+    line-height: 1;
+}
+
+.lcw-card__score span {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.lcw-card__reason {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+}
+
+.lcw-card__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.lcw-chip--quiet {
+    background: var(--success-light);
+    color: var(--success);
+}
+
+.lcw-chip--moderate {
+    background: var(--accent-light);
+    color: var(--accent);
+}
+
+.lcw-chip--busy {
+    background: var(--warning-light);
+    color: #8a5a00;
+}
+
+.lcw-chip--packed {
+    background: var(--error-light);
+    color: var(--error);
+}
+
+.lcw-card__exclusions {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.lcw-card__exclusions li {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.lcw-card__toggle {
+    align-self: flex-start;
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--primary);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+/* ── Breakdown ────────────────────────────────────────────────────────────── */
+
+.lcw-card__detail {
+    border-top: 1px solid var(--divider);
+    padding-top: var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.lcw-card__bars {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.lcw-bar {
+    display: grid;
+    grid-template-columns: 7rem 1fr 2.5rem;
+    align-items: center;
+    gap: var(--space-3);
+    font-size: var(--text-sm);
+}
+
+.lcw-bar--muted {
+    opacity: 0.45;
+}
+
+.lcw-bar__label {
+    color: var(--text-secondary);
+}
+
+.lcw-bar__track {
+    background: var(--divider);
+    border-radius: var(--radius-full);
+    height: 8px;
+    overflow: hidden;
+}
+
+.lcw-bar__fill {
+    display: block;
+    height: 100%;
+    background: var(--primary);
+    border-radius: var(--radius-full);
+}
+
+.lcw-bar__value {
+    text-align: right;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.lcw-card__overlaps h4,
+.lcw-card__factors h4,
+.lcw__coverage h4 {
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+}
+
+.lcw-card__overlaps ul,
+.lcw-card__factors ul,
+.lcw__coverage ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.lcw-card__overlaps li {
+    display: flex;
+    flex-direction: column;
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+}
+
+.lcw-card__factors li {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+}
+
+.lcw-card__factors li strong {
+    margin-left: auto;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+}
+
+.lcw-soft {
+    font-style: normal;
+    font-size: var(--text-xs);
+    color: var(--text-light);
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-sm);
+    padding: 0 var(--space-2);
+}
+
+/* ── Excluded section and coverage ────────────────────────────────────────── */
+
+.lcw__excluded summary {
+    cursor: pointer;
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    padding: var(--space-2) 0;
+}
+
+.lcw__excluded[open] summary {
+    margin-bottom: var(--space-3);
+}
+
+.lcw__coverage {
+    border-top: 1px solid var(--divider);
+    padding-top: var(--space-4);
+}
+
+.lcw__coverage li {
+    display: flex;
+    flex-direction: column;
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+}
+
+.lcw__note {
+    font-size: var(--text-xs);
+    color: var(--text-light);
+}
+
+@media (max-width: 640px) {
+    .lcw-card__head {
+        flex-wrap: wrap;
+    }
+
+    .lcw-bar {
+        grid-template-columns: 5.5rem 1fr 2.5rem;
+    }
+}
+
+/* Header lays out as title + search side by side, stacking on narrow screens. */
+.lcw__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-5);
+    flex-wrap: wrap;
+}
+
+.lcw__heading {
+    flex: 1 1 320px;
+    min-width: 0;
+}
+
+/* Resort found in the catalogue but not set up for planning. A normal state —
+   almost no resort has a profile — so it reads as information, not an error. */
+.lcw__unconfigured {
+    background: var(--surface);
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.lcw__unconfigured h2 {
+    margin: 0;
+    font-size: var(--text-lg);
+    color: var(--text);
+}
+
+.lcw__unconfigured p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--text-base);
+    line-height: 1.55;
+}
+
+.lcw__unconfigured-note {
+    font-size: var(--text-sm) !important;
+    color: var(--text-muted) !important;
+    padding-left: var(--space-3);
+    border-left: 2px solid var(--divider);
+}
+
+.lcw__unconfigured-back {
+    align-self: flex-start;
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--primary);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+/* The week actually booked. Marked rather than reordered — it keeps its real
+   rank, so choosing the second-best week does not quietly become the best. */
+.lcw-card--chosen {
+    border-color: var(--primary);
+    border-width: 2px;
+    position: relative;
+}
+
+.lcw-card__chosen-tag {
+    position: absolute;
+    top: calc(var(--space-3) * -1);
+    left: var(--space-4);
+    background: var(--primary);
+    color: var(--text-inverse);
+    font-size: var(--text-xs);
+    padding: 2px var(--space-3);
+    border-radius: var(--radius-full);
+    letter-spacing: 0.04em;
+}

@@ -1,0 +1,23 @@
+/* Colour is inherited rather than tokenised: this caveat sits both on light
+   cards and on the dark Stay Guide hero, and a fixed muted grey was invisible
+   on the dark one. currentColor with reduced opacity stays legible on either. */
+.nightly-rate-caveat {
+	margin: 0.2rem 0 0;
+	color: inherit;
+	opacity: 0.78;
+	line-height: 1.45;
+}
+
+/* Sits directly under a price, so it has to be small enough not to compete
+   with the figure but large enough to actually be read. */
+.nightly-rate-caveat--inline {
+	font-size: 0.72rem;
+}
+
+.nightly-rate-caveat--block {
+	font-size: 0.82rem;
+	margin: 0.5rem 0 0.75rem;
+	padding-left: 0.6rem;
+	border-left: 2px solid currentColor;
+	opacity: 0.85;
+}
