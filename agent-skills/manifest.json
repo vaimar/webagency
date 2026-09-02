@@ -15,7 +15,8 @@
   ],
   "context": [
     "agent-skills/context/frontend-surface.md",
-    "agent-skills/context/backend-contracts.md"
+    "agent-skills/context/backend-contracts.md",
+    "agent-skills/context/route-hacker.md"
   ],
   "priceHierarchy": {
     "description": "Canonical order for displaying flight cost",
@@ -76,11 +77,11 @@
       "id": "slumber.flight-integrity",
       "name": "Flight Integrity",
       "source": "agent-skills/skills/flight-integrity.md",
-      "tags": ["flights", "audited-total-cost", "real-world-entry-price", "cache", "sorting", "door-to-trip"],
+      "tags": ["flights", "audited-total-cost", "real-world-entry-price", "cache", "sorting", "door-to-trip", "route-hacker", "self-transfer", "aviationstack", "schedule-graph"],
       "wrapper": {
-        "load": ["agent-skills/context/backend-contracts.md"],
-        "claudeUsage": "when touching live flight refresh/search, cache honesty, auditedTotalCost ordering, or doorToTripPrice display.",
-        "copilotGoal": "keep flight pricing, refresh flow, and honest sorting stable. auditedTotalCost > realWorldEntryPrice > marketing."
+        "load": ["agent-skills/context/backend-contracts.md", "agent-skills/context/route-hacker.md"],
+        "claudeUsage": "when touching live flight refresh/search, cache honesty, auditedTotalCost ordering, doorToTripPrice display, OR the Route Hacker schedule-graph engine / AviationStack ingestion / quota guard.",
+        "copilotGoal": "keep flight pricing, refresh flow, and honest sorting stable. auditedTotalCost > realWorldEntryPrice > marketing. Route Hacker: schedule-only from local grid, ingest via flightsFuture, respect the quota guard."
       }
     },
     {

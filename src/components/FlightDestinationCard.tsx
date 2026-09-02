@@ -1,5 +1,6 @@
 import React from 'react';
 import { AirportDisplay, getAirportDisplay } from '../data/airportMetadata';
+import { getCityImageForAirport } from '../data/cityImages';
 import { FlightDestination } from '../model/FlightDestination';
 import { getAntiCauchemarPricingSummary } from '../services/antiCauchemarPricing';
 import TruthCard from './TruthCard';
@@ -53,6 +54,10 @@ const FlightDestinationCard: React.FC<FlightDestinationCardProps> = ({ destinati
     const honestPriceLabel = formatMoney(pricing.estimatedEntryPrice ?? destination.price.total, currency);
     const marketingPriceLabel = formatMoney(destination.price.total, currency);
     const hasEstimatedEntryPrice = typeof pricing.estimatedEntryPrice === 'number';
+    // Prefer a real, destination-specific photo; fall back to the generic
+    // stock thumbnail only when no curated city image exists.
+    const cityImage = getCityImageForAirport(destination.destination);
+    const bannerUrl = cityImage?.url ?? arrival.thumbnailUrl;
 
     return (
         <article
@@ -72,8 +77,8 @@ const FlightDestinationCard: React.FC<FlightDestinationCardProps> = ({ destinati
             <div className="flight-card__media">
                 <img
                     className="flight-card__media-image"
-                    src={arrival.thumbnailUrl}
-                    alt={`${arrival.city} airport view`}
+                    src={bannerUrl}
+                    alt={cityImage ? `${cityImage.city}` : `${arrival.city} airport view`}
                     loading="lazy"
                 />
                 <div className="flight-card__media-overlay">
@@ -81,7 +86,9 @@ const FlightDestinationCard: React.FC<FlightDestinationCardProps> = ({ destinati
                         <span className="flight-card__flag">{arrival.flag}</span>
                         <span className="flight-card__badge">Anti-Cauchemar</span>
                     </div>
-                    <span className="flight-card__thumbnail-label">{arrival.airportName}</span>
+                    <span className="flight-card__thumbnail-label">
+                        {cityImage ? `${arrival.city} · ${cityImage.credit}` : arrival.airportName}
+                    </span>
                 </div>
             </div>
             <div className="flight-card__eyebrow">{origin.city} → {arrival.city}</div>

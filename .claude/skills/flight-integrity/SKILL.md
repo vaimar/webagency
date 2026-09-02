@@ -6,7 +6,8 @@ Load order:
 1. `AGENTS.md`
 2. `agent-skills/shared/core-rules.md`
 3. `agent-skills/context/backend-contracts.md`
-4. `agent-skills/skills/flight-integrity.md`
+4. `agent-skills/context/route-hacker.md`
+5. `agent-skills/skills/flight-integrity.md`
 
-Use this skill when touching live flight refresh/search, cache honesty, or price ordering.
+Use this skill when touching live flight refresh/search, cache honesty, auditedTotalCost ordering, doorToTripPrice display, OR the Route Hacker schedule-graph engine / AviationStack ingestion / quota guard.
 

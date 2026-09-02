@@ -77,6 +77,45 @@ export const getAntiCauchemarPricingSummary = (
     };
 };
 
+/**
+ * Returns a copy of the analysis with the cabin-bag estimate removed from
+ * every total — for travellers with a small bag only. The bag line drops to
+ * zero (so breakdown renderers hide it) and the stale with-bag PRICE
+ * TRANSPARENCY sentence is removed from theCatch rather than left lying.
+ */
+export const stripCabinBag = (truth: AntiCauchemarAnalysis): AntiCauchemarAnalysis => {
+    const bag = asFiniteAmount(truth.cabinBagEstimate) ?? 0;
+    if (bag <= 0) {
+        return truth;
+    }
+    const minusBag = (value?: number | null): number | undefined => (
+        typeof value === 'number' && Number.isFinite(value) ? Math.round((value - bag) * 100) / 100 : undefined
+    );
+    const stripped: AntiCauchemarAnalysis = {
+        ...truth,
+        cabinBagEstimate: 0,
+        realCost: minusBag(truth.realCost),
+        realWorldEntryPrice: minusBag(truth.realWorldEntryPrice),
+        auditedTotalCost: minusBag(truth.auditedTotalCost),
+        doorToTripPrice: truth.doorToTripPrice != null ? minusBag(truth.doorToTripPrice) : truth.doorToTripPrice,
+        theCatch: truth.theCatch
+            ? truth.theCatch.split(' || ').filter((part) => !part.startsWith('PRICE TRANSPARENCY')).join(' || ') || undefined
+            : truth.theCatch,
+    };
+    if (truth.priceBreakdown?.baggageEstimate) {
+        stripped.priceBreakdown = {
+            ...truth.priceBreakdown,
+            baggageEstimate: {
+                ...truth.priceBreakdown.baggageEstimate,
+                amount: 0,
+                status: 'EXACT',
+                note: 'Cabin bag excluded — travelling with a small bag only.',
+            },
+        };
+    }
+    return stripped;
+};
+
 export const getComparableFlightPrice = (
     basePrice: number | string | undefined,
     truth?: AntiCauchemarAnalysis | null,

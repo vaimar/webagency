@@ -8,5 +8,5 @@ Load order:
 3. `agent-skills/context/backend-contracts.md`
 4. `agent-skills/skills/travel-auditor.md`
 
-Use this skill for hidden-cost auditing, recommendation quality checks, and backend-limit honesty.
+Use this skill for hidden-cost auditing, CostLine status validation, recommendation quality checks, and backend-limit honesty.
 

@@ -12,10 +12,31 @@
  *   entirely, then returns the Railway response to the browser.
  */
 
+import { classifyPath, clientKey, consume } from "./rate-limit.js";
+
 const RAILWAY_BASE = "https://slumber-production.up.railway.app";
 
-export default async (request, context) => {
+export default async (request, _context) => {
   const url = new URL(request.url);
+
+  // Shed load before touching the backend: an over-limit caller must not be
+  // able to spend upstream quota just because the proxy forwarded first.
+  const decision = consume(clientKey(request), classifyPath(url.pathname));
+  if (!decision.allowed) {
+    return new Response(
+      JSON.stringify({
+        error: "Too many requests",
+        detail: "This endpoint is rate limited. Please retry shortly.",
+      }),
+      {
+        status: 429,
+        headers: {
+          "Content-Type": "application/json",
+          "Retry-After": String(decision.retryAfterSeconds),
+        },
+      },
+    );
+  }
   const backendPath = url.pathname === "/api/accounts/logout" ? "/logout" : url.pathname;
 
   // Build target URL on Railway — preserve path and query string
@@ -48,11 +69,21 @@ export default async (request, context) => {
     );
   }
 
-  // Re-expose CORS headers to the browser so the SPA can read the response
+  // CORS. This proxy is same-origin with the app in production, so the browser
+  // needs no CORS headers at all for the normal path. The previous wildcard
+  // meant any website could read this API cross-origin; echoing only our own
+  // origin keeps the same-origin case working and closes that.
   const responseHeaders = new Headers(upstream.headers);
-  responseHeaders.set("Access-Control-Allow-Origin", "*");
-  responseHeaders.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  responseHeaders.set("Access-Control-Allow-Headers", "Content-Type, X-XSRF-TOKEN, Authorization");
+  const requestOrigin = request.headers.get("origin");
+  if (requestOrigin && requestOrigin === url.origin) {
+    responseHeaders.set("Access-Control-Allow-Origin", requestOrigin);
+    responseHeaders.set("Access-Control-Allow-Credentials", "true");
+    responseHeaders.set("Vary", "Origin");
+    responseHeaders.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    responseHeaders.set("Access-Control-Allow-Headers", "Content-Type, X-XSRF-TOKEN, X-Request-Id, Authorization");
+  }
+
+  responseHeaders.set("X-RateLimit-Remaining", String(decision.remaining));
 
   if (url.pathname === "/api/accounts/logout") {
     responseHeaders.set("Content-Type", "application/json");

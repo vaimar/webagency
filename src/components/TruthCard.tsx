@@ -70,6 +70,9 @@ const PriceBreakdownStack: React.FC<{ breakdown: PriceBreakdown; currency: strin
         {((breakdown.lateArrivalMarkup && (breakdown.lateArrivalMarkup.amount ?? 0) > 0) || breakdown.lateArrivalMarkup?.status === 'MANUAL_CHECK_REQUIRED')
             ? breakdown.lateArrivalMarkup && <CostLineRow label="Late arrival markup" line={breakdown.lateArrivalMarkup} />
             : null}
+        {breakdown.frictionPenalty && (breakdown.frictionPenalty.amount ?? 0) > 0
+            ? <CostLineRow label="Airport friction margin" line={breakdown.frictionPenalty} />
+            : null}
         {breakdown.firstMileLine && (
             <CostLineRow label="Home → airport (first mile)" line={breakdown.firstMileLine} />
         )}
