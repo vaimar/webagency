@@ -8,11 +8,12 @@ Load order:
 3. `agent-skills/context/frontend-surface.md`
 4. `agent-skills/skills/senior-ui-expert.md`
 
-Use this skill for truth-first UI work, visual hierarchy, warning visibility, and Frozen Summer styling.
+Use this skill for truth-first UI work, visual hierarchy, CostLine badge rendering, warning visibility, and Frozen Summer styling.
 
 Prefer:
-- honest price hierarchy
+- honest price hierarchy (base fare → honest total → door-to-trip)
 - dark crisp cards
-- minimal clutter
+- CostLine status badges
 - impossible-to-miss warning states
+- no var(--color-*) without confirmed tokens
 

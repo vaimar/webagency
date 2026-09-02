@@ -1,4 +1,7 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import { faSnowflake, faWater } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTripExploration } from '../TripExplorationContext';
 import {
     getDestinationSuggestions,
@@ -20,16 +23,22 @@ interface RideSpotPreset {
     label: string;
     destination: string;
     activity: string;
-    emoji: string;
+    icon: IconDefinition;
 }
 
+// EXO 84 (Lamotte-du-Rhone) was the first chip here until 2026-08-20, when it
+// turned out to be permanently closed - it is gone from the operator's own
+// network page and listed as "definitivement ferme" elsewhere. Offering a shut
+// venue as the headline suggestion is the worst version of the empty-result
+// problem: the search succeeds and the trip does not. Replaced with EXO 13,
+// which is open and in the catalogue.
 const RIDE_SPOT_PRESETS: RideSpotPreset[] = [
-    { label: 'EXO 84', destination: 'EXO 84', activity: 'wakeboard', emoji: '🌊' },
-    { label: 'Ibiza Cable Park', destination: 'Ibiza Cable Park', activity: 'wakeboard', emoji: '🌊' },
-    { label: '313 Cable Park', destination: '313 Cable Park', activity: 'wakeboard', emoji: '🌊' },
-    { label: 'Hypnotics', destination: 'Hypnotics', activity: 'wakeboard', emoji: '🌊' },
-    { label: 'Paris Wakepark', destination: 'Paris Wakepark', activity: 'wakeboard', emoji: '🌊' },
-    { label: 'Les Houches', destination: 'Les Houches', activity: 'snowboard', emoji: '🏂' },
+    { label: 'EXO 13 Peyrolles', destination: 'EXO 13 Peyrolles', activity: 'wakeboard', icon: faWater },
+    { label: 'Ibiza Cable Park', destination: 'Ibiza Cable Park', activity: 'wakeboard', icon: faWater },
+    { label: '313 Cable Park', destination: '313 Cable Park', activity: 'wakeboard', icon: faWater },
+    { label: 'Hypnotics', destination: 'Hypnotics', activity: 'wakeboard', icon: faWater },
+    { label: 'Paris Wakepark', destination: 'Paris Wakepark', activity: 'wakeboard', icon: faWater },
+    { label: 'Les Houches', destination: 'Les Houches', activity: 'snowboard', icon: faSnowflake },
 ];
 
 const destinationSuggestions = getDestinationSuggestions();
@@ -45,17 +54,25 @@ const buildFirstMileAccess = (mode: TransportMode) => (
         : { mode: 'public_transport' as const, source: 'explore-ui' }
 );
 
+const todayDateString = (): string => new Date().toISOString().slice(0, 10);
+
+const clampToToday = (value: string): string => {
+    const today = todayDateString();
+    return value < today ? today : value;
+};
+
 const TripExploreWrapper: React.FC = () => {
     // Fetch lifecycle and the full exploration payload live in the app-wide
     // TripExplorationContext (persisted via CacheProvider), so switching
     // routes/tabs never loses the backend data.
     const { status, tripData, lastRequest, fallbackStays, error, explore } = useTripExploration();
 
+    const today = todayDateString();
     const [homeAddress, setHomeAddress] = useState('Limerick, Ireland');
     const [destination, setDestination] = useState('Ibiza');
     const [activity, setActivity] = useState<string>(ACTIVITIES[0]);
-    const [departureDate, setDepartureDate] = useState('2026-07-10');
-    const [returnDate, setReturnDate] = useState('2026-07-13');
+    const [departureDate, setDepartureDate] = useState(() => clampToToday('2026-07-10'));
+    const [returnDate, setReturnDate] = useState(() => clampToToday('2026-07-13'));
     const [transportMode, setTransportMode] = useState<TransportMode>('car');
 
     const isLoading = status === 'fetching';
@@ -68,25 +85,39 @@ const TripExploreWrapper: React.FC = () => {
         return Number.isFinite(diff) && diff > 0 ? diff : 3;
     }, [departureDate, returnDate]);
 
-    // Shared search path — takes explicit destination/activity so preset chips
-    // don't depend on async setState landing first.
-    const runExplore = useCallback(async (destinationValue: string, activityValue: string) => {
+    // Shared search path — takes explicit destination/activity (and optionally
+    // origin) so preset chips and the SpotFinder deep-link don't depend on
+    // async setState landing first.
+    const runExplore = useCallback(async (
+        destinationValue: string,
+        activityValue: string,
+        originValue?: string,
+        explicitArrivalAirport?: string,
+    ) => {
         const trimmedDestination = destinationValue.trim();
         if (!trimmedDestination) {
             return;
         }
+
+        const safeDepartureDate = clampToToday(departureDate);
+        if (safeDepartureDate !== departureDate) {
+            setDepartureDate(safeDepartureDate);
+        }
+
         const hint = resolveDestinationHint(trimmedDestination);
 
-        // Mirrors the backend's TripExploreRequest exactly — extra keys are
-        // ignored by Jackson, so anything not listed there never took effect.
-        // For non-curated destinations we attach the arrivalAirport hint the
-        // backend requires (400 DESTINATION_AIRPORT_REQUIRED otherwise).
+        const resolvedAirport = hint && !hint.curatedByBackend
+            ? hint.arrivalAirport
+            : !hint && explicitArrivalAirport
+                ? explicitArrivalAirport
+                : undefined;
+
         const payload: TripExploreRequestPayload = {
-            origin: resolveOriginAirport(homeAddress),
+            origin: resolveOriginAirport(originValue ?? homeAddress),
             destination: trimmedDestination,
             activity: activityValue,
-            travelDate: departureDate,
-            ...(hint && !hint.curatedByBackend ? { arrivalAirport: hint.arrivalAirport } : {}),
+            travelDate: safeDepartureDate,
+            ...(resolvedAirport ? { arrivalAirport: resolvedAirport } : {}),
             firstMileAccess: buildFirstMileAccess(transportMode),
             activityRadiusMeters: 5000,
             hotelRadiusMeters: 10000,
@@ -95,6 +126,33 @@ const TripExploreWrapper: React.FC = () => {
 
         await explore(payload, hint);
     }, [homeAddress, departureDate, transportMode, explore]);
+
+    // SpotFinder handoff: /explore?origin=…&destination=…&activity=… lands
+    // here with the trip pre-filled and the search fired immediately — the
+    // "pick a spot, get the priced trip" spine. Plain window.location (not a
+    // router hook) so tests and non-router mounts are unaffected; the ref
+    // guards against re-running on state-driven re-renders.
+    const deepLinkRanRef = useRef(false);
+    useEffect(() => {
+        if (deepLinkRanRef.current) {
+            return;
+        }
+        const params = new URLSearchParams(window.location.search);
+        const linkedDestination = params.get('destination')?.trim();
+        if (!linkedDestination) {
+            return;
+        }
+        deepLinkRanRef.current = true;
+        const linkedOrigin = params.get('origin')?.trim() || undefined;
+        const linkedActivity = params.get('activity')?.trim() || activity;
+        const linkedAirport = params.get('arrivalAirport')?.trim() || undefined;
+        if (linkedOrigin) {
+            setHomeAddress(linkedOrigin);
+        }
+        setDestination(linkedDestination);
+        setActivity(linkedActivity);
+        void runExplore(linkedDestination, linkedActivity, linkedOrigin, linkedAirport);
+    }, [activity, runExplore]);
 
     const handleSearch = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -115,8 +173,8 @@ const TripExploreWrapper: React.FC = () => {
         <div className="trip-explore-wrapper">
             <form onSubmit={handleSearch} className="trip-explore-wrapper__form">
                 <div className="trip-explore-wrapper__header">
-                    <p className="trip-explore-wrapper__eyebrow">Plan de ouf</p>
-                    <h2 className="trip-explore-wrapper__title">Door to ride spot. Zero spreadsheet math.</h2>
+                    <p className="trip-explore-wrapper__eyebrow">Door-to-trip planner</p>
+                    <h2 className="trip-explore-wrapper__title">Plan the whole trip, door to door</h2>
                     <p className="trip-explore-wrapper__subtitle">
                         Type where you start and where you want to ride — city or cable park. We resolve the
                         airports, flights, transfers, and stays; you just pick your favourite.
@@ -142,7 +200,7 @@ const TripExploreWrapper: React.FC = () => {
                             list="trip-explore-destinations"
                             value={destination}
                             onChange={(event) => setDestination(event.target.value)}
-                            placeholder="Ibiza, Nice, EXO 84…"
+                            placeholder="Ibiza, Nice, EXO 13…"
                             className="trip-explore-wrapper__input"
                         />
                         <datalist id="trip-explore-destinations">
@@ -167,7 +225,8 @@ const TripExploreWrapper: React.FC = () => {
                                             : 'trip-explore-wrapper__preset'
                                     }
                                 >
-                                    {preset.emoji} {preset.label}
+                                    <FontAwesomeIcon icon={preset.icon} />
+                                    {preset.label}
                                 </button>
                             ))}
                         </div>
@@ -194,6 +253,7 @@ const TripExploreWrapper: React.FC = () => {
                             <input
                                 type="date"
                                 value={departureDate}
+                                min={today}
                                 onChange={(event) => setDepartureDate(event.target.value)}
                                 className="trip-explore-wrapper__date-input"
                                 aria-label="Departure date"
@@ -202,7 +262,7 @@ const TripExploreWrapper: React.FC = () => {
                             <input
                                 type="date"
                                 value={returnDate}
-                                min={departureDate}
+                                min={departureDate || today}
                                 onChange={(event) => setReturnDate(event.target.value)}
                                 className="trip-explore-wrapper__date-input"
                                 aria-label="Return date"
@@ -222,7 +282,7 @@ const TripExploreWrapper: React.FC = () => {
                                         : 'trip-explore-wrapper__toggle-button'
                                 }
                             >
-                                🚗 I'll drive / My car
+                                I'll drive / my car
                             </button>
                             <button
                                 type="button"
@@ -233,7 +293,7 @@ const TripExploreWrapper: React.FC = () => {
                                         : 'trip-explore-wrapper__toggle-button'
                                 }
                             >
-                                🚆 Public transport / Taxi
+                                Public transport / taxi
                             </button>
                         </div>
                     </label>
@@ -241,7 +301,7 @@ const TripExploreWrapper: React.FC = () => {
 
                 <div className="trip-explore-wrapper__submit-row">
                     <button type="submit" className="trip-explore-wrapper__button" disabled={isLoading}>
-                        {isLoading ? 'Generating…' : 'Generate My Plan de Ouf'}
+                        {isLoading ? 'Working it out…' : 'Price this trip'}
                     </button>
                 </div>
             </form>

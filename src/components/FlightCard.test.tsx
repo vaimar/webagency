@@ -70,5 +70,58 @@ describe('FlightCard', () => {
         expect(screen.getAllByText(/possible extra costs/i).length).toBeGreaterThan(0);
         expect(screen.getByText(/the app sees extra-friction risk on this route/i)).toBeInTheDocument();
     });
-});
 
+    /**
+     * The backend synthesises a flight when no provider returns anything —
+     * "FALLBACK-SNNGVA", a flat €89, invented 09:00 → 12:30 times — and reports
+     * routeAvailable: true. It used to render in the same card as a real fare.
+     */
+    it('marks a synthesised fallback route as a placeholder rather than a fare', () => {
+        render(
+            <FlightCard
+                flight={{
+                    origin: 'SNN',
+                    destination: 'GVA',
+                    departureDate: '2026-08-19T09:00:00',
+                    arrivalDate: '2026-08-19T12:30:00',
+                    price: 89,
+                    currency: 'EUR',
+                    flightNumber: 'FALLBACK-SNNGVA',
+                    airline: 'Fallback Routing',
+                }}
+                flightSource="live"
+                flightDiagnosticsOk
+            />,
+        );
+
+        // Queried through the card's own role rather than by reaching into the
+        // container: no onSelect here, so the root <article> keeps its implicit role.
+        expect(screen.getByRole('article')).toHaveClass('flight-card--fallback');
+        expect(screen.getByText(/no fare found for this route/i)).toBeInTheDocument();
+        expect(screen.getByText(/placeholder estimate — no quote behind it/i)).toBeInTheDocument();
+        // The internal identifier must never be presented as a flight number.
+        expect(screen.queryByText(/FALLBACK-SNNGVA/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/flight FALLBACK/i)).not.toBeInTheDocument();
+    });
+
+    it('leaves a real fare untouched by the fallback treatment', () => {
+        render(
+            <FlightCard
+                flight={{
+                    origin: 'DUB',
+                    destination: 'BCN',
+                    departureDate: '2026-08-19T07:10:00Z',
+                    price: 64,
+                    currency: 'EUR',
+                    flightNumber: 'FR 7844',
+                }}
+                flightSource="live"
+                flightDiagnosticsOk
+            />,
+        );
+
+        expect(screen.getByRole('article')).not.toHaveClass('flight-card--fallback');
+        expect(screen.queryByText(/no fare found for this route/i)).not.toBeInTheDocument();
+        expect(screen.getByText(/FR 7844/)).toBeInTheDocument();
+    });
+});

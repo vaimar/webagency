@@ -37,7 +37,7 @@ describe('TripAiGuideTab', () => {
     });
 
     it('degrades honestly and offers retry when the AI was unavailable', async () => {
-        const onRetry = jest.fn();
+        const onRetry = vi.fn();
         render(
             <TripAiGuideTab
                 status="done"
@@ -53,7 +53,7 @@ describe('TripAiGuideTab', () => {
     });
 
     it('shows an error state with retry on network failure', async () => {
-        const onRetry = jest.fn();
+        const onRetry = vi.fn();
         render(<TripAiGuideTab status="error" guide={null} onRetry={onRetry} />);
 
         expect(screen.getByText('AI guide unavailable')).toBeInTheDocument();

@@ -1,9 +1,13 @@
+import { readEnv, isProduction } from './env';
+import { captureError, log, newRequestId } from './telemetry';
+import { reportApiOutcome } from './serviceStatus';
+
 const DEFAULT_PRODUCTION_API_BASE = 'https://slumber-production.up.railway.app';
 const LOCAL_DEV_API_BASE = 'http://localhost:9090';
-const rawApiBase = (process.env.REACT_APP_API_BASE ?? '').trim();
+const rawApiBase = (readEnv('REACT_APP_API_BASE') ?? '').trim();
 const isLocalBrowserHost = typeof window !== 'undefined'
     && /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
-const useLocalDevProxy = process.env.NODE_ENV !== 'production'
+const useLocalDevProxy = !isProduction()
     && (!rawApiBase || /^https?:\/\/localhost:9090\/?$/i.test(rawApiBase));
 const resolvedApiBase = rawApiBase || (isLocalBrowserHost ? LOCAL_DEV_API_BASE : DEFAULT_PRODUCTION_API_BASE);
 
@@ -11,7 +15,7 @@ export const API_BASE = useLocalDevProxy
     ? ''
     : resolvedApiBase.replace(/\/$/, '');
 
-const DEV_AUTH_DEBUG = process.env.NODE_ENV !== 'production';
+const DEV_AUTH_DEBUG = !isProduction();
 const AUTH_DEBUG_PATHS = new Set(['/api/accounts/login', '/api/accounts/profile']);
 const AUTH_FAILURE_STATUSES = new Set([401, 403]);
 
@@ -32,8 +36,8 @@ const parseTimeoutMs = (value: string | undefined, fallback: number): number => 
     return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
 
-const REQUEST_TIMEOUT_MS = parseTimeoutMs(process.env.REACT_APP_REQUEST_TIMEOUT_MS, 5_000);
-const AI_REQUEST_TIMEOUT_MS = parseTimeoutMs(process.env.REACT_APP_AI_REQUEST_TIMEOUT_MS, 45_000);
+const REQUEST_TIMEOUT_MS = parseTimeoutMs(readEnv('REACT_APP_REQUEST_TIMEOUT_MS'), 5_000);
+const AI_REQUEST_TIMEOUT_MS = parseTimeoutMs(readEnv('REACT_APP_AI_REQUEST_TIMEOUT_MS'), 45_000);
 
 const buildApiUrl = (path: string, query?: Record<string, string>): string => {
     const endpoint = `${API_BASE}${path}`;
@@ -46,6 +50,8 @@ const buildApiUrl = (path: string, query?: Record<string, string>): string => {
 // ─── Diagnostics ──────────────────────────────────────────────────────────────
 
 export interface ApiDiagnostics {
+    /** Correlates this call with the backend log line and any error report. */
+    requestId: string;
     url: string;
     method: string;
     ok: boolean;
@@ -71,7 +77,9 @@ const createDiagnostics = (
     method: string,
     startedAt: number,
     overrides: Partial<ApiDiagnostics>,
+    requestId = 'unknown',
 ): ApiDiagnostics => ({
+    requestId,
     url,
     method,
     ok: false,
@@ -110,6 +118,23 @@ const debugAuthResponse = (url: string, responseOrStatus: Response | number): vo
     });
 };
 
+/**
+ * A custom request header turns a simple cross-origin request into a preflighted
+ * one, and the Slumber backend has no CORS configuration to answer an OPTIONS
+ * with — so the whole call would fail. In production /api is same-origin through
+ * the Netlify edge function and in development through the Vite proxy, so the
+ * header is attached exactly when it is safe to.
+ */
+const isSameOrigin = (url: string): boolean => {
+    if (url.startsWith('/')) return true;
+    if (typeof window === 'undefined') return false;
+    try {
+        return new URL(url, window.location.href).origin === window.location.origin;
+    } catch {
+        return false;
+    }
+};
+
 interface FetchWithDiagnosticsOptions {
     timeoutMs?: number;
     requiresAuth?: boolean;
@@ -121,6 +146,7 @@ const fetchWithDiagnostics = async (
     options?: FetchWithDiagnosticsOptions,
 ): Promise<{ response: Response; diagnostics: ApiDiagnostics }> => {
     const method = init?.method ?? 'GET';
+    const requestId = newRequestId();
     const startedAt = Date.now();
     const timeoutMs = options?.timeoutMs ?? REQUEST_TIMEOUT_MS;
     const timeoutController = new AbortController();
@@ -131,6 +157,9 @@ const fetchWithDiagnostics = async (
 
         const response = await fetch(url, {
             ...init,
+            headers: isSameOrigin(url)
+                ? { ...(init?.headers as Record<string, string> | undefined), 'X-Request-Id': requestId }
+                : init?.headers,
             signal: init?.signal ?? timeoutController.signal,
         });
 
@@ -148,20 +177,51 @@ const fetchWithDiagnostics = async (
             ok: response.ok,
             status: response.status,
             statusText: response.statusText,
+        }, requestId);
+
+        log('api.response', {
+            requestId,
+            method,
+            url,
+            status: response.status,
+            ok: response.ok,
+            durationMs: diagnostics.durationMs,
+        });
+
+        reportApiOutcome({
+            url,
+            ok: response.ok,
+            status: response.status,
+            message: response.ok ? undefined : response.statusText,
         });
 
         return { response, diagnostics };
     } catch (error) {
         debugAuthResponse(url, 0);
-        const message = !init?.signal && timeoutController.signal.aborted
+        const timedOut = !init?.signal && timeoutController.signal.aborted;
+        const message = timedOut
             ? `Request timed out after ${timeoutMs} ms`
             : error instanceof Error
                 ? error.message
                 : 'Unknown network error';
 
+        // A caller cancelling its own request (unmount, superseded search) is
+        // not evidence about the backend — only our own timeout is.
+        const callerAborted = !timedOut && error instanceof Error && error.name === 'AbortError';
+
+        reportApiOutcome({ url, ok: false, status: null, message, aborted: callerAborted });
+
+        log('api.failure', { requestId, method, url, message, timedOut, callerAborted });
+
+        // A caller cancelling is routine; a timeout or transport failure is not,
+        // and is the thing worth an error report.
+        if (!callerAborted) {
+            captureError(error, 'api-request', { requestId, method, url, timedOut, message });
+        }
+
         throw new ApiRequestError(
             message,
-            createDiagnostics(url, method, startedAt, { error: message }),
+            createDiagnostics(url, method, startedAt, { error: message }, requestId),
         );
     } finally {
         clearTimeout(timeoutId);
@@ -171,7 +231,7 @@ const fetchWithDiagnostics = async (
 const ensureOk = async (response: Response, diagnostics: ApiDiagnostics, fallbackMessage: string): Promise<void> => {
     if (response.ok) return;
 
-    let details = '';
+    let details: string;
     try {
         details = await response.text();
     } catch {
@@ -210,6 +270,8 @@ export interface PriceBreakdown {
     shuttleFee?: CostLine;
     baggageEstimate?: CostLine;
     lateArrivalMarkup?: CostLine;
+    /** Airport-friction risk margin for notorious airports. Present only when a penalty applies. */
+    frictionPenalty?: CostLine;
     /** Optional first-mile access line item (home → departure airport). Present only when firstMileAccess is supplied. */
     firstMileLine?: CostLine;
     renderMode?: string;
@@ -435,6 +497,7 @@ export interface Restaurant {
     priceRange: string;
     mustTry: string;
     tip: string;
+    imageUrl?: string;
 }
 
 export interface Activity {
@@ -452,6 +515,7 @@ export interface AccommodationOption {
     pricePerNight: string;
     tip: string;
     officialWebsiteUrl?: string;
+    imageUrl?: string;
 }
 
 const asHttpUrl = (value: unknown): string | undefined => {
@@ -516,7 +580,7 @@ const normalizeHotelResult = (value: unknown): HotelResult | null => {
     const latitude = asNumber(record.latitude ?? record.lat ?? point?.lat ?? point?.latitude);
     const longitude = asNumber(record.longitude ?? record.lon ?? record.lng ?? point?.lon ?? point?.lng ?? point?.longitude);
 
-    if (!name && !xid) {
+    if (!name) {
         return null;
     }
 
@@ -583,6 +647,7 @@ const normalizeRestaurant = (value: unknown): Restaurant | null => {
         priceRange: asString(record.priceRange ?? record.price ?? record.priceLevel ?? record.price_level ?? record.budget) || 'Varies',
         mustTry: asString(record.mustTry ?? record.signatureDish ?? record.highlight ?? record.recommendation) || 'House specialty',
         tip: asString(record.tip ?? record.note ?? record.reason ?? record.whyGo),
+        imageUrl: asHttpUrl(record.imageUrl ?? record.photoUrl ?? record.thumbnailUrl ?? record.image ?? record.thumbnail),
     };
 };
 
@@ -610,6 +675,7 @@ const normalizeAccommodation = (value: unknown): AccommodationOption | null => {
         pricePerNight: asString(record.pricePerNight ?? record.price ?? record.nightlyRate ?? record.priceRange ?? record.budget) || 'Varies',
         tip: asString(record.tip ?? record.note ?? record.reason ?? record.whyStay),
         officialWebsiteUrl: asHttpUrl(record.officialWebsiteUrl ?? record.officialUrl ?? record.websiteUrl ?? record.website),
+        imageUrl: asHttpUrl(record.imageUrl ?? record.photoUrl ?? record.thumbnailUrl ?? record.image ?? record.thumbnail),
     };
 };
 
@@ -722,6 +788,82 @@ export interface HotelEnrichmentResponse {
     thumbnailUrl?: string;
     amenities?: string[];
     nearbyPlaces?: string[];
+}
+
+export interface SkiResort {
+    id?: number;
+    rank?: number;
+    sourceFile?: string;
+    name?: string;
+    rating?: number | null;
+    url?: string;
+    locationCoordinate?: string;
+    latitude?: number | null;
+    longitude?: number | null;
+    country?: string;
+    region?: string;
+    elevationTopM?: number | null;
+    elevationDifferenceM?: number | null;
+    totalSlopeLengthKm?: number | null;
+    numberOfLifts?: number | null;
+    numberOfSlopes?: number | null;
+    annualSnowfallCm?: number | null;
+    numberOfMatches?: number | null;
+    continent?: string;
+    price?: number | null;
+    season?: string;
+    highestPointM?: number | null;
+    lowestPointM?: number | null;
+    beginnerSlopes?: number | null;
+    intermediateSlopes?: number | null;
+    difficultSlopes?: number | null;
+    totalSlopes?: number | null;
+    longestRunKm?: number | null;
+    snowCannons?: number | null;
+    surfaceLifts?: number | null;
+    chairLifts?: number | null;
+    gondolaLifts?: number | null;
+    totalLifts?: number | null;
+    liftCapacity?: number | null;
+    childFriendly?: boolean | null;
+    snowparks?: boolean | null;
+    nightskiing?: boolean | null;
+    summerskiing?: boolean | null;
+}
+
+export interface SkiHotel {
+    id?: number;
+    sourceFile?: string;
+    sourceRow?: number;
+    country?: string;
+    resort?: string;
+    resortKey?: string;
+    hotel?: string;
+    priceGbp?: number | null;
+    distanceFromLiftM?: number | null;
+    altitudeM?: number | null;
+    totalPisteKm?: number | null;
+    totalLifts?: number | null;
+    gondolas?: number | null;
+    chairlifts?: number | null;
+    draglifts?: number | null;
+    blues?: number | null;
+    reds?: number | null;
+    blacks?: number | null;
+    totalRuns?: number | null;
+    link?: string;
+    sleeps?: number | null;
+    decSnowLow2020Cm?: number | null;
+    decSnowHigh2020Cm?: number | null;
+    janSnowLow2020Cm?: number | null;
+    janSnowHigh2020Cm?: number | null;
+    febSnowLow2020Cm?: number | null;
+    febSnowHigh2020Cm?: number | null;
+}
+
+export interface SkiMapResponse {
+    resorts: SkiResort[];
+    hotels: SkiHotel[];
 }
 
 export type GenericJsonObject = Record<string, unknown>;
@@ -1324,3 +1466,387 @@ export const getHotelEnrichment = async (xid: string): Promise<HotelEnrichmentRe
     return { enrichment: (await response.json()) as HotelEnrichmentResponse, diagnostics };
 };
 
+/**
+ * Combined ski map catalogs:
+ * - ski_resort rows power the resort pins
+ * - ski_hotel rows are joined by resortKey for the overlay layer
+ */
+export const getSkiMap = async (): Promise<{ map: SkiMapResponse; diagnostics: ApiDiagnostics }> => {
+    const url = buildApiUrl('/api/ski/map');
+    const { response, diagnostics } = await fetchWithDiagnostics(url);
+    await ensureOk(response, diagnostics, 'Ski map failed');
+    return { map: (await response.json()) as SkiMapResponse, diagnostics };
+};
+
+// ─── Low-crowd ski windows ────────────────────────────────────────────────────
+
+/** How much trust the backend places in a given fact. Ordered weakest first. */
+export type WindowConfidence = 'INFERRED' | 'LIKELY' | 'STATED' | 'CONFIRMED';
+
+/**
+ * Whether the traveller's own school calendar rules a week in or out.
+ * The same calendar means opposite things depending on who is travelling.
+ */
+export type TravellerPolicy = 'AVOID_SCHOOL_HOLIDAY' | 'REQUIRE_SCHOOL_HOLIDAY' | 'INDIFFERENT';
+
+export type WindowPreset = 'balanced' | 'empty-pistes' | 'best-snow' | 'cheapest';
+
+export interface WindowResortSummary {
+    slug: string;
+    name: string;
+    countryIso2?: string;
+    baseAltitudeM?: number | null;
+    topAltitudeM?: number | null;
+    changeoverDay?: string;
+}
+
+export interface WindowSeasonSummary {
+    label: string;
+    opens: string;
+    closes: string;
+    confidence: WindowConfidence;
+}
+
+/** Weights actually applied, which may differ from those requested — see `warnings`. */
+export interface WindowWeights {
+    crowd: number;
+    price: number;
+    snow: number;
+    flex: number;
+}
+
+export interface WindowCalendarCoverage {
+    authority: string;
+    displayName: string;
+    confidence: WindowConfidence;
+    sourceDataset?: string | null;
+    periodCount: number;
+    note?: string | null;
+}
+
+export interface WindowComponents {
+    crowdScore: number;
+    /** Null when no price observations exist, in which case price carries no weight. */
+    priceScore?: number | null;
+    snowScore: number;
+    flexScore: number;
+}
+
+export interface WindowMetrics {
+    crowdIndex: number;
+    priceTier?: number | null;
+    priceIndex?: number | null;
+    priceResidual?: number | null;
+    priceSource?: 'OBSERVED' | 'MODELLED';
+    snowReliabilityBase: number;
+    snowReliabilityTop: number;
+    snowSource?: string;
+}
+
+export interface WindowHolidayOverlap {
+    authority: string;
+    displayName: string;
+    overlap: number;
+    demandWeight: number;
+    weightedImpact: number;
+    cause?: string | null;
+}
+
+export interface WindowFactor {
+    label: string;
+    delta: number;
+    confidence: WindowConfidence;
+}
+
+export interface WindowExclusion {
+    code: string;
+    detail: string;
+    authority?: string | null;
+    confidence: WindowConfidence;
+}
+
+/**
+ * One candidate week. `end` is exclusive — it is the day you travel home.
+ * Ineligible weeks keep their metrics but carry `totalScore: null` and no rank,
+ * so they can be shown with a reason without being ranked.
+ */
+export interface SkiWindow {
+    rank?: number | null;
+    start: string;
+    end: string;
+    nights: number;
+    eligible: boolean;
+    totalScore?: number | null;
+    components: WindowComponents;
+    metrics: WindowMetrics;
+    holidayOverlap: WindowHolidayOverlap[];
+    explain: WindowFactor[];
+    exclusions: WindowExclusion[];
+}
+
+export interface LowCrowdWindowResponse {
+    resort: WindowResortSummary;
+    season?: WindowSeasonSummary | null;
+    policy: TravellerPolicy;
+    preset: string;
+    weights: WindowWeights;
+    calendarCoverage: WindowCalendarCoverage[];
+    windows: SkiWindow[];
+    warnings: string[];
+}
+
+export interface LowCrowdWindowQuery {
+    resort?: string;
+    season?: string;
+    from: string;
+    to: string;
+    homeCalendar?: string;
+    schoolLevel?: 'PRIMARY' | 'SECONDARY' | 'BOTH';
+    policy?: TravellerPolicy;
+    preset?: WindowPreset;
+    includeIneligible?: boolean;
+}
+
+/**
+ * Ranked ski weeks, cross-referenced against school-holiday calendars.
+ *
+ * <p>Weeks come back aligned to the resort's changeover day (Saturday in the
+ * French Alps), not to ISO weeks.
+ */
+export const getLowCrowdWindows = async (
+    query: LowCrowdWindowQuery,
+): Promise<{ windows: LowCrowdWindowResponse; diagnostics: ApiDiagnostics }> => {
+    const params: Record<string, string> = {
+        resort: query.resort ?? 'la-clusaz',
+        from: query.from,
+        to: query.to,
+        homeCalendar: query.homeCalendar ?? 'IE-NATIONAL',
+        schoolLevel: query.schoolLevel ?? 'BOTH',
+        policy: query.policy ?? 'AVOID_SCHOOL_HOLIDAY',
+        preset: query.preset ?? 'balanced',
+        includeIneligible: String(query.includeIneligible ?? true),
+    };
+    if (query.season) params.season = query.season;
+
+    const url = buildApiUrl('/api/ski/low-crowd-windows', params);
+    const { response, diagnostics } = await fetchWithDiagnostics(url);
+    await ensureOk(response, diagnostics, 'Low-crowd window search failed');
+    return { windows: (await response.json()) as LowCrowdWindowResponse, diagnostics };
+};
+
+// ─── Resort vendor catalogue (menus, prices, hire rates) ──────────────────────
+
+export type VendorKind = 'RESTAURANT' | 'BAR' | 'SNACKING' | 'RENTAL' | 'LIFT_OPERATOR'
+    | 'SKI_SCHOOL' | 'ACTIVITY' | 'OTHER';
+
+export type OfferingCategory =
+    | 'ENTREE' | 'PLAT_PRINCIPAL' | 'SPECIALITES_SAVOYARDES' | 'PIZZA' | 'BURGER'
+    | 'A_PARTAGER' | 'SNACKING' | 'FORMULE' | 'SIDE' | 'DESSERT' | 'MENU_ENFANT'
+    | 'RENTAL' | 'LIFT_PASS' | 'SUPPLEMENT' | 'ACTIVITY' | 'SKI_LESSON' | 'AUTRE';
+
+/** Who a price applies to. Bands are the operator's, not a standard. */
+export type AgeBand = 'KID' | 'JUNIOR' | 'ADULT' | 'SENIOR' | 'VETERAN';
+
+export type DietaryFlag = 'VEGETARIAN' | 'VEGAN' | 'GLUTEN_FREE' | 'DRINK_INCLUDED';
+
+/**
+ * The axis a price is quoted on. The same number means different things on one
+ * menu — a plate, a share of a two-person fondue, or a day on a bike — so this
+ * must be read before the amount is shown to anyone.
+ */
+export type PricingBasis = 'PER_ITEM' | 'PER_PERSON' | 'PER_HALF_DAY' | 'PER_DAY';
+
+export interface OfferingPrice {
+    basis: PricingBasis;
+    amount: number;
+    currency: string;
+    /** Null means the source stated no minimum — not that the minimum is one. */
+    minPartySize?: number | null;
+    /** How long the purchase lasts. Null for anything not time-bound, like a dish. */
+    durationDays?: number | null;
+    /** What the seller called that duration — "4 hours" reads better than "0.5 days". */
+    durationLabel?: string | null;
+    ageBand?: AgeBand | null;
+    /**
+     * How many people one purchase covers when the price is for a fixed group —
+     * a dog sled is €150 for two, not €75 each. Null means it scales per person.
+     */
+    coversPeople?: number | null;
+}
+
+export interface OfferingChoice {
+    group: string;
+    label: string;
+}
+
+export interface VendorOffering {
+    slug: string;
+    name: string;
+    description?: string | null;
+    category: OfferingCategory;
+    conditions?: string | null;
+    prices: OfferingPrice[];
+    choices?: OfferingChoice[] | null;
+    dietaryFlags?: DietaryFlag[] | null;
+}
+
+export interface ResortVendor {
+    slug: string;
+    name: string;
+    kind: VendorKind;
+    sourceType?: string | null;
+    commune?: string | null;
+    confidence: WindowConfidence;
+    /** Season a tariff belongs to, e.g. "2025-2026". Null for menus. */
+    seasonLabel?: string | null;
+    offerings: VendorOffering[];
+}
+
+export interface ResortOfferingsResponse {
+    resort: { slug: string; name: string; countryIso2?: string };
+    filters: {
+        maxPrice?: number | null;
+        categories?: string[] | null;
+        dietary?: string[] | null;
+        kinds?: string[] | null;
+        partySize?: number | null;
+    };
+    summary: { vendorCount: number; offeringCount: number; cheapest?: number | null; dearest?: number | null };
+    vendors: ResortVendor[];
+    warnings: string[];
+}
+
+export interface ResortProfileSummary {
+    slug: string;
+    name: string;
+    countryIso2?: string;
+}
+
+/**
+ * Resorts that have a planning profile. Used to decide whether a map pin should
+ * link to the planner at all — linking every pin would send most of them to a 404.
+ */
+/** One catalogue resort as the picker sees it. */
+export interface ResortMatch {
+    slug: string;
+    name: string;
+    country?: string | null;
+    region?: string | null;
+    baseAltM?: number | null;
+    topAltM?: number | null;
+    /**
+     * Whether a ski-week ranking can actually be produced. False for almost
+     * everything — the catalogue holds ~3,800 resorts and only a handful are
+     * set up.
+     */
+    hasProfile: boolean;
+}
+
+/**
+ * Type-ahead over the whole ski catalogue.
+ *
+ * <p>Accepts an AbortSignal because the caller fires one of these per keystroke
+ * and out-of-order responses would otherwise overwrite newer results with older
+ * ones.
+ */
+export const searchResorts = async (
+    query: string,
+    options?: { limit?: number; signal?: AbortSignal },
+): Promise<ResortMatch[]> => {
+    const url = buildApiUrl('/api/resorts/search', {
+        q: query,
+        limit: String(options?.limit ?? 8),
+    });
+    const { response, diagnostics } = await fetchWithDiagnostics(url, { signal: options?.signal });
+    await ensureOk(response, diagnostics, 'Resort search failed');
+    return (await response.json()) as ResortMatch[];
+};
+
+export const getResortProfiles = async (): Promise<{
+    resorts: ResortProfileSummary[];
+    diagnostics: ApiDiagnostics;
+}> => {
+    const url = buildApiUrl('/api/resorts');
+    const { response, diagnostics } = await fetchWithDiagnostics(url);
+    await ensureOk(response, diagnostics, 'Resort profile lookup failed');
+    return { resorts: (await response.json()) as ResortProfileSummary[], diagnostics };
+};
+
+export interface ResortOfferingsQuery {
+    resort: string;
+    maxPrice?: number;
+    category?: OfferingCategory[];
+    dietary?: DietaryFlag[];
+    kind?: VendorKind[];
+    partySize?: number;
+}
+
+/**
+ * A resort's menus, prices and hire rates.
+ *
+ * <p>Called `/offerings` rather than `/dining` because the same catalogue carries
+ * equipment hire. Pass `kind` to narrow to places you can eat.
+ */
+export const getResortOfferings = async (
+    query: ResortOfferingsQuery,
+): Promise<{ offerings: ResortOfferingsResponse; diagnostics: ApiDiagnostics }> => {
+    const params: Record<string, string> = {};
+    if (query.maxPrice != null) params.maxPrice = String(query.maxPrice);
+    if (query.category?.length) params.category = query.category.join(',');
+    if (query.dietary?.length) params.dietary = query.dietary.join(',');
+    if (query.kind?.length) params.kind = query.kind.join(',');
+    if (query.partySize != null) params.partySize = String(query.partySize);
+
+    const url = buildApiUrl(`/api/resorts/${encodeURIComponent(query.resort)}/offerings`, params);
+    const { response, diagnostics } = await fetchWithDiagnostics(url);
+    await ensureOk(response, diagnostics, 'Resort offerings lookup failed');
+    return { offerings: (await response.json()) as ResortOfferingsResponse, diagnostics };
+};
+
+/** One per-OTA nightly quote for a curated hotel (Xotelo). */
+export interface CuratedRateQuote {
+    code?: string;
+    name?: string;
+    ratePerNight?: number;
+}
+
+/** OpenAPI: CuratedStay — a curated TripAdvisor catalog hotel with a live Xotelo
+ *  rate when one is quoted. Price fields are null when nothing was quoted. */
+export interface CuratedStay {
+    hotelKey?: string;
+    name?: string;
+    latitude?: number;
+    longitude?: number;
+    rating?: number | null;
+    reviewsCount?: number | null;
+    reviewNote?: string;
+    /** Curated hotel photo captured at key-verification time; absent when none. */
+    photoUrl?: string;
+    pricePerNight?: number | null;
+    priceCurrency?: string;
+    rateQuotes?: CuratedRateQuote[];
+}
+
+/**
+ * Curated TripAdvisor catalog hotels inside a bbox, each with a live Xotelo rate
+ * when quoted. Direct-by-key path — surfaces the hand-curated catalog with prices,
+ * independent of OpenTripMap discovery.
+ * GET /api/hotels/curated?lonMin=...&latMin=...&lonMax=...&latMax=...
+ */
+export const getCuratedStaysByBbox = async (
+    lonMin: number,
+    latMin: number,
+    lonMax: number,
+    latMax: number,
+): Promise<CuratedStay[]> => {
+    const url = buildApiUrl('/api/hotels/curated', {
+        lonMin: String(lonMin),
+        latMin: String(latMin),
+        lonMax: String(lonMax),
+        latMax: String(latMax),
+    });
+    const { response, diagnostics } = await fetchWithDiagnostics(url);
+    await ensureOk(response, diagnostics, 'Curated stays failed');
+    const data = await response.json();
+    return Array.isArray(data) ? (data as CuratedStay[]) : [];
+};

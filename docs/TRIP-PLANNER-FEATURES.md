@@ -1,9 +1,9 @@
 # Slumber Trip Planner — Feature Summary
 
-A working log of the trip-planning capabilities built across the **webagency** (React/CRA frontend) and **slumber** (Spring Boot backend) repos. Everything here is wired end-to-end, tested, and verified live.
+A working log of the trip-planning capabilities built across the **webagency** (React/Vite frontend) and **slumber** (Spring Boot backend) repos. Everything here is wired end-to-end, tested, and verified live.
 
 - **Frontend:** `/Users/vaimar/src/apps/webagency`
-- **Backend:** `/Users/vaimar/src/apps/slumber` (runs on `:9090`; CRA proxies `/api` to it)
+- **Backend:** `/Users/vaimar/src/apps/slumber` (runs on `:9090`; the Vite dev server proxies `/api` to it)
 - **Backend tests:** 103 passing · **Frontend:** per-feature suites green · `tsc` + ESLint clean
 
 ---
@@ -115,7 +115,7 @@ Open-jaw island hopping — fly in to one island, ferry between, fly home from a
 
 ## 11. Interactive map 🗺
 
-- **`TripMapTab.tsx`** (maplibre-gl vector tiles — MapTiler via `REACT_APP_MAPTILER_KEY`, keyless OpenFreeMap dark style as fallback; lazy-loaded to keep Jest/CRA happy and code-split the GL bundle). Color-coded DOM markers: ride spot, stays, activities, restaurants — auto-fit bounds, popups, legend, WebGL context destroyed on unmount. `getMapPoints()` selector filters null/`0,0` sentinels.
+- **`TripMapTab.tsx`** (maplibre-gl vector tiles — MapTiler via `REACT_APP_MAPTILER_KEY`, keyless OpenFreeMap dark style as fallback; lazy-loaded to keep the test runner happy and code-split the GL bundle). Color-coded DOM markers: ride spot, stays, activities, restaurants — auto-fit bounds, popups, legend, WebGL context destroyed on unmount. `getMapPoints()` selector filters null/`0,0` sentinels.
 
 ---
 
@@ -147,12 +147,27 @@ Fills the "Rate pending" gap and powers "same room, cheaper via X" — **zero AP
 
 ## Endpoint reference
 
+## 14. Spot-first flow — the product spine 🧵
+
+The guided cascade that puts the bricks together: **departure → activity → country → spot → priced trip**.
+
+- **Entry:** `/spots` (nav "Find a spot", `SpotFinder.tsx`). Step 1 leaving-from (Limerick/Dublin/Cork/Galway — the four home regions the drive estimator knows), step 2 activity, step 3 country, step 4 spot (compact rows: name, tow type, ways-in icons — photo cards removed on purpose).
+- **Ways in:** selecting a spot shows the curated multimodal access (`GET /api/destinations/access`) — e.g. EXO 84: TGV via Avignon (~30 min drive) or fly MRS (~1h up the A7).
+- **The handoff:** "Plan this trip from {city}" → `/explore?origin=…&destination=…&activity=…`; `TripExploreWrapper` reads the params (plain `window.location.search`, no router hook), pre-fills, and **auto-runs** the explore engine — landing on the verdict-first dashboard with flights, first-mile costs, and stays priced from the harvested TripAdvisor keys.
+- **Verified live:** Limerick → wakeboard → France → EXO 84 → **€558 door-to-door · 3 nights**, "Same room €66 cheaper via Booking.com" (a harvested-key hotel), the €89→€138 fare catch, and the Marseille shuttle warning.
+- **Fix along the way:** anonymous 401s no longer hijack navigation to `/profile` (`ProfileContext.handleAuthFailure` now only redirects when a session actually existed) — this was breaking direct URL loads of `/spots` and `/explore`.
+- **Coverage note:** curated spots currently wakeboarding FR/ES only; a new country (e.g. Netherlands/Almere: fly AMS + train) is one JSON entry with `activity`, `country`, `access[]`.
+
+## Endpoint reference
+
 | Endpoint | Purpose |
 |---|---|
 | `POST /api/trips/explore` | Full door-to-trip: flights (fly-drive), stays, activities, restaurants |
 | `POST /api/trips/ai-guide` | AI-authored recommendations (Gemini) |
 | `POST /api/trips/self-connect` | Self-transfer 2-leg routing (SerpApi + Ryanair) |
 | `POST /api/trips/island-hop` · `GET .../templates` | Open-jaw island-hop tour + templates |
+| `GET /api/destinations/spots?activity=&country=` | SpotFinder cascade: curated spots per activity/country |
+| `GET /api/destinations/access?destination=` | Curated multimodal ways in for a spot |
 
 ## Backend dev notes
 

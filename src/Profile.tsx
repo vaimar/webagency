@@ -1,15 +1,20 @@
 import {
     faArrowLeft,
     faArrowRight,
+    faCar,
     faCheck,
     faDatabase,
+    faPersonWalking,
     faShieldAlt,
     faSignInAlt,
     faSignOutAlt,
     faSlidersH,
+    faTaxi,
+    faTrainSubway,
     faUser,
     faUserPlus,
 } from '@fortawesome/free-solid-svg-icons';
+import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -151,7 +156,7 @@ const AuthWizardSection: React.FC = () => {
         <section className="auth-wizard card">
             <div className="auth-wizard__hero">
                 <div className="auth-wizard__copy stack-md">
-                    <span className="auth-wizard__eyebrow">Premium account flow</span>
+                    <span className="auth-wizard__eyebrow">Create an account</span>
                     <h2>{mode === 'login' ? 'Smooth, verified sign-in' : 'Create your account in under a minute'}</h2>
                     <p>
                         {mode === 'login'
@@ -367,20 +372,20 @@ const OnboardingFlow: React.FC = () => {
         { label: 'Luxury', value: 220, helper: 'More flexibility, taxis, and standout places included.' },
     ];
 
-    const transportOptions: { value: PreferredTransport; label: string; emoji: string; helper: string }[] = [
-        { value: 'walking', label: 'Walking', emoji: '🚶', helper: 'Keep everything close and frictionless.' },
-        { value: 'public_transport', label: 'Public transport', emoji: '🚇', helper: 'Metro, bus, and tram with precision.' },
-        { value: 'taxi', label: 'Taxi', emoji: '🚕', helper: 'Fast when every minute matters.' },
-        { value: 'rental_car', label: 'Rental car', emoji: '🚗', helper: 'Ideal for road trips and spread-out areas.' },
+    const transportOptions: { value: PreferredTransport; label: string; icon: IconDefinition; helper: string }[] = [
+        { value: 'walking', label: 'Walking', icon: faPersonWalking, helper: 'Everything within walking distance.' },
+        { value: 'public_transport', label: 'Public transport', icon: faTrainSubway, helper: 'Metro, bus and tram.' },
+        { value: 'taxi', label: 'Taxi', icon: faTaxi, helper: 'Door to door, at a price.' },
+        { value: 'rental_car', label: 'Rental car', icon: faCar, helper: 'For spread-out areas and road trips.' },
     ];
 
     const foodOptions = [
-        { value: 'local-specialties', label: '🍝 Local cuisine' },
-        { value: 'street-food', label: '🌮 Street food' },
-        { value: 'seafood', label: '🦐 Seafood' },
-        { value: 'vegetarian', label: '🥗 Vegetarian' },
-        { value: 'vegan', label: '🌱 Vegan' },
-        { value: 'fine-dining', label: '🍷 Fine dining' },
+        { value: 'local-specialties', label: 'Local cuisine' },
+        { value: 'street-food', label: 'Street food' },
+        { value: 'seafood', label: 'Seafood' },
+        { value: 'vegetarian', label: 'Vegetarian' },
+        { value: 'vegan', label: 'Vegan' },
+        { value: 'fine-dining', label: 'Fine dining' },
     ];
 
     const toggleFood = (pref: string) => {
@@ -490,7 +495,7 @@ const OnboardingFlow: React.FC = () => {
                                 className={form.preferredTransport === option.value ? 'choice-card choice-card--selected' : 'choice-card'}
                                 onClick={() => setForm((prev) => ({ ...prev, preferredTransport: option.value }))}
                             >
-                                <span className="choice-card__title">{option.emoji} {option.label}</span>
+                                <span className="choice-card__title"><FontAwesomeIcon icon={option.icon} /> {option.label}</span>
                                 <span className="choice-card__description">{option.helper}</span>
                             </button>
                         ))}
@@ -601,12 +606,12 @@ const PreferencesSection: React.FC = () => {
     };
 
     const foodOptions = [
-        { value: 'local-specialties', label: '🍝 Local cuisine' },
-        { value: 'street-food', label: '🌮 Street food' },
-        { value: 'seafood', label: '🦐 Seafood' },
-        { value: 'vegetarian', label: '🥗 Vegetarian' },
-        { value: 'vegan', label: '🌱 Vegan' },
-        { value: 'fine-dining', label: '🍷 Fine dining' },
+        { value: 'local-specialties', label: 'Local cuisine' },
+        { value: 'street-food', label: 'Street food' },
+        { value: 'seafood', label: 'Seafood' },
+        { value: 'vegetarian', label: 'Vegetarian' },
+        { value: 'vegan', label: 'Vegan' },
+        { value: 'fine-dining', label: 'Fine dining' },
     ];
 
     return (
@@ -685,11 +690,11 @@ const PreferencesSection: React.FC = () => {
                     <legend className="field-group__label">Preferred transport</legend>
                     <div className="option-grid option-grid--compact">
                         {([
-                            { v: 'public_transport', emoji: '🚇', desc: 'Metro, bus, tram' },
-                            { v: 'walking', emoji: '🚶', desc: 'Walkable distances only' },
-                            { v: 'taxi', emoji: '🚕', desc: 'Taxis and ride-shares' },
-                            { v: 'rental_car', emoji: '🚗', desc: 'Self-drive flexibility' },
-                        ] as { v: PreferredTransport; emoji: string; desc: string }[]).map(({ v, emoji, desc }) => (
+                            { v: 'public_transport', icon: faTrainSubway, desc: 'Metro, bus, tram' },
+                            { v: 'walking', icon: faPersonWalking, desc: 'Walkable distances only' },
+                            { v: 'taxi', icon: faTaxi, desc: 'Taxis and ride-shares' },
+                            { v: 'rental_car', icon: faCar, desc: 'Self-drive flexibility' },
+                        ] as { v: PreferredTransport; icon: IconDefinition; desc: string }[]).map(({ v, icon, desc }) => (
                             <button
                                 key={v}
                                 type="button"
@@ -699,7 +704,7 @@ const PreferencesSection: React.FC = () => {
                             >
                                 <span className="choice-card__title">
                                     {form.preferredTransport === v && <FontAwesomeIcon icon={faCheck} style={{ marginRight: '6px', color: 'var(--primary)' }} />}
-                                    {emoji} {transportLabel(v)}
+                                    <FontAwesomeIcon icon={icon} /> {transportLabel(v)}
                                 </span>
                                 <span className="choice-card__description">{desc}</span>
                             </button>
@@ -814,7 +819,7 @@ const Profile: React.FC = () => {
             <section className="card section-card stack-lg">
                 <div className="section-card__header section-card__header--plain">
                     <div>
-                        <p className="eyebrow">🗂️ Account status</p>
+                        <p className="eyebrow">Account status</p>
                         <h2>{isAuthenticated ? 'Connected to your saved profile' : 'Anonymous profile in use'}</h2>
                         <p className="muted-text">
                             {isBootstrapping

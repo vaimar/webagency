@@ -1,25 +1,19 @@
 .island-hop {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: var(--space-5);
     max-width: 880px;
     margin: 0 auto;
-    padding: 28px;
-    border-radius: 24px;
-    background:
-        radial-gradient(circle at top left, rgba(125, 211, 252, 0.16), transparent 24%),
-        linear-gradient(135deg, #070b16 0%, #0f172a 100%);
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    color: #f8fafc;
+    color: var(--text);
 }
 
 .island-hop__eyebrow {
     margin: 0 0 4px;
     text-transform: uppercase;
-    letter-spacing: 0.2em;
-    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    font-size: var(--text-xs);
     font-weight: 700;
-    color: #7dd3fc;
+    color: var(--primary);
 }
 
 .island-hop__title {
@@ -31,7 +25,7 @@
 
 .island-hop__subtitle {
     margin: 8px 0 0;
-    color: #94a3b8;
+    color: var(--text-muted);
     font-size: 0.95rem;
     line-height: 1.55;
 }
@@ -42,7 +36,7 @@
     font-weight: 700;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: #cbd5e1;
+    color: var(--text-secondary);
     margin-bottom: 8px;
 }
 
@@ -56,9 +50,9 @@
     width: 100%;
     padding: 11px 14px;
     border-radius: 12px;
-    background: rgba(15, 23, 42, 0.9);
-    border: 1px solid rgba(148, 163, 184, 0.24);
-    color: #f8fafc;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
     font-size: 0.95rem;
 }
 
@@ -66,7 +60,7 @@
     display: block;
     margin-top: 6px;
     font-size: 0.78rem;
-    color: #64748b;
+    color: var(--text-muted);
 }
 
 .island-hop__chip-row {
@@ -77,9 +71,9 @@
 
 .island-hop__chip {
     appearance: none;
-    border: 1px solid rgba(125, 211, 252, 0.3);
-    background: rgba(125, 211, 252, 0.08);
-    color: #e0f2fe;
+    border: 1px solid var(--primary);
+    background: var(--primary-light);
+    color: var(--primary-dark);
     padding: 9px 14px;
     border-radius: 999px;
     font-size: 0.85rem;
@@ -89,8 +83,8 @@
 }
 
 .island-hop__chip:hover {
-    background: rgba(125, 211, 252, 0.18);
-    border-color: rgba(125, 211, 252, 0.5);
+    background: var(--primary-light);
+    border-color: var(--primary);
 }
 
 .island-hop__editor {
@@ -99,8 +93,8 @@
     gap: 10px;
     padding: 16px;
     border-radius: 16px;
-    background: rgba(15, 23, 42, 0.85);
-    border: 1px solid rgba(148, 163, 184, 0.16);
+    background: var(--surface);
+    border: 1px solid var(--border);
 }
 
 .island-hop__stop-row {
@@ -109,7 +103,7 @@
     gap: 12px;
     padding: 10px 12px;
     border-radius: 12px;
-    background: rgba(125, 211, 252, 0.06);
+    background: var(--primary-light);
 }
 
 .island-hop__stop-order {
@@ -122,9 +116,9 @@
 .island-hop__nights button,
 .island-hop__remove {
     appearance: none;
-    border: 1px solid rgba(148, 163, 184, 0.3);
-    background: rgba(15, 23, 42, 0.9);
-    color: #e2e8f0;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
     width: 26px;
     height: 26px;
     border-radius: 8px;
@@ -142,7 +136,7 @@
     flex: 1;
     font-size: 1.05rem;
     font-weight: 800;
-    color: #ffffff;
+    color: var(--text);
 }
 
 .island-hop__nights {
@@ -151,12 +145,12 @@
     gap: 8px;
     font-size: 0.9rem;
     font-weight: 700;
-    color: #cbd5e1;
+    color: var(--text-secondary);
 }
 
 .island-hop__remove {
-    color: #fca5a5;
-    border-color: rgba(248, 113, 113, 0.3);
+    color: var(--truth-warn);
+    border-color: rgba(217, 48, 37, 0.3);
 }
 
 .island-hop__add {
@@ -174,22 +168,22 @@
 }
 
 .island-hop__loading {
-    background: rgba(125, 211, 252, 0.08);
-    color: #cbd5e1;
+    background: var(--primary-light);
+    color: var(--text-secondary);
 }
 
 .island-hop__error {
-    background: rgba(248, 113, 113, 0.12);
-    border: 1px solid rgba(248, 113, 113, 0.24);
-    color: #fecaca;
+    background: var(--error-light);
+    border: 1px solid rgba(217, 48, 37, 0.3);
+    color: var(--truth-warn);
 }
 
 .island-hop__spinner {
     width: 18px;
     height: 18px;
     border-radius: 50%;
-    border: 2px solid rgba(125, 211, 252, 0.25);
-    border-top-color: #7dd3fc;
+    border: 2px solid var(--primary);
+    border-top-color: var(--primary);
     animation: island-hop-spin 0.8s linear infinite;
 }
 
@@ -207,24 +201,31 @@
     align-items: center;
     gap: 20px;
     flex-wrap: wrap;
-    padding: 18px 20px;
-    border-radius: 18px;
-    background: linear-gradient(135deg, rgba(31, 41, 55, 0.95), rgba(8, 15, 32, 0.95));
-    border: 1px solid rgba(148, 163, 184, 0.18);
+    padding: var(--space-5);
+    border-radius: var(--radius-lg);
+    /* The one panel on this page that carries the answer, so it gets the only
+       filled surface. It used to be a near-black gradient whose own caption text
+       was slate-500 on slate-900 — the flight/ferry/stay split was effectively
+       invisible. */
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    box-shadow: var(--shadow-sm);
 }
 
 .island-hop__total {
     margin: 4px 0 0;
-    font-size: 1.9rem;
+    font-size: var(--text-2xl);
     font-weight: 800;
-    color: #fbbf24;
+    /* Estimated, not booked: this total is a sum of live rates and estimates, so
+       it reads in the "estimated" colour rather than as a confirmed price. */
+    color: var(--truth-estimated);
     letter-spacing: -0.03em;
 }
 
 .island-hop__total-caption {
     font-size: 0.9rem;
     font-weight: 600;
-    color: #94a3b8;
+    color: var(--text-muted);
     letter-spacing: 0;
 }
 
@@ -246,17 +247,17 @@
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: #cbd5e1;
+    color: var(--text-secondary);
 }
 
 .island-hop__summary-lines em {
     font-style: normal;
-    color: #64748b;
+    color: var(--text-muted);
 }
 
 .island-hop__summary-lines strong {
     font-size: 1.1rem;
-    color: #ffffff;
+    color: var(--text);
 }
 
 .island-hop__warnings {
@@ -268,10 +269,10 @@
 .island-hop__warn-pill {
     padding: 6px 10px;
     border-radius: 999px;
-    background: rgba(245, 158, 11, 0.12);
-    color: #fde68a;
+    background: var(--warning-light);
+    color: var(--truth-estimated);
     font-size: 0.78rem;
-    border: 1px solid rgba(245, 158, 11, 0.2);
+    border: 1px solid rgba(245, 166, 35, 0.35);
 }
 
 .island-hop__timeline {
@@ -287,8 +288,8 @@
     gap: 12px;
     padding: 12px 14px;
     border-radius: 14px;
-    background: rgba(15, 23, 42, 0.9);
-    border: 1px solid rgba(148, 163, 184, 0.12);
+    background: var(--surface);
+    border: 1px solid var(--border);
     position: relative;
 }
 
@@ -302,7 +303,7 @@
     top: 0;
     bottom: -8px;
     width: 0;
-    border-left: 1.5px dashed rgba(125, 211, 252, 0.35);
+    border-left: 1.5px dashed var(--primary);
     z-index: 0;
 }
 
@@ -323,25 +324,25 @@
 }
 
 .island-hop__leg strong {
-    color: #ffffff;
+    color: var(--text);
     font-size: 0.98rem;
 }
 
 .island-hop__leg-sub,
 .island-hop__leg-price {
     font-size: 0.86rem;
-    color: #94a3b8;
+    color: var(--text-muted);
 }
 
 .island-hop__leg-price {
-    color: #fbbf24;
+    color: var(--truth-estimated);
     font-weight: 800;
     white-space: nowrap;
 }
 
 .island-hop__leg--stay {
-    background: rgba(52, 211, 153, 0.08);
-    border-color: rgba(52, 211, 153, 0.18);
+    background: var(--success-light);
+    border-color: rgba(0, 135, 90, 0.3);
 }
 
 .island-hop__stays {
@@ -350,7 +351,7 @@
     gap: 6px;
     margin-top: 10px;
     padding-top: 8px;
-    border-top: 1px dashed rgba(148, 163, 184, 0.18);
+    border-top: 1px dashed var(--border);
 }
 
 .island-hop__stays-label {
@@ -358,7 +359,7 @@
     font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: #94a3b8;
+    color: var(--text-muted);
 }
 
 .island-hop__stay {
@@ -370,12 +371,12 @@
 
 .island-hop__stay-name {
     font-weight: 700;
-    color: #e2e8f0;
+    color: var(--text);
     font-size: 0.9rem;
 }
 
 .island-hop__stay-meta {
-    color: #94a3b8;
+    color: var(--text-muted);
     font-size: 0.84rem;
     flex: 1;
     min-width: 120px;
@@ -384,9 +385,9 @@
 .island-hop__stay-book {
     padding: 4px 10px;
     border-radius: 999px;
-    background: rgba(52, 211, 153, 0.14);
-    border: 1px solid rgba(52, 211, 153, 0.3);
-    color: #a7f3d0;
+    background: var(--success-light);
+    border: 1px solid rgba(0, 135, 90, 0.3);
+    color: var(--truth-transfer);
     font-size: 0.78rem;
     font-weight: 700;
     text-decoration: none;
@@ -394,7 +395,7 @@
 }
 
 .island-hop__stay-book:hover {
-    background: rgba(52, 211, 153, 0.24);
+    background: var(--success-light);
 }
 
 .island-hop__stay-search {
@@ -404,11 +405,11 @@
     gap: 8px;
     margin-top: 2px;
     font-size: 0.82rem;
-    color: #94a3b8;
+    color: var(--text-muted);
 }
 
 .island-hop__stay-search a {
-    color: #7dd3fc;
+    color: var(--truth-total);
     text-decoration: none;
     font-weight: 700;
 }
@@ -418,8 +419,8 @@
 }
 
 .island-hop__leg--ferry {
-    background: rgba(34, 211, 238, 0.07);
-    border-color: rgba(34, 211, 238, 0.16);
+    background: var(--primary-light);
+    border-color: var(--primary);
 }
 
 .island-hop__leg-icon {
@@ -432,14 +433,14 @@
     text-align: center;
     font-size: 0.95rem;
     border-radius: 50%;
-    background: #0f172a;
-    border: 1px solid rgba(125, 211, 252, 0.4);
-    box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.9);
+    background: var(--surface);
+    border: 1px solid var(--primary);
+    box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
 }
 
 .island-hop__note {
     margin: 0;
-    color: #64748b;
+    color: var(--text-muted);
     font-size: 0.84rem;
     line-height: 1.5;
 }

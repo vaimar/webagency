@@ -1,60 +1,126 @@
-import { faCompass, faDatabase, faHome, faRoute, faShip, faUser } from '@fortawesome/free-solid-svg-icons';
+import { faCompass, faDatabase, faHome, faPersonSkiing, faRoute, faUser, faWater } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import React from 'react';
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import React, { Suspense } from 'react';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { GlobalToast, useProfile } from './ProfileContext';
+import ErrorBoundary from './components/ErrorBoundary';
+import ServiceStatusBanner from './components/ServiceStatusBanner';
 
-// Every link resolves to a real destination — app routes for the functional
-// ones, mailto for contact. No dead placeholder spans.
-const CONTACT_EMAIL = 'mailto:hello@travelhub.example';
+// Every link goes somewhere real. The previous footer advertised a company that
+// does not exist — Careers, Press, Investor Relations, Help Center, Cancellation
+// Options — and pointed Terms of Service, Privacy Policy, Cookie Settings and
+// Accessibility at the homepage. A legal link that silently returns you to the
+// front page is worse than no link: it implies a policy that was never written.
+// Those are gone until the pages exist; what is left is navigation, honest
+// attribution for the open data this runs on, and a way to get in touch.
+// A real, monitored inbox. The previous address was on the reserved .example
+// TLD, which by definition can never receive mail — so both footer links were
+// dead, which is precisely what the note above says not to ship.
+const CONTACT_EMAIL = 'mailto:pinz92@gmail.com';
+
+// The manual support loop for the narrow launch. Every price on the site is
+// either scraped, estimated or third-party, so the honest position while there
+// is no automated correction pipeline is to make a wrong figure one click away
+// from a human. The subject and body are prefilled because a report with no
+// page reference is almost always unactionable.
+const REPORT_DATA_EMAIL = 'mailto:pinz92@gmail.com'
+	+ '?subject=' + encodeURIComponent('TravelHub — wrong price or spot data')
+	+ '&body=' + encodeURIComponent(
+		'What looked wrong:\n\n\n'
+		+ 'Where you saw it (paste the page address):\n\n\n'
+		+ 'What the correct figure or detail should be, if you know:\n\n',
+	);
+// Primary navigation carries Home, Spots and Hack flights; the footer is the
+// only in-app route to everything else, so it has to list all of it — including
+// /ski-windows, which had no link anywhere before and was reachable only by
+// typing the URL.
 const footerSections = [
 	{
-		title: 'Company',
+		title: 'Also here',
 		links: [
-			{ label: 'About Us', href: '/' },
-			{ label: 'Careers', href: CONTACT_EMAIL },
-			{ label: 'Press', href: CONTACT_EMAIL },
-			{ label: 'Blog', href: '/' },
-			{ label: 'Investor Relations', href: CONTACT_EMAIL },
+			{ label: 'Door-to-trip planner', href: '/explore' },
+			{ label: 'Stay guide', href: '/stay-guide' },
+			{ label: 'Island hop', href: '/island-hop' },
+			{ label: 'Cost ledger', href: '/trip-ledger' },
 		],
 	},
 	{
-		title: 'Support',
+		title: 'Experimental',
 		links: [
-			{ label: 'Help Center', href: '/' },
-			{ label: 'Contact Us', href: CONTACT_EMAIL },
-			{ label: 'Safety Information', href: '/' },
-			{ label: 'Cancellation Options', href: '/' },
-			{ label: 'Report Concern', href: CONTACT_EMAIL },
+			{ label: 'Hack flights (no current prices)', href: '/hack-flights' },
 		],
 	},
 	{
-		title: 'Discover',
+		title: 'Ski',
 		links: [
-			{ label: 'Travel Guides', href: '/explore' },
-			{ label: 'Flight Deals', href: '/explore' },
-			{ label: 'Island Hopping', href: '/island-hop' },
-			{ label: 'Seasonal Offers', href: '/explore' },
-			{ label: 'Car Rentals', href: '/' },
+			{ label: 'Ski resort map', href: '/ski-map' },
+			{ label: 'Low-crowd ski weeks', href: '/ski-windows' },
+			{ label: 'La Clusaz planner', href: '/resorts/la-clusaz' },
+		],
+	},
+	{
+		title: 'Your account',
+		links: [
+			{ label: 'Travel profile', href: '/profile' },
+			{ label: 'How it works', href: '/' },
+		],
+	},
+	{
+		// Attribution is a licence condition for OpenStreetMap (ODbL), not a
+		// courtesy — spot coordinates, access hints and the basemap all come
+		// from it.
+		title: 'Data sources',
+		links: [
+			{ label: 'OpenStreetMap contributors', href: 'https://www.openstreetmap.org/copyright' },
+			{ label: 'Wikimedia Commons photos', href: 'https://commons.wikimedia.org/' },
+			{ label: 'OurAirports dataset', href: 'https://ourairports.com/data/' },
+			{ label: 'OpenFreeMap tiles', href: 'https://openfreemap.org/' },
+			{ label: 'Airline logos by Kiwi.com', href: 'https://www.kiwi.com/' },
+		],
+	},
+	{
+		title: 'Contact',
+		links: [
+			{ label: 'Get in touch', href: CONTACT_EMAIL },
+			{ label: 'Report a wrong price', href: REPORT_DATA_EMAIL },
 		],
 	},
 	{
 		title: 'Legal',
 		links: [
-			{ label: 'Terms of Service', href: '/' },
-			{ label: 'Privacy Policy', href: '/' },
-			{ label: 'Cookie Settings', href: '/' },
-			{ label: 'Accessibility', href: '/' },
+			{ label: 'Privacy', href: '/privacy' },
+			{ label: 'Terms', href: '/terms' },
+			{ label: 'Cookies', href: '/cookies' },
 		],
 	},
 ];
 
-// Unified: /explore is the single door-to-door trip flow (flights, stays,
-// activities, restaurants, trip total). /discover and /planner redirect into it.
+// Primary navigation keeps the two activity maps within immediate reach.
+//
+// It was seven, one per half-finished module, which gave a first visitor seven
+// ways to reach something that did not fully work and no way to tell which one
+// was the point. The order here is the product:
+//
+//   Spots is the front door. A map of every cable park in Europe with the real
+//   ways in — fly, ferry, train, and the drive at the end — is the one thing
+//   here that exists nowhere else. Flight aggregators are a crowded field;
+//   this is not.
+//
+//   Hack flights is the engine behind it, and stands on its own. It prices how
+//   you actually reach a spot, extras included.
+//
+// The dedicated ski map remains available as the deeper, mountain-specific
+// search surface. Labels stay short so the header still works on narrow screens.
+// Hack Flights is deliberately NOT here. The beta ships as spot discovery,
+// because the fare provider cannot state which dates its prices apply to — so
+// no flight-to-park total can be stood behind. Promoting a route tool to
+// primary navigation implies a pricing promise the data cannot support.
+// It stays reachable from the footer, labelled experimental. Restore it here
+// once fare coverage carries a travel window (see spot-readiness.js).
 const navItems = [
-	{ to: '/',            label: 'Home',         icon: faHome,     end: true  },
-	{ to: '/explore',     label: 'Door-to-trip', icon: faRoute,    end: false },
-	{ to: '/island-hop',  label: 'Island Hop',   icon: faShip,     end: false },
+	{ to: '/',        label: 'Home',    icon: faHome,  end: true  },
+	{ to: '/spots',   label: 'Spots',   icon: faWater, end: false },
+	{ to: '/ski-map', label: 'Ski map', icon: faPersonSkiing, end: false },
 ];
 
 const toastMeta = (toast: GlobalToast) => {
@@ -72,6 +138,7 @@ const toastMeta = (toast: GlobalToast) => {
 
 const Main: React.FC = () => {
 	const { account, isAuthenticated, syncState, toasts, dismissToast } = useProfile();
+	const location = useLocation();
 	const syncLabel = syncState === 'synced'
 		? 'Base sync'
 		: syncState === 'syncing'
@@ -110,14 +177,18 @@ const Main: React.FC = () => {
 						<NavLink to="/" className="brand-mark">
 							<img src="/logo.png" alt="TravelHub" className="brand-mark__logo" />
 							<div className="brand-mark__text">
-								<div className="brand-mark__title">TravelHub</div>
+								<div className="brand-mark__title">
+									TravelHub
+									<span
+										className="brand-mark__beta"
+										title="Spot discovery is live: parks, setups and operator tariffs with the date each was checked. Flight-to-park pricing is not yet verified — our fare source cannot say which dates its prices apply to."
+									>
+										Beta · spot discovery
+									</span>
+								</div>
 								<div className="brand-mark__subtitle">Find your next adventure</div>
 							</div>
 						</NavLink>
-						<span className={`header-sync-badge header-sync-badge--${syncState}`}>
-							<span className="header-sync-badge__dot" />
-							{syncLabel}
-						</span>
 					</div>
 
 					<nav className="site-nav" aria-label="Primary navigation">
@@ -134,25 +205,45 @@ const Main: React.FC = () => {
 								<span>{item.label}</span>
 							</NavLink>
 						))}
+					</nav>
 
-						{/* Profile / Sign-in link */}
+					{/* Account state lives on the right, the way every booking site does it —
+					    it is status, not navigation, and mixing the two is what made the sync
+					    badge crowd the wordmark. */}
+					<div className="site-header__account">
+						<span className={`header-sync-badge header-sync-badge--${syncState}`} title={`Profile sync: ${syncLabel}`}>
+							<span className="header-sync-badge__dot" />
+							<span className="header-sync-badge__label">{syncLabel}</span>
+						</span>
 						<NavLink
 							to="/profile"
 							className={({ isActive }) =>
-								isActive ? 'site-nav__link site-nav__link--active' : 'site-nav__link'
+								isActive ? 'account-button account-button--active' : 'account-button'
 							}
 						>
-							<FontAwesomeIcon icon={faUser} className="site-nav__icon" />
+							<FontAwesomeIcon icon={faUser} className="account-button__icon" />
 							<span>{isAuthenticated ? (account?.username ?? 'Profile') : 'Sign in'}</span>
-							{isAuthenticated && <span className={`site-nav__status site-nav__status--${syncState}`}>{syncLabel}</span>}
 						</NavLink>
-					</nav>
+					</div>
 				</div>
 			</header>
 
+			<ServiceStatusBanner />
+
 			<main className="site-main">
 				<div className="page-container">
-					<Outlet />
+					{/* Keyed on the path so navigating away from a crashed page
+					    clears the error — otherwise the boundary would hold the
+					    fallback in place over whatever you moved to next. */}
+					<ErrorBoundary key={location.pathname} scope="page">
+						{/* Routes are code-split (see App.tsx), so the Outlet can
+						    suspend. The boundary sits outside Suspense so a chunk
+						    that fails to load is caught as an error rather than
+						    hanging on the fallback forever. */}
+						<Suspense fallback={<p className="route-loading" role="status" aria-live="polite">Loading…</p>}>
+							<Outlet />
+						</Suspense>
+					</ErrorBoundary>
 				</div>
 			</main>
 
@@ -168,7 +259,15 @@ const Main: React.FC = () => {
 											{link.href.startsWith('/') ? (
 												<Link className="footer-link" to={link.href}>{link.label}</Link>
 											) : (
-												<a className="footer-link" href={link.href}>{link.label}</a>
+												<a
+												className="footer-link"
+												href={link.href}
+												{...(link.href.startsWith('http')
+													? { target: '_blank', rel: 'noopener noreferrer' }
+													: {})}
+											>
+												{link.label}
+											</a>
 											)}
 										</li>
 									))}
@@ -177,12 +276,21 @@ const Main: React.FC = () => {
 						))}
 					</div>
 
+					{/* These replace "Secure Booking / Best Price Guarantee / 24/7
+					    Support" — none of which the product does. It takes no payment,
+					    guarantees no price and staffs no support desk, and claiming
+					    otherwise on a site whose argument is that travel companies are
+					    not straight with you is the worst possible place to do it. */}
 					<div className="footer-bottom">
-						<p>© 2026 TravelHub. All rights reserved.</p>
+						<p>© 2026 TravelHub</p>
 						<div className="footer-badges">
-							<span>🔒 Secure Booking</span>
-							<span>💳 Best Price Guarantee</span>
-							<span>🌍 24/7 Support</span>
+							<span>No payment taken — you book with the operator</span>
+							<span>Every cost labelled confirmed or estimated</span>
+							<span>Map data © OpenStreetMap contributors (ODbL)</span>
+							<span>
+								Beta — spotted a wrong price?{' '}
+								<a className="footer-inline-link" href={REPORT_DATA_EMAIL}>Tell us</a>
+							</span>
 						</div>
 					</div>
 				</div>

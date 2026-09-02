@@ -10,5 +10,5 @@ Load:
 - `agent-skills/context/frontend-surface.md`
 - `agent-skills/skills/senior-ui-expert.md`
 
-Goal: enforce Frozen Summer, honest price hierarchy, and strong warning visibility.
+Goal: enforce Frozen Summer, honest price hierarchy, CostLine badge palette, and strong warning visibility.
 

@@ -1,11 +1,14 @@
 [build]
-  command = "npm run build"
+  # `npm ci` rather than a bare build: it installs strictly from
+  # package-lock.json and fails if the lockfile has drifted from package.json,
+  # so a deploy can never resolve a different dependency tree than CI did.
+  command = "npm ci && npm run build"
   publish = "build"
   edge_functions = "netlify/edge-functions"
 
 [build.environment]
-  NODE_VERSION = "20"
-  CI = "false"
+  # Vite 8 requires ^20.19 || >=22.12.
+  NODE_VERSION = "22"
 
 # SPA fallback — all routes serve index.html
 # /api/* and /actuator/* are handled by the edge-function proxy (api-proxy.js)
@@ -14,15 +17,24 @@
   to = "/index.html"
   status = 200
 
-# Security & performance headers
+# Security headers. GENERATED — edit security-headers.js and run
+# `npm run headers:sync`. CI fails if this block is out of date.
+# >>> security-headers:begin
 [[headers]]
   for = "/*"
   [headers.values]
+    Content-Security-Policy = "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; worker-src 'self' blob:; child-src 'self' blob:; manifest-src 'self'; connect-src 'self' https://api.maptiler.com https://tiles.openfreemap.org https://s3.amazonaws.com https://slumber-production.up.railway.app; upgrade-insecure-requests"
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+    Cross-Origin-Opener-Policy = "same-origin"
+    X-DNS-Prefetch-Control = "off"
+# <<< security-headers:end
 
+# Vite writes hashed assets to build/static (see `assetsDir` in vite.config.ts),
+# which is where CRA put them too — so this rule needs no change.
 [[headers]]
   for = "/static/*"
   [headers.values]

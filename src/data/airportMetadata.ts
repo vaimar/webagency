@@ -1,6 +1,13 @@
 export interface AirportMetadata {
     code: string;
     city: string;
+    /**
+     * The plain city, when `city` is qualified by the airport ("London
+     * Stansted", "Paris Orly"). Partner sites that key their search on a CITY
+     * rather than an airport code need this — "london-stansted" resolves to
+     * nothing on Kiwi, "london" resolves. Absent when `city` is already plain.
+     */
+    searchCity?: string;
     country: string;
     flag: string;
     airportName: string;
@@ -73,6 +80,7 @@ const AIRPORTS: AirportMetadata[] = [
     {
         code: 'BVA',
         city: 'Paris Beauvais',
+        searchCity: 'Beauvais',
         country: 'France',
         flag: '🇫🇷',
         airportName: 'Paris Beauvais Airport',
@@ -83,6 +91,7 @@ const AIRPORTS: AirportMetadata[] = [
     {
         code: 'ORY',
         city: 'Paris Orly',
+        searchCity: 'Paris',
         country: 'France',
         flag: '🇫🇷',
         airportName: 'Paris Orly Airport',
@@ -93,6 +102,7 @@ const AIRPORTS: AirportMetadata[] = [
     {
         code: 'CDG',
         city: 'Paris Charles de Gaulle',
+        searchCity: 'Paris',
         country: 'France',
         flag: '🇫🇷',
         airportName: 'Paris Charles de Gaulle Airport',
@@ -193,6 +203,7 @@ const AIRPORTS: AirportMetadata[] = [
     {
         code: 'GRO',
         city: 'Barcelona Girona',
+        searchCity: 'Girona',
         country: 'Spain',
         flag: '🇪🇸',
         airportName: 'Girona–Costa Brava Airport',
@@ -203,6 +214,7 @@ const AIRPORTS: AirportMetadata[] = [
     {
         code: 'REU',
         city: 'Barcelona Reus',
+        searchCity: 'Reus',
         country: 'Spain',
         flag: '🇪🇸',
         airportName: 'Reus Airport',
@@ -213,6 +225,7 @@ const AIRPORTS: AirportMetadata[] = [
     {
         code: 'CDT',
         city: 'Castellon (Valencia)',
+        searchCity: 'Castellon',
         country: 'Spain',
         flag: '🇪🇸',
         airportName: 'Castellón–Costa Azahar Airport',
@@ -273,6 +286,7 @@ const AIRPORTS: AirportMetadata[] = [
     {
         code: 'CIA',
         city: 'Rome Ciampino',
+        searchCity: 'Rome',
         country: 'Italy',
         flag: '🇮🇹',
         airportName: 'Rome Ciampino Airport',
@@ -313,6 +327,7 @@ const AIRPORTS: AirportMetadata[] = [
     {
         code: 'MXP',
         city: 'Milan Malpensa',
+        searchCity: 'Milan',
         country: 'Italy',
         flag: '🇮🇹',
         airportName: 'Milan Malpensa Airport',
@@ -483,6 +498,7 @@ const AIRPORTS: AirportMetadata[] = [
     {
         code: 'STN',
         city: 'London Stansted',
+        searchCity: 'London',
         country: 'United Kingdom',
         flag: '🇬🇧',
         airportName: 'London Stansted Airport',
@@ -523,6 +539,7 @@ const AIRPORTS: AirportMetadata[] = [
     {
         code: 'BFS',
         city: 'Belfast International',
+        searchCity: 'Belfast',
         country: 'United Kingdom',
         flag: '🇬🇧',
         airportName: 'Belfast International Airport',
@@ -583,6 +600,7 @@ const AIRPORTS: AirportMetadata[] = [
     {
         code: 'PIK',
         city: 'Glasgow Prestwick',
+        searchCity: 'Prestwick',
         country: 'United Kingdom',
         flag: '🇬🇧',
         airportName: 'Glasgow Prestwick Airport',
@@ -603,6 +621,7 @@ const AIRPORTS: AirportMetadata[] = [
     {
         code: 'LGW',
         city: 'London Gatwick',
+        searchCity: 'London',
         country: 'United Kingdom',
         flag: '🇬🇧',
         airportName: 'Gatwick Airport',
@@ -613,6 +632,7 @@ const AIRPORTS: AirportMetadata[] = [
     {
         code: 'LTN',
         city: 'London Luton',
+        searchCity: 'London',
         country: 'United Kingdom',
         flag: '🇬🇧',
         airportName: 'Luton Airport',
@@ -643,6 +663,7 @@ const AIRPORTS: AirportMetadata[] = [
     {
         code: 'CRL',
         city: 'Brussels Charleroi',
+        searchCity: 'Charleroi',
         country: 'Belgium',
         flag: '🇧🇪',
         airportName: 'Brussels South Charleroi Airport',
@@ -793,6 +814,7 @@ const AIRPORTS: AirportMetadata[] = [
     {
         code: 'RMU',
         city: 'Murcia International',
+        searchCity: 'Murcia',
         country: 'Spain',
         flag: '🇪🇸',
         airportName: 'Región de Murcia International Airport',
@@ -823,6 +845,7 @@ const AIRPORTS: AirportMetadata[] = [
     {
         code: 'TFS',
         city: 'Tenerife South',
+        searchCity: 'Tenerife',
         country: 'Spain',
         flag: '🇪🇸',
         airportName: 'Tenerife South Airport',
@@ -843,6 +866,7 @@ const AIRPORTS: AirportMetadata[] = [
     {
         code: 'VIT',
         city: 'Vitoria (Basque Country)',
+        searchCity: 'Vitoria',
         country: 'Spain',
         flag: '🇪🇸',
         airportName: 'Vitoria Airport',
@@ -993,6 +1017,7 @@ const AIRPORTS: AirportMetadata[] = [
     {
         code: 'TSF',
         city: 'Venice Treviso',
+        searchCity: 'Treviso',
         country: 'Italy',
         flag: '🇮🇹',
         airportName: 'Treviso Airport',

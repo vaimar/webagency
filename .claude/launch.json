@@ -7,6 +7,23 @@
       "runtimeArgs": ["start"],
       "port": 3000,
       "autoPort": true
+    },
+    {
+      "comment": "Serves the built bundle with SPA fallback — no HMR, no dev overlay. Use this to verify code-splitting and anything else that behaves differently in a production build.",
+      "name": "webagency-prod-build",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "preview", "--", "--port", "3002", "--strictPort"],
+      "port": 3002
+    },
+    {
+      "comment": "Vite reads --port, not CRA's PORT env var, and never opens a browser on its own.",
+      "name": "webagency-9091",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "REACT_APP_API_BASE=http://localhost:9091 npm start -- --port 3001 --strictPort"
+      ],
+      "port": 3001
     }
   ]
 }

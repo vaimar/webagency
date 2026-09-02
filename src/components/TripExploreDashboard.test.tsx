@@ -149,7 +149,7 @@ describe('TripExploreDashboard — overview tab', () => {
             />,
         );
 
-        expect(screen.getByText('No flight, no trip')).toBeInTheDocument();
+        expect(screen.getByText('No flights found')).toBeInTheDocument();
         expect(screen.getByText('City coordinates could not be resolved for EXO 84.')).toBeInTheDocument();
         // Raw backend enum is sanitized to shopper-friendly wording.
         expect(screen.getByText('Limited coverage')).toBeInTheDocument();
@@ -265,9 +265,10 @@ describe('TripExploreDashboard — flights tab', () => {
         render(<TripExploreDashboard tripData={orchestratedPayload} />);
         await openTab(/flights/i);
 
-        const targetRow = screen.getByText(/FR 998/).closest('.trip-explore-dashboard__flight-row') as HTMLElement;
-        await userEvent.click(within(targetRow).getByRole('button', { name: 'Select flight' }));
-        expect(within(targetRow).getByRole('button', { name: 'Selected ✓' })).toBeInTheDocument();
+        // Each row's button now names its own flight, so it can be reached by
+        // accessible name instead of by reaching into the DOM for its container.
+        await userEvent.click(screen.getByRole('button', { name: /^Select flight FR 998/ }));
+        expect(screen.getByRole('button', { name: /^Selected FR 998/ })).toBeInTheDocument();
 
         await openTab(/overview/i);
         expect(screen.getByText('Your selected flight')).toBeInTheDocument();
@@ -448,7 +449,7 @@ describe('TripExploreDashboard — verdict card', () => {
     });
 
     it('runs the self-transfer check in place and folds the saving into the verdict', async () => {
-        const fetchMock = jest.fn().mockResolvedValue({
+        const fetchMock = vi.fn().mockResolvedValue({
             ok: true,
             json: async () => ({
                 origin: 'SNN',

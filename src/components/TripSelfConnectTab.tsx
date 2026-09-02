@@ -1,4 +1,5 @@
 import React from 'react';
+import { getCityImageForAirport } from '../data/cityImages';
 import { formatCurrency, formatDateTime, formatMinutes } from '../services/tripExploreSelectors';
 import { SelfConnectLeg, SelfConnectResult } from '../services/selfConnect';
 import BookingLinks from './BookingLinks';
@@ -88,8 +89,23 @@ const TripSelfConnectTab: React.FC<TripSelfConnectTabProps> = ({ status, result,
                     ) : (
                         <>
                             <div className="trip-explore-dashboard__sc-list">
-                                {options.map((option, index) => (
+                                {options.map((option, index) => {
+                                    const hubImage = getCityImageForAirport(option.hub);
+                                    return (
                                     <div key={`${option.hub}-${index}`} className="trip-explore-dashboard__sc-option">
+                                        {hubImage && (
+                                            <div className="trip-explore-dashboard__sc-photo">
+                                                <img
+                                                    src={hubImage.url}
+                                                    alt={`${hubImage.city} — connection city`}
+                                                    loading="lazy"
+                                                    onError={(event) => { event.currentTarget.parentElement!.style.display = 'none'; }}
+                                                />
+                                                <span className="trip-explore-dashboard__sc-photo-caption">
+                                                    {hubImage.city} · {hubImage.credit}
+                                                </span>
+                                            </div>
+                                        )}
                                         <div className="trip-explore-dashboard__sc-head">
                                             <div>
                                                 <strong className="trip-explore-dashboard__sc-hub">
@@ -131,12 +147,22 @@ const TripSelfConnectTab: React.FC<TripSelfConnectTabProps> = ({ status, result,
                                             </div>
                                         )}
                                     </div>
-                                ))}
+                                    );
+                                })}
                             </div>
 
                             <div className="trip-explore-dashboard__sc-risk" role="note">
-                                ⚠ <strong>Self-transfer risk:</strong> these are separate tickets, so a missed connection
-                                (delay, cancellation) is not protected — leave a comfortable buffer and check baggage rules per leg.
+                                <p className="trip-explore-dashboard__sc-risk-lead">
+                                    ⚠ <strong>Self-transfer risk:</strong> these are separate tickets — if a delay or
+                                    cancellation makes you miss leg 2, the second airline owes you nothing.
+                                </p>
+                                <ul className="trip-explore-dashboard__sc-tips">
+                                    <li><strong>Buffer:</strong> keep at least 2h30 between landing and the next take-off — more if you check a bag.</li>
+                                    <li><strong>Bags:</strong> luggage is never through-checked. Collect it, exit arrivals, and check in again for leg 2.</li>
+                                    <li><strong>Check-in:</strong> do online check-in for both legs before you leave home — low-cost bag drops close ~40 min before departure.</li>
+                                    <li><strong>Overnight:</strong> on overnight connections, book a hotel by the hub airport or confirm the terminal stays open all night.</li>
+                                    <li><strong>Cover:</strong> travel insurance with missed-connection cover turns the worst case into paperwork instead of a lost trip.</li>
+                                </ul>
                             </div>
                         </>
                     )}

@@ -10,5 +10,5 @@ Load:
 - `agent-skills/context/backend-contracts.md`
 - `agent-skills/skills/travel-auditor.md`
 
-Goal: surface hidden costs, backend shortages, and logistics traps.
+Goal: surface hidden costs, MANUAL_CHECK_REQUIRED lines, backend shortages, and logistics traps.
 

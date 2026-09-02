@@ -11,5 +11,5 @@ Load:
 - `agent-skills/context/backend-contracts.md`
 - `agent-skills/skills/package-booking.md`
 
-Goal: keep package totals honest and booking links explicit.
+Goal: keep package totals honest (use auditedTotalCost), booking links explicit, and hotel enrichment data surfaced.
 

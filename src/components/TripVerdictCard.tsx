@@ -3,16 +3,26 @@ import {
     formatCurrency,
     getFirstMileDrive,
     getTripVerdict,
+    VerdictCatch,
     VerdictTargetTab,
 } from '../services/tripExploreSelectors';
 import { SelfConnectResult } from '../services/selfConnect';
 import { HotelResult, TripExplorationResponse, UnifiedFlightOption } from '../types/tripExploration';
+import InfoTooltip from './InfoTooltip';
 import { SelfConnectStatus } from './TripSelfConnectTab';
 
 const CTA_LABELS: Record<VerdictTargetTab, string> = {
     flights: 'See flights →',
     selfConnect: 'See routing →',
     stays: 'See stays →',
+};
+
+// Catches compress into warn chips — the short label is always visible, the
+// full Anti-Cauchemar sentence reveals on hover / focus (and stays in the DOM).
+const CATCH_CHIPS: Record<VerdictCatch['kind'], { label: string; aria: string }> = {
+    hiddenCosts: { label: '⚠ Real fare', aria: 'Hidden costs behind the advertised fare' },
+    flightCatch: { label: '⚠ The catch', aria: 'The catch behind this flight' },
+    lateArrival: { label: '⚠ Late arrival', aria: 'Late-night arrival warning' },
 };
 
 interface TripVerdictCardProps {
@@ -105,17 +115,20 @@ const TripVerdictCard: React.FC<TripVerdictCardProps> = ({
                     </div>
                 ))}
 
-                {catches.map((item) => (
-                    <div
-                        key={item.kind}
-                        className="trip-explore-dashboard__verdict-row trip-explore-dashboard__verdict-row--catch"
-                    >
-                        <div>
-                            <strong>The catch</strong>
-                            <p>{item.text}</p>
-                        </div>
+                {catches.length > 0 && (
+                    <div className="trip-explore-dashboard__verdict-catches">
+                        {catches.map((item) => (
+                            <InfoTooltip
+                                key={item.kind}
+                                tone="warn"
+                                ariaLabel={CATCH_CHIPS[item.kind].aria}
+                                label={CATCH_CHIPS[item.kind].label}
+                            >
+                                {item.text}
+                            </InfoTooltip>
+                        ))}
                     </div>
-                ))}
+                )}
 
                 {!hasSelfTransferSaving && canCheckSelfTransfer && (
                     <div className="trip-explore-dashboard__verdict-row trip-explore-dashboard__verdict-row--neutral">

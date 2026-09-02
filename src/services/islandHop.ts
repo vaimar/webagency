@@ -1,5 +1,7 @@
 // Client for the island-hop tour planner (/api/trips/island-hop).
 
+import { trackedFetch } from './serviceStatus';
+
 export interface IslandHopStopRequest {
     island: string;
     nights: number;
@@ -72,7 +74,7 @@ export interface IslandHopResult {
 export const ISLAND_OPTIONS = ['Santorini', 'Paros', 'Naxos', 'Mykonos', 'Athens'] as const;
 
 export const fetchIslandHopTemplates = async (): Promise<TourTemplate[]> => {
-    const response = await fetch('/api/trips/island-hop/templates');
+    const response = await trackedFetch('/api/trips/island-hop/templates');
     if (!response.ok) {
         throw new Error(`Templates request failed with status ${response.status}`);
     }
@@ -84,7 +86,7 @@ export const fetchIslandHop = async (
     startDate: string,
     stops: IslandHopStopRequest[],
 ): Promise<IslandHopResult> => {
-    const response = await fetch('/api/trips/island-hop', {
+    const response = await trackedFetch('/api/trips/island-hop', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ origin, startDate, stops }),

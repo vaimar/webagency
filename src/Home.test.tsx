@@ -1,3 +1,4 @@
+import type { MockedFunction } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Home from './Home';
@@ -5,32 +6,37 @@ import { useRouteSearch } from './hooks/useRouteSearch';
 import { fetchFlightDestinations } from './services/flightService';
 import { getHotelsNearby } from './services/api';
 
-jest.mock('./hooks/useRouteSearch');
-jest.mock('./services/flightService');
-jest.mock('./services/api', () => ({
-    ...jest.requireActual('./services/api'),
-    getHotelsNearby: jest.fn(),
+vi.mock('./hooks/useRouteSearch');
+vi.mock('./services/flightService');
+vi.mock('./services/api', async () => ({
+    ...(await vi.importActual<typeof import('./services/api')>('./services/api')),
+    getHotelsNearby: vi.fn(),
 }));
-jest.mock('./components/FlightDestinationCard', () => {
-    const React = require('react');
-    const { getAirportDisplay: getAirport } = require('./data/airportMetadata');
+// Vitest resolves modules as ESM, so a mocked default export has to be handed
+// back under an explicit `default` key — returning the component bare (which
+// Babel's CommonJS interop used to accept) yields `undefined` here.
+vi.mock('./components/FlightDestinationCard', async () => {
+    const React = await import('react');
+    const { getAirportDisplay: getAirport } = await import('./data/airportMetadata');
 
-    return function MockFlightDestinationCard(props: any) {
-        const airport = getAirport(props.destination.destination);
-        return React.createElement(
-            'button',
-            {
-                type: 'button',
-                onClick: props.onSelect,
-            },
-            `${airport.city}${props.showsDateMatch ? ' This fare matches your selected date' : ''}`,
-        );
+    return {
+        default: function MockFlightDestinationCard(props: any) {
+            const airport = getAirport(props.destination.destination);
+            return React.createElement(
+                'button',
+                {
+                    type: 'button',
+                    onClick: props.onSelect,
+                },
+                `${airport.city}${props.showsDateMatch ? ' This fare matches your selected date' : ''}`,
+            );
+        },
     };
 });
 
-const mockedUseRouteSearch = useRouteSearch as jest.MockedFunction<typeof useRouteSearch>;
-const mockedFetchFlightDestinations = fetchFlightDestinations as jest.MockedFunction<typeof fetchFlightDestinations>;
-const mockedGetHotelsNearby = getHotelsNearby as jest.MockedFunction<typeof getHotelsNearby>;
+const mockedUseRouteSearch = useRouteSearch as MockedFunction<typeof useRouteSearch>;
+const mockedFetchFlightDestinations = fetchFlightDestinations as MockedFunction<typeof fetchFlightDestinations>;
+const mockedGetHotelsNearby = getHotelsNearby as MockedFunction<typeof getHotelsNearby>;
 
 const landingDestinations = [
     {
@@ -58,6 +64,7 @@ const landingDestinations = [
 ];
 
 const diagnostics = {
+    requestId: 'test-request-id',
     url: 'https://slumber-production.up.railway.app/api/flight-search/routes?from=DUB&to=BVA&provider=serpapi',
     method: 'GET',
     ok: true,
@@ -81,19 +88,19 @@ const createRouteSearchState = (overrides: Partial<ReturnType<typeof useRouteSea
     flightDiagnostics: null,
     suggestionDiagnostics: null,
     hasSearched: true,
-    setOrigin: jest.fn(),
-    setDestination: jest.fn(),
-    setDepartureDate: jest.fn(),
-    setReturnDate: jest.fn(),
-    searchRoute: jest.fn().mockResolvedValue(undefined),
-    retrySuggestion: jest.fn().mockResolvedValue(undefined),
-    clearResults: jest.fn(),
+    setOrigin: vi.fn(),
+    setDestination: vi.fn(),
+    setDepartureDate: vi.fn(),
+    setReturnDate: vi.fn(),
+    searchRoute: vi.fn().mockResolvedValue(undefined),
+    retrySuggestion: vi.fn().mockResolvedValue(undefined),
+    clearResults: vi.fn(),
     ...overrides,
 });
 
 describe('Home', () => {
     beforeEach(() => {
-        jest.resetAllMocks();
+        vi.resetAllMocks();
         mockedFetchFlightDestinations.mockResolvedValue({
             destinations: landingDestinations,
             fetchedAt: '2026-05-09T10:00:00.000Z',
@@ -101,6 +108,7 @@ describe('Home', () => {
         });
         mockedGetHotelsNearby.mockResolvedValue({
             diagnostics: {
+                requestId: 'test-request-id',
                 url: 'https://slumber-production.up.railway.app/api/hotels/nearby?lat=48.8566&lon=2.3522&radius=2600',
                 method: 'GET',
                 ok: true,
@@ -125,7 +133,7 @@ describe('Home', () => {
     });
 
     it('loads live DUB landing fares on mount without auto-searching the route form', async () => {
-        const searchRoute = jest.fn().mockResolvedValue(undefined);
+        const searchRoute = vi.fn().mockResolvedValue(undefined);
         mockedUseRouteSearch.mockReturnValue(createRouteSearchState({ searchRoute, hasSearched: false }));
 
         render(<Home />);
@@ -138,10 +146,10 @@ describe('Home', () => {
     });
 
     it('clicking a suggested fare card populates the search fields', async () => {
-        const setOrigin = jest.fn();
-        const setDestination = jest.fn();
-        const setDepartureDate = jest.fn();
-        const setReturnDate = jest.fn();
+        const setOrigin = vi.fn();
+        const setDestination = vi.fn();
+        const setDepartureDate = vi.fn();
+        const setReturnDate = vi.fn();
 
         mockedUseRouteSearch.mockReturnValue(createRouteSearchState({
             setOrigin,
@@ -193,7 +201,10 @@ describe('Home', () => {
         expect(await screen.findByText(/selected route proof/i)).toBeInTheDocument();
         await waitFor(() => expect(mockedGetHotelsNearby).toHaveBeenCalled());
         expect(mockedGetHotelsNearby).toHaveBeenCalledWith(48.8566, 2.3522, 2600);
-        expect(screen.getByText(/the catch/i)).toBeInTheDocument();
+        // The label for antiCauchemar.theCatch is "Travel warning" — it was
+        // renamed in TruthCard while this whole suite was hanging, so nothing
+        // ever caught the drift.
+        expect(screen.getAllByText(/travel warning/i).length).toBeGreaterThan(0);
         expect(screen.getAllByText(/late arrival means the airport transfer is usually a taxi after midnight\./i).length).toBeGreaterThan(0);
         expect(screen.getByRole('heading', { name: /paris beauvais stays chained from the selected flight/i })).toBeInTheDocument();
         expect(screen.getAllByText(/canal base hotel/i).length).toBeGreaterThan(0);
@@ -202,7 +213,7 @@ describe('Home', () => {
     });
 
     it('passes first-mile car input into the flight search when enabled', async () => {
-        const searchRoute = jest.fn().mockResolvedValue(undefined);
+        const searchRoute = vi.fn().mockResolvedValue(undefined);
         mockedUseRouteSearch.mockReturnValue(createRouteSearchState({
             state: { origin: 'DUB', destination: 'NCE', departureDate: '2026-05-26', returnDate: '2026-05-28' },
             searchRoute,

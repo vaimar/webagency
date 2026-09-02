@@ -156,7 +156,7 @@ const TripExploreDashboard: React.FC<TripExploreDashboardProps> = ({ tripData, e
         { id: 'restaurants', label: `Restaurants (${restaurants.length})` },
         { id: 'map', label: '🗺 Map' },
         { id: 'selfConnect', label: '🔀 Self-transfer' },
-        { id: 'aiGuide', label: '✨ AI Guide' },
+        { id: 'aiGuide', label: 'AI Guide' },
     ];
 
     return (
@@ -254,7 +254,7 @@ const TripExploreDashboard: React.FC<TripExploreDashboardProps> = ({ tripData, e
             {activeTab === 'stays' && <TripStaysTab trip={tripData} extraStays={extraStays} />}
             {activeTab === 'activities' && (
                 <TripPoiTab
-                    eyebrow="Plan de ouf"
+                    eyebrow="Nearby"
                     title="Things to do nearby"
                     badgeNoun="spots"
                     emptyText="No activity spots were returned for this destination."

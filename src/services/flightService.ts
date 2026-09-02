@@ -96,7 +96,7 @@ const mapFlightToDestination = (
         antiCauchemar: flight.antiCauchemar,
         links: {
             flightDates: travelLinks.googleFlights,
-            flightOffers: travelLinks.kiwi || travelLinks.skyscanner || travelLinks.googleFlights,
+            flightOffers: travelLinks.kiwi || travelLinks.googleFlights,
         },
     };
 };

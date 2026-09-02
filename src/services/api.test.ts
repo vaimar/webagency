@@ -2,7 +2,7 @@ import { fetchTripSuggestion, planTrip, refreshFlights } from './api';
 
 describe('refreshFlights', () => {
     it('uses POST and includes the required date query parameter', async () => {
-        const fetchMock = jest.fn().mockResolvedValue({
+        const fetchMock = vi.fn().mockResolvedValue({
             ok: true,
             status: 202,
             statusText: 'Accepted',
@@ -40,7 +40,7 @@ describe('refreshFlights', () => {
 
 describe('trip suggestion normalization', () => {
     it('normalizes alternate restaurant and hotel fields from trip suggestions', async () => {
-        const fetchMock = jest.fn().mockResolvedValue({
+        const fetchMock = vi.fn().mockResolvedValue({
             ok: true,
             status: 200,
             statusText: 'OK',
@@ -87,7 +87,7 @@ describe('trip suggestion normalization', () => {
     });
 
     it('normalizes alternate restaurant and hotel fields from trip plans', async () => {
-        const fetchMock = jest.fn().mockResolvedValue({
+        const fetchMock = vi.fn().mockResolvedValue({
             ok: true,
             status: 200,
             statusText: 'OK',

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { getMapStyleUrl } from '../services/mapStyle';
+import { getMapStyle } from '../services/mapStyle';
 
 const DEFAULT_CENTER: [number, number] = [-0.09, 51.505]; // MapLibre order: [lng, lat]
 const DEFAULT_ZOOM = 13;
@@ -17,7 +17,7 @@ const DynamicMap: React.FC = () => {
 
         const map = new maplibregl.Map({
             container: containerRef.current,
-            style: getMapStyleUrl(),
+            style: getMapStyle(),
             center: DEFAULT_CENTER,
             zoom: DEFAULT_ZOOM,
             attributionControl: { compact: true },

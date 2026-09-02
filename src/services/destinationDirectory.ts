@@ -26,16 +26,16 @@ export interface DestinationHint {
 // Mirrors AirportResolutionService.createDestinations() + the wakeboard
 // venue catalog examples the backend advertises in DESTINATION_AIRPORT_REQUIRED.
 const CURATED_DESTINATIONS: DestinationHint[] = [
-    { label: 'Nice', keywords: ['nice'], arrivalAirport: 'NCE', curatedByBackend: true },
-    { label: 'Dublin', keywords: ['dublin'], arrivalAirport: 'DUB', curatedByBackend: true },
-    { label: 'Barcelona', keywords: ['barcelona'], arrivalAirport: 'BCN', curatedByBackend: true },
-    { label: 'Madrid', keywords: ['madrid'], arrivalAirport: 'MAD', curatedByBackend: true },
-    { label: 'Lisbon', keywords: ['lisbon', 'lisboa'], arrivalAirport: 'LIS', curatedByBackend: true },
-    { label: 'Rome', keywords: ['rome', 'roma'], arrivalAirport: 'FCO', curatedByBackend: true },
-    { label: 'Marseille', keywords: ['marseille'], arrivalAirport: 'MRS', curatedByBackend: true },
-    { label: 'Toulouse', keywords: ['toulouse'], arrivalAirport: 'TLS', curatedByBackend: true },
-    { label: 'Dusseldorf', keywords: ['dusseldorf', 'düsseldorf'], arrivalAirport: 'DUS', curatedByBackend: true },
-    { label: 'Vilnius', keywords: ['vilnius'], arrivalAirport: 'VNO', curatedByBackend: true },
+    { label: 'Nice', keywords: ['nice'], arrivalAirport: 'NCE', curatedByBackend: true, cityLat: 43.7102, cityLon: 7.2620 },
+    { label: 'Dublin', keywords: ['dublin'], arrivalAirport: 'DUB', curatedByBackend: true, cityLat: 53.3498, cityLon: -6.2603 },
+    { label: 'Barcelona', keywords: ['barcelona'], arrivalAirport: 'BCN', curatedByBackend: true, cityLat: 41.3874, cityLon: 2.1686 },
+    { label: 'Madrid', keywords: ['madrid'], arrivalAirport: 'MAD', curatedByBackend: true, cityLat: 40.4168, cityLon: -3.7038 },
+    { label: 'Lisbon', keywords: ['lisbon', 'lisboa'], arrivalAirport: 'LIS', curatedByBackend: true, cityLat: 38.7223, cityLon: -9.1393 },
+    { label: 'Rome', keywords: ['rome', 'roma'], arrivalAirport: 'FCO', curatedByBackend: true, cityLat: 41.9028, cityLon: 12.4964 },
+    { label: 'Marseille', keywords: ['marseille'], arrivalAirport: 'MRS', curatedByBackend: true, cityLat: 43.2965, cityLon: 5.3698 },
+    { label: 'Toulouse', keywords: ['toulouse'], arrivalAirport: 'TLS', curatedByBackend: true, cityLat: 43.6047, cityLon: 1.4442 },
+    { label: 'Dusseldorf', keywords: ['dusseldorf', 'düsseldorf'], arrivalAirport: 'DUS', curatedByBackend: true, cityLat: 51.2277, cityLon: 6.7735 },
+    { label: 'Vilnius', keywords: ['vilnius'], arrivalAirport: 'VNO', curatedByBackend: true, cityLat: 54.6872, cityLon: 25.2797 },
     { label: 'EXO 84', keywords: ['exo 84', 'exo84'], arrivalAirport: 'MRS', curatedByBackend: true },
     { label: 'Les Houches', keywords: ['les houches', 'chamonix'], arrivalAirport: 'GVA', curatedByBackend: true, cityLat: 45.8919, cityLon: 6.7986 },
     { label: 'Paros', keywords: ['paros', 'parikia'], arrivalAirport: 'PAS', curatedByBackend: true, cityLat: 37.0853, cityLon: 25.1489 },
@@ -81,6 +81,45 @@ export const resolveDestinationHint = (input: string): DestinationHint | undefin
     return ALL_DESTINATIONS.find((hint) => hint.keywords.some(
         (keyword) => normalized === keyword || normalized.includes(keyword),
     ));
+};
+
+// Some airports serve both a city and a nearby venue (MRS → Marseille + EXO 84,
+// GVA → Geneva + Les Houches, …). When a caller asks "what city does this airport
+// serve?" the answer is always the city, never the venue — so the ambiguous
+// airports name their primary destination explicitly instead of relying on list
+// order. Airports with a single hint need no entry here.
+const PRIMARY_DESTINATION_BY_AIRPORT: Record<string, string> = {
+    MRS: 'Marseille',
+    DUS: 'Dusseldorf',
+    VNO: 'Vilnius',
+    GVA: 'Geneva',
+    ORY: 'Paris Wakepark',
+    BOD: 'Lakecity 33',
+    PGF: 'Hypnotics',
+};
+
+/**
+ * Resolve an IATA code to the destination whose city-centre coordinates should
+ * anchor a location search. Note this is NOT what {@link resolveDestinationHint}
+ * does — that matches city-name keywords, so an IATA code ('MAD') never matches
+ * a keyword ('madrid'). Only hints that actually carry coordinates are returned;
+ * callers fall back to the airport's own location when this yields nothing.
+ */
+export const resolveDestinationHintByAirport = (iata: string): DestinationHint | undefined => {
+    const code = iata.trim().toUpperCase();
+    if (!code) {
+        return undefined;
+    }
+
+    const candidates = ALL_DESTINATIONS.filter(
+        (hint) => hint.arrivalAirport === code && hint.cityLat != null && hint.cityLon != null,
+    );
+    if (candidates.length <= 1) {
+        return candidates[0];
+    }
+
+    const preferred = PRIMARY_DESTINATION_BY_AIRPORT[code];
+    return candidates.find((hint) => hint.label === preferred) ?? candidates[0];
 };
 
 // Rough origin hub lookup — the backend does the real flight search; this only

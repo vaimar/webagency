@@ -1,28 +1,26 @@
 # Stage 1: Build the React app
-FROM node:22.2.0-slim as build
+FROM node:22-alpine AS build
 
-# Set working directory
 WORKDIR /app
 
-# Copy package.json and yarn.lock
-COPY package.json yarn.lock ./
+# Install from the lockfile only. `npm ci` fails loudly if package.json and
+# package-lock.json have drifted, and it wipes node_modules first, so the image
+# can never be built against a resolution the lockfile does not describe.
+COPY package.json package-lock.json ./
+RUN npm ci
 
-# Install dependencies using Yarn
-RUN yarn install
-
-# Copy the rest of the application
 COPY . ./
+RUN npm run build
 
-# Build the application
-RUN yarn build
-
-# Stage 2: Serve the built React app using Nginx
+# Stage 2: Serve the built app using Nginx
 FROM nginx:alpine
 
-# Copy custom Nginx config for SPA routing + API proxy
+# Custom Nginx config for SPA routing + API proxy. The security-headers snippet
+# is a separate file because nginx.conf `include`s it from two scopes; both land
+# in conf.d, but only default.conf is a server block nginx loads directly.
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx-security-headers.conf /etc/nginx/conf.d/security-headers.conf
 
-# Copy the built React app from the previous stage to the Nginx web root directory
 COPY --from=build /app/build /usr/share/nginx/html
 
 EXPOSE 80

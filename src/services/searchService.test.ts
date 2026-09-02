@@ -1,12 +1,14 @@
+import type { MockedFunction } from 'vitest';
 import { ApiDiagnostics, searchFlightRoutes, fetchTripSuggestion } from './api';
 import { NO_FLIGHT_NO_TRIP_MESSAGE, searchFlightFirstRoute } from './searchService';
 
-jest.mock('./api', () => ({
-    fetchTripSuggestion: jest.fn(),
-    searchFlightRoutes: jest.fn(),
+vi.mock('./api', () => ({
+    fetchTripSuggestion: vi.fn(),
+    searchFlightRoutes: vi.fn(),
 }));
 
 const baseDiagnostics: ApiDiagnostics = {
+    requestId: 'test-request-id',
     url: 'https://slumber-production.up.railway.app/api/flight-search/routes?from=DUB&to=BVA&provider=serpapi',
     method: 'GET',
     ok: true,
@@ -16,12 +18,12 @@ const baseDiagnostics: ApiDiagnostics = {
     timestamp: '2026-05-09T10:00:00.000Z',
 };
 
-const mockedFetchTripSuggestion = fetchTripSuggestion as jest.MockedFunction<typeof fetchTripSuggestion>;
-const mockedSearchFlightRoutes = searchFlightRoutes as jest.MockedFunction<typeof searchFlightRoutes>;
+const mockedFetchTripSuggestion = fetchTripSuggestion as MockedFunction<typeof fetchTripSuggestion>;
+const mockedSearchFlightRoutes = searchFlightRoutes as MockedFunction<typeof searchFlightRoutes>;
 
 describe('searchFlightFirstRoute', () => {
     beforeEach(() => {
-        jest.resetAllMocks();
+        vi.resetAllMocks();
     });
 
     it('returns live route truth without loading the AI guide by default', async () => {

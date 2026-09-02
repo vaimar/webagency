@@ -1,7 +1,7 @@
 {
   "short_name": "TravelHub",
-  "name": "TravelHub - Find Flights & Plan Your Trip",
-  "description": "Search flights, get AI-powered trip recommendations, and plan your perfect vacation.",
+  "name": "TravelHub — find the park",
+  "description": "Cable parks across Europe with the operator's own tariff and the date we checked it. Beta: spot discovery is live, flight-to-park pricing is not yet verified.",
   "icons": [
     {
       "src": "favicon.ico",

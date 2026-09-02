@@ -1,6 +1,7 @@
 import React from 'react';
 import { formatKm, getPoiCategory } from '../services/tripExploreSelectors';
 import { ActivityPlace } from '../types/tripExploration';
+import PlaceImage from './PlaceImage';
 
 interface TripPoiTabProps {
     eyebrow: string;
@@ -34,13 +35,20 @@ const TripPoiTab: React.FC<TripPoiTabProps> = ({ eyebrow, title, badgeNoun, empt
         {pois.length === 0 ? (
             <p className="trip-explore-dashboard__muted" role="status">{emptyText}</p>
         ) : (
-            <div className="trip-explore-dashboard__stays-grid">
+            // Bounded 2-row band that scrolls sideways — POI lists never
+            // stretch the page downward no matter how many spots return.
+            <div className="trip-explore-dashboard__stays-grid trip-explore-dashboard__stays-grid--carousel">
                 {pois.map((poi, index) => {
                     const category = getPoiCategory(poi.kinds);
                     const distance = formatKm(poi.distanceKm ?? null);
 
                     return (
                         <div key={`${poi.xid ?? poi.name}-${index}`} className="trip-explore-dashboard__hotel-card">
+                            <PlaceImage
+                                src={poi.thumbnailUrl}
+                                alt={`${poi.name ?? 'Place'} — place photo`}
+                                label={poi.name ?? 'Place'}
+                            />
                             <div className="trip-explore-dashboard__hotel-main">
                                 <div>
                                     <h4 className="trip-explore-dashboard__hotel-name">{poi.name}</h4>
@@ -53,6 +61,11 @@ const TripPoiTab: React.FC<TripPoiTabProps> = ({ eyebrow, title, badgeNoun, empt
                                                 <span className="trip-explore-dashboard__hotel-distance">{distance}</span>
                                             )}
                                         </div>
+                                    )}
+                                    {poi.selectionReason && (
+                                        <p className="trip-explore-dashboard__muted trip-explore-dashboard__poi-reason">
+                                            {poi.selectionReason}
+                                        </p>
                                     )}
                                 </div>
                             </div>

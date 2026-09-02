@@ -106,9 +106,36 @@ const PROVIDER_LABELS: Record<string, string> = {
     EXTERNAL_PROVIDER: 'Partner Offer',
     EXTERNAL_SEARCH: '',
     RYANAIR_CACHE: 'Ryanair · cached fare',
+    FALLBACK_ROUTING: 'Alternative route',
 };
 
-const looksLikeBackendConstant = (value: string): boolean => (
+const FALLBACK_FLIGHT_RE = /^FALLBACK[-_]/i;
+
+/**
+ * True when the backend synthesised this option instead of finding it.
+ * `FlightSearchService.buildHeuristicFallbackFlight` invents airline "Fallback
+ * Routing", number "FALLBACK-<origin><dest>", a flat fare and placeholder times.
+ * Exported so views can label it rather than each re-deriving the test.
+ */
+export const isFallbackOption = (flight?: { flightNumber?: string | null; airline?: string | null } | null): boolean => (
+    Boolean(flight)
+    && (FALLBACK_FLIGHT_RE.test(flight!.flightNumber ?? '')
+        || /^fallback\s+routing$/i.test((flight!.airline ?? '').trim()))
+);
+
+export const sanitizeFlightNumber = (value?: string | null): string | null => {
+    if (!value) return null;
+    if (FALLBACK_FLIGHT_RE.test(value)) return null;
+    return value;
+};
+
+export const sanitizeAirline = (value?: string | null): string | null => {
+    if (!value) return null;
+    if (FALLBACK_FLIGHT_RE.test(value) || /^FALLBACK\s/i.test(value)) return null;
+    return value;
+};
+
+export const looksLikeBackendConstant = (value: string): boolean => (
     /^[A-Z0-9]+(?:[_\s][A-Z0-9()]+)*$/.test(value) && (value.includes('_') || value.length > 3)
 );
 
@@ -217,7 +244,11 @@ export const getFlightPricing = (flight?: UnifiedFlightOption | null): FlightPri
         doorToTripPrice: asPositiveAmount(flight?.doorToTripPrice) ?? pricing.doorToTripPrice,
         currency: pricing.currency,
         manualCheckRequired: pricing.hasManualCheckRequired,
-        provenance: flight?.priceLabel ?? flight?.freshnessLabel ?? null,
+        // Humanised here rather than at each call site: TripOverviewTab rendered
+        // this field straight out and put the raw "EXTERNAL_SEARCH" constant on
+        // screen under the fare. Sanitising at the source means no consumer can
+        // forget to.
+        provenance: humanizeProviderLabel(flight?.priceLabel ?? flight?.freshnessLabel ?? null),
     };
 };
 
@@ -367,8 +398,8 @@ const toRowFromUnified = (flight: UnifiedFlightOption, index: number): FlightRow
     return {
         key: `${flight.flightNumber ?? 'unified'}-${flight.source ?? index}-${flight.scheduledDeparture ?? ''}-${index}`,
         option: flight,
-        airline: flight.airline ?? null,
-        flightNumber: flight.flightNumber ?? null,
+        airline: sanitizeAirline(flight.airline),
+        flightNumber: sanitizeFlightNumber(flight.flightNumber),
         routeLabel: buildRouteLabel(flight.departureAirport, flight.arrivalAirport),
         departureLabel: formatDateTime(flight.scheduledDeparture),
         arrivalLabel: formatDateTime(flight.scheduledArrival),
@@ -377,6 +408,11 @@ const toRowFromUnified = (flight: UnifiedFlightOption, index: number): FlightRow
         honestTotal: pricing.honestTotal,
         doorToTripPrice: pricing.doorToTripPrice,
         currency: pricing.currency,
+        // Already humanised by getFlightPricing. It used to read
+        // `humanizeProviderLabel(x) ?? x`, which defeated the point: the helper
+        // returns null both when there is nothing to show *and* when the label is
+        // one it is meant to suppress (PROVIDER_LABELS maps EXTERNAL_SEARCH to
+        // ''), so the `??` resurrected the raw constant it had just hidden.
         provenance: pricing.provenance,
         approved: isAntiCauchemarApproved(flight),
         penaltyScore: getAntiCauchemarPenaltyScore(flight),

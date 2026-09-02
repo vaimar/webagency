@@ -33,7 +33,12 @@
 
     --text: #1e293b;
     --text-secondary: #475569;
-    --text-muted: #64748b;
+    /* Darkened from #64748b, which measured 4.43:1 on the page background and
+       4.13:1 on the tinted panels — under the 4.5:1 AA floor on every surface
+       except pure white. This value clears 4.9:1 on the worst of them and still
+       reads as clearly secondary next to --text. */
+    --text-muted: #5b6878;
+    /* Decorative only — never put body copy in this. */
     --text-light: #94a3b8;
     --text-inverse: #ffffff;
 
@@ -69,6 +74,66 @@
     --space-10: 40px;
     --space-12: 48px;
     --space-16: 64px;
+
+    /* ── Type scale ──────────────────────────────────────────────────────────
+       One ramp for the whole product. Page titles are the only thing above
+       1.75rem outside the marketing hero: on a data-dense travel UI, oversized
+       headings push the numbers people came for below the fold. */
+    --text-xs: 0.75rem;
+    --text-sm: 0.8125rem;
+    --text-base: 0.9375rem;
+    --text-md: 1rem;
+    --text-lg: 1.125rem;
+    --text-xl: 1.375rem;
+    --text-2xl: 1.75rem;
+    --text-3xl: 2.25rem;
+    --text-hero: clamp(2.25rem, 4vw, 3.25rem);
+
+    /* Semantic surfaces. Page sits on --bg; every panel is --surface on top of
+       it, so a panel never needs its own background override. */
+    --surface-sunken: #f1f5f9;
+    --surface-accent: #f4f8fd;
+
+    /* One focus ring everywhere — keyboard users should never have to hunt. */
+    --focus-ring: 0 0 0 3px rgba(0, 87, 184, 0.35);
+
+    /* Chrome that sits on photography or maps, where the light system can't go. */
+    --overlay-scrim: linear-gradient(180deg, rgba(15, 23, 42, 0) 35%, rgba(15, 23, 42, 0.82) 100%);
+
+    /* ── Truth hierarchy ─────────────────────────────────────────────────────
+       The price hierarchy in AGENTS.md is a product contract, not decoration:
+       base fare reads strongest, honest total sits under it in sky, door-to-trip
+       in indigo, manual-check warnings in red, transfer estimates in green.
+       The originals were tuned for a slate-900 background and fail contrast on
+       white (#7dd3fc on white is 1.7:1), so each one moves to the darkest shade
+       of the same hue that still reads as that colour. Same semantics, legible. */
+    --truth-fare: var(--text);
+    --truth-total: #0369a1;
+    --truth-door: #4338ca;
+    --truth-warn: #b91c1c;
+    --truth-transfer: #047857;
+    --truth-exact: #05603a;
+    --truth-estimated: #92600a;
+
+    /* ── --color-* aliases ───────────────────────────────────────────────────
+       92 declarations across the page stylesheets referenced tokens in this
+       namespace that were never defined anywhere. An undefined custom property
+       is not a no-op: `color: var(--color-muted)` makes the property invalid at
+       computed-value time, so the element silently inherits its parent's colour
+       instead. That is why muted captions rendered at full strength and some
+       borders picked up currentColor. Defining the namespace fixes every call
+       site at once; new code should prefer the semantic names above. */
+    --color-primary: var(--primary);
+    --color-text: var(--text);
+    --color-muted: var(--text-muted);
+    --color-border: var(--border);
+    --color-surface: var(--surface);
+    --color-surface-hover: var(--surface-hover);
+    --color-success: var(--success);
+    --color-success-text: #05603a;
+    --color-error: var(--error);
+    --color-warning: var(--warning);
+    --color-warning-text: #92600a;
 }
 
 /* Reset and base styles */
@@ -180,9 +245,14 @@ ul, ol {
 .site-header__content {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--space-6);
-    height: 72px;
+    gap: var(--space-5);
+    height: 64px;
+}
+
+/* The brand never shrinks and the nav takes the rest — the reverse let the nav
+   push the wordmark into a two-line stack. */
+.site-header__brand-group {
+    flex: 0 0 auto;
 }
 
 .brand-mark {
@@ -224,24 +294,42 @@ ul, ol {
     font-weight: 500;
 }
 
-/* Navigation */
+/* Navigation.
+   Every label used to wrap onto two lines, which made the whole header look
+   broken. Three things keep it on one line now: nowrap labels, a tighter
+   scale, and a nav that scrolls horizontally instead of wrapping when the
+   viewport genuinely cannot fit it. */
 .site-nav {
     display: flex;
     align-items: center;
     gap: var(--space-1);
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.site-nav::-webkit-scrollbar {
+    display: none;
 }
 
 .site-nav__link {
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
-    padding: var(--space-2) var(--space-4);
-    font-size: 0.9rem;
-    font-weight: 500;
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-base);
+    font-weight: 600;
+    white-space: nowrap;
+    flex: 0 0 auto;
     color: var(--text-secondary);
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-md);
     transition: all var(--transition-fast);
     text-decoration: none;
+}
+
+.site-nav__link:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
 }
 
 .site-nav__link:hover {
@@ -261,8 +349,66 @@ ul, ol {
 }
 
 .site-nav__icon {
-    font-size: 1rem;
-    opacity: 0.8;
+    font-size: 0.95rem;
+    opacity: 0.7;
+}
+
+.site-nav__link--active .site-nav__icon {
+    opacity: 1;
+}
+
+/* Account cluster — pinned right, never part of the scrolling nav. */
+.site-header__account {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-left: auto;
+    flex: 0 0 auto;
+}
+
+.account-button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: 36px;
+    padding: 0 var(--space-4);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    color: var(--text);
+    font-size: var(--text-base);
+    font-weight: 600;
+    white-space: nowrap;
+    text-decoration: none;
+    transition: border-color var(--transition-fast), background var(--transition-fast),
+                color var(--transition-fast);
+}
+
+.account-button:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: var(--primary-light);
+}
+
+.account-button--active {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: var(--text-inverse);
+}
+
+.account-button--active:hover {
+    background: var(--primary-hover);
+    color: var(--text-inverse);
+}
+
+.account-button:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+.account-button__icon {
+    font-size: 0.9rem;
+    opacity: 0.85;
 }
 
 /* ─── Main Content ─────────────────────────────────────────────────────────── */
@@ -354,6 +500,502 @@ ul, ol {
     gap: var(--space-3);
 }
 
+/* ─── Shared primitives ────────────────────────────────────────────────────────
+   The vocabulary every page is built from. Before this existed each page
+   invented its own panel, button and field — which is why the product read as
+   four different websites stitched together. Page stylesheets should reach for
+   these first and only add what is genuinely specific to that screen.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/* Panel — the default container. Sits on --bg, so it never sets its own
+   background conditionally; one elevation step, never stacked panel-in-panel. */
+.panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: var(--space-6);
+}
+
+.panel--flush {
+    padding: 0;
+    overflow: hidden;
+}
+
+.panel--sunken {
+    background: var(--surface-sunken);
+    box-shadow: none;
+}
+
+.panel__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-4);
+}
+
+.panel__title {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.panel__meta {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+}
+
+/* Page head — eyebrow, title, one line of lead. Every route opens with this so
+   the user always knows where they are without reading the nav. */
+.page-head {
+    margin-bottom: var(--space-6);
+}
+
+.page-head__eyebrow {
+    display: block;
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--primary);
+    margin-bottom: var(--space-2);
+}
+
+.page-head__title {
+    font-size: var(--text-2xl);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text);
+}
+
+.page-head__lead {
+    margin-top: var(--space-2);
+    max-width: 68ch;
+    color: var(--text-secondary);
+}
+
+/* Buttons. One height (40px, 44px for --lg) so controls line up in a row
+   without per-page nudging. */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    height: 40px;
+    padding: 0 var(--space-5);
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    font-family: inherit;
+    font-size: var(--text-base);
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background var(--transition-fast), border-color var(--transition-fast),
+                color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.btn:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+.btn:disabled,
+.btn[aria-disabled='true'] {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.btn--primary {
+    background: var(--primary);
+    color: var(--text-inverse);
+}
+
+.btn--primary:hover:not(:disabled) {
+    background: var(--primary-hover);
+    color: var(--text-inverse);
+}
+
+.btn--secondary {
+    background: var(--surface);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.btn--secondary:hover:not(:disabled) {
+    background: var(--primary-light);
+}
+
+.btn--quiet {
+    background: var(--surface);
+    border-color: var(--border-strong);
+    color: var(--text-secondary);
+}
+
+.btn--quiet:hover:not(:disabled) {
+    border-color: var(--text-muted);
+    color: var(--text);
+}
+
+.btn--ghost {
+    background: transparent;
+    color: var(--primary);
+    padding: 0 var(--space-3);
+}
+
+.btn--ghost:hover:not(:disabled) {
+    background: var(--primary-light);
+}
+
+/* On a saturated blue hero, an outlined button in the same blue disappears.
+   These two are the only variants allowed on a coloured background. */
+.btn--on-brand {
+    background: var(--surface);
+    color: var(--primary);
+}
+
+.btn--on-brand:hover:not(:disabled) {
+    background: #ffffff;
+    color: var(--primary-dark);
+    box-shadow: var(--shadow-md);
+}
+
+.btn--on-brand-outline {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.65);
+    color: #ffffff;
+}
+
+.btn--on-brand-outline:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.18);
+    border-color: #ffffff;
+    color: #ffffff;
+}
+
+.btn--lg {
+    height: 44px;
+    padding: 0 var(--space-6);
+    font-size: var(--text-md);
+}
+
+.btn--sm {
+    height: 32px;
+    padding: 0 var(--space-3);
+    font-size: var(--text-sm);
+}
+
+.btn--block {
+    width: 100%;
+}
+
+/* Form controls */
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+}
+
+.field__label {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.field__hint {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+}
+
+.input,
+.select {
+    width: 100%;
+    height: 40px;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    color: var(--text);
+    font-family: inherit;
+    font-size: var(--text-base);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.input::placeholder {
+    color: var(--text-light);
+}
+
+.input:focus,
+.select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: var(--focus-ring);
+}
+
+.select {
+    appearance: none;
+    padding-right: var(--space-8);
+    /* Inline chevron: a data URI keeps the control self-contained, so a select
+       styled this way still works inside a page that loads no icon font. */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%2364748b' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' d='M1 1.5 6 6.5l5-5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right var(--space-3) center;
+}
+
+/* Segmented control — mutually exclusive choices that all deserve to be seen
+   (activity, tab-like switches). Radio semantics, button looks. */
+.segmented {
+    display: flex;
+    gap: var(--space-1);
+    padding: var(--space-1);
+    background: var(--surface-sunken);
+    border-radius: var(--radius-md);
+}
+
+.segmented__option {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    height: 36px;
+    padding: 0 var(--space-3);
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: var(--text-base);
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.segmented__option:hover {
+    color: var(--text);
+}
+
+.segmented__option--active {
+    background: var(--surface);
+    color: var(--primary);
+    box-shadow: var(--shadow-xs);
+}
+
+.segmented__option:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+/* Badges. Status first, decoration never. */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+.badge--neutral {
+    background: var(--surface-sunken);
+    color: var(--text-secondary);
+}
+
+.badge--info {
+    background: var(--primary-light);
+    color: var(--primary-dark);
+}
+
+/* Badge text sits on its own tinted background, so it needs a darker shade than
+   the base status colour: --success on --success-light measured 4.02:1 and
+   --error on --error-light 4.05:1, both under AA. These are the --truth-*
+   values, which were mixed for exactly this job. */
+.badge--success {
+    background: var(--success-light);
+    color: var(--truth-exact);
+}
+
+.badge--warning {
+    background: var(--warning-light);
+    color: var(--truth-estimated);
+}
+
+.badge--danger {
+    background: var(--error-light);
+    color: var(--truth-warn);
+}
+
+/* Star rating. The amber it used to be (#f5a623) measured 2:1 on white — the
+   rating was decoration you could not actually read. */
+.rating {
+    margin-bottom: var(--space-3);
+    color: #b45309;
+    font-size: var(--text-md);
+    letter-spacing: 0.1em;
+}
+
+.testimonial__quote {
+    margin-bottom: var(--space-4);
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.testimonial__quote::before { content: '\201C'; }
+.testimonial__quote::after { content: '\201D'; }
+
+/* Divider row used between list items, lighter than a full border. */
+.rule {
+    height: 1px;
+    background: var(--divider);
+    border: 0;
+}
+
+/* ─── Destination tiles ────────────────────────────────────────────────────────
+   Photography-led, the way every travel site does its browse tiles. The photo
+   carries the place and the body carries the reason to click; neither has to
+   invent a price. ─────────────────────────────────────────────────────────── */
+
+.dest-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: var(--space-5);
+}
+
+.dest-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow var(--transition-base), transform var(--transition-base),
+                border-color var(--transition-base);
+}
+
+.dest-card:hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+
+.dest-card:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+.dest-card__media {
+    position: relative;
+    aspect-ratio: 3 / 2;
+    /* Dark base so a slow-loading photo fades in rather than flashing white. */
+    background: #0f2942;
+    overflow: hidden;
+}
+
+/* The media on these cards is a SpotTile, which carries its own aspect ratio and
+   corner radius for the finder grid; inside a dest-card the card already owns
+   both, so it stretches to fill rather than boxing a box. This replaced a plain
+   <img>, whose rules are gone with it — the tile also has to cover the parks
+   with no photograph, which is three quarters of them. */
+.dest-card__tile {
+    position: absolute;
+    inset: 0;
+    aspect-ratio: auto;
+    border-radius: 0;
+}
+
+.dest-card__tile .spot-tile__img {
+    transition: transform 400ms ease;
+}
+
+.dest-card:hover .dest-card__tile .spot-tile__img {
+    transform: scale(1.04);
+}
+
+/* The generated fallback centres its initials in its own box, which on a card
+   puts them straight through the name in the caption band. Padding the bottom
+   by the height of that band moves the optical centre into the clear upper
+   half without hardcoding a position. */
+.dest-card__tile.spot-tile--generated {
+    padding-bottom: 3.25rem;
+}
+
+.dest-card__scrim {
+    position: absolute;
+    inset: 0;
+    background: var(--overlay-scrim);
+}
+
+.dest-card__caption {
+    position: absolute;
+    left: var(--space-4);
+    right: var(--space-4);
+    bottom: var(--space-3);
+    display: flex;
+    flex-direction: column;
+    color: #ffffff;
+}
+
+.dest-card__city {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: var(--text-lg);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    text-shadow: 0 1px 8px rgba(2, 8, 23, 0.5);
+}
+
+.dest-card__country {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    opacity: 0.9;
+    text-shadow: 0 1px 8px rgba(2, 8, 23, 0.5);
+}
+
+/* The IATA code is the honest identifier on this card — it is the one thing
+   here that is a fact rather than a description. */
+.dest-card__code {
+    position: absolute;
+    top: var(--space-3);
+    right: var(--space-3);
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--text);
+    font-size: var(--text-xs);
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+
+.dest-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    flex: 1;
+    padding: var(--space-4);
+}
+
+.dest-card__note {
+    color: var(--text-secondary);
+    font-size: var(--text-base);
+    line-height: 1.5;
+}
+
+.dest-card__cta {
+    margin-top: auto;
+    color: var(--primary);
+    font-size: var(--text-base);
+    font-weight: 700;
+}
+
 /* ─── Cards ────────────────────────────────────────────────────────────────── */
 
 .card {
@@ -398,9 +1040,13 @@ ul, ol {
     padding: var(--space-8) var(--space-6);
 }
 
+/* Explicit shares, not `1fr auto`: with `auto` the side panel sized itself to
+   its own text, so writing one more sentence in the panel silently strangled the
+   headline column down to one word per line. The proportions now hold whatever
+   the copy says. */
 .hero-card__grid {
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
     gap: var(--space-8);
     align-items: center;
     position: relative;
@@ -502,20 +1148,25 @@ ul, ol {
 }
 
 /* Flight Card - Like Booking.com style */
+/* The result card. Everything a traveller compares — fare, honest total, the
+   catch — lives here, so it is the one component the whole system is tuned
+   around: white surface, one border, elevation only on hover. */
 .flight-card {
     padding: var(--space-5);
     display: flex;
     flex-direction: column;
-    gap: var(--space-3);
+    gap: var(--space-4);
     cursor: pointer;
-    background: linear-gradient(180deg, #071220 0%, #102033 100%);
-    border: 1px solid rgba(148, 163, 184, 0.24);
-    color: #e2e8f0;
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    color: var(--text);
 }
 
 .flight-card:hover {
-    border-color: #93c5fd;
-    box-shadow: 0 18px 36px rgba(2, 8, 23, 0.44);
+    border-color: var(--primary);
+    box-shadow: var(--shadow-md);
 }
 
 .flight-card--selectable:focus-visible {
@@ -540,25 +1191,111 @@ ul, ol {
     gap: var(--space-3);
 }
 
+/* Was #e0f2fe on a 14%-opacity sky wash — pale blue on near-white, about 1.4:1.
+   It escaped the earlier contrast sweep only because no route in that pass had
+   flight results on screen to render it. */
 .flight-card__live-badge {
     display: inline-flex;
     align-items: center;
-    padding: 6px 10px;
-    border-radius: var(--radius-full);
-    background: rgba(125, 211, 252, 0.14);
-    color: #e0f2fe;
-    font-size: 0.72rem;
+    padding: 4px var(--space-2);
+    border-radius: var(--radius-sm);
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    font-size: var(--text-xs);
     font-weight: 800;
     letter-spacing: 0.06em;
     text-transform: uppercase;
 }
 
+/* ─── Placeholder ("fallback") route ───────────────────────────────────────────
+   A synthesised route, shown when no provider returned a fare. It must not be
+   mistakable for a real one, so it drops out of the card hierarchy entirely:
+   dashed instead of solid, sunken instead of white, no hover lift, and a price
+   set in the "estimated" colour at body weight rather than as a headline.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+.flight-card--fallback {
+    background: var(--surface-sunken);
+    border: 1px dashed var(--border-strong);
+    box-shadow: none;
+}
+
+/* No hover affordance: there is nothing here worth clicking through to. */
+.flight-card--fallback:hover {
+    border-color: var(--border-strong);
+    box-shadow: none;
+    transform: none;
+}
+
+.flight-card--fallback .flight-card__live-badge,
+.flight-card--fallback .flight-card__price-caption {
+    background: var(--warning-light);
+    color: var(--truth-estimated);
+}
+
+/* The caption is a plain label, not a pill — only the badge takes the fill. */
+.flight-card--fallback .flight-card__price-caption {
+    background: none;
+}
+
+.flight-card__fallback-notice {
+    display: block;
+    padding: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-4);
+    border-radius: var(--radius-md);
+    background: var(--warning-light);
+    border-left: 3px solid var(--warning);
+    color: var(--truth-estimated);
+    font-size: var(--text-base);
+    line-height: 1.55;
+}
+
+.flight-card__fallback-notice strong {
+    font-weight: 800;
+}
+
+/* The number stays visible — it feeds the totals elsewhere — but at body size in
+   the estimated colour, so it reads as a figure rather than as a fare. */
+.flight-card--fallback .flight-card__price,
+.flight-card--fallback .flight-card--hero__price {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: var(--truth-estimated);
+}
+
+.flight-card--fallback .flight-card--hero__price--total,
+.flight-card--fallback .flight-card--hero__price--door-to-trip {
+    color: var(--text-muted);
+}
+
+/* Booking links on a route nobody quoted are searches, not bookings — keep them
+   reachable but stop the primary one shouting. */
+.flight-card--fallback .trip-external-link--primary {
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    color: var(--text-secondary);
+}
+
+.flight-card--fallback .trip-external-link--primary:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+}
+
 .flight-card__media {
     position: relative;
     min-height: 148px;
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     overflow: hidden;
+    /* Stays dark on purpose: this is the letterbox behind a photograph, and a
+       white placeholder flashes on every image load. */
     background: #0f2942;
+}
+
+/* Full-bleed header banner: pull to the card edges and round only the top. */
+.flight-card__media--banner {
+    min-height: 172px;
+    margin: calc(var(--space-5) * -1) calc(var(--space-5) * -1) 0;
+    border-radius: 20px 20px 0 0;
 }
 
 .flight-card__media-image {
@@ -591,6 +1328,29 @@ ul, ol {
     justify-content: space-between;
     align-items: flex-start;
     gap: var(--space-2);
+}
+
+.flight-card__route--on-media {
+    padding: 6px 12px;
+    border-radius: var(--radius-full);
+    background: rgba(7, 18, 34, 0.55);
+    backdrop-filter: blur(8px);
+    color: #ffffff;
+    font-weight: 700;
+    text-shadow: 0 1px 6px rgba(2, 8, 23, 0.6);
+}
+
+.flight-card__route--on-media .flight-card__route-icon {
+    color: #cbd5e1;
+}
+
+.flight-card__media-caption {
+    align-self: flex-start;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: rgba(226, 232, 240, 0.92);
+    text-shadow: 0 1px 6px rgba(2, 8, 23, 0.8);
 }
 
 .flight-card__flag {
@@ -637,17 +1397,17 @@ ul, ol {
     align-items: center;
     gap: var(--space-2);
     font-weight: 600;
-    color: #f8fafc;
+    color: var(--text);
 }
 
 .flight-card__route-icon {
-    color: #94a3b8;
+    color: var(--text-muted);
 }
 
 .flight-card__eyebrow {
     font-size: 0.75rem;
     font-weight: 600;
-    color: #cbd5e1;
+    color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.08em;
 }
@@ -656,7 +1416,21 @@ ul, ol {
     font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
     font-size: 2rem;
     font-weight: 700;
-    color: #f8fafc;
+    color: var(--text);
+}
+
+/* Carrier identity on a fare card: the mark, then the name. */
+.flight-card__airline {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.flight-card__airline--row {
+    margin: 12px 0 -4px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-secondary);
 }
 
 .flight-card__price-row {
@@ -680,14 +1454,16 @@ ul, ol {
     text-transform: uppercase;
 }
 
+/* #93c5fd was a light-blue label for a slate-900 card; on white it measured
+   1.8:1 — the caption above every price on the site was effectively unreadable. */
 .flight-card__price-caption {
-    color: #93c5fd;
+    color: var(--primary-dark);
 }
 
 .flight-card__marketing-label,
 .flight-card__marketing-note,
 .flight-card__price-label {
-    color: #94a3b8;
+    color: var(--text-muted);
 }
 
 .flight-card__marketing-note {
@@ -697,17 +1473,33 @@ ul, ol {
 .flight-card__marketing-price {
     font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
     font-size: 0.96rem;
-    color: #cbd5e1;
+    color: var(--text-secondary);
     text-decoration: line-through;
     text-decoration-thickness: 2px;
     text-decoration-color: rgba(248, 250, 252, 0.68);
 }
 
 .flight-card__price-meta {
-    padding: 12px;
+    align-self: end;
+    padding: 12px 14px;
     border-radius: 14px;
-    border: 1px solid rgba(148, 163, 184, 0.16);
-    background: rgba(15, 23, 42, 0.44);
+    border: 1px solid var(--border);
+    background: var(--surface-sunken);
+}
+
+.flight-card__price-meta .flight-card__price-label {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 14px;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+}
+
+.flight-card__price-label-amount {
+    font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+    font-weight: 700;
+    color: var(--text);
 }
 
 .flight-card__chips {
@@ -749,12 +1541,12 @@ ul, ol {
 .flight-card h3 {
     font-size: 1.1rem;
     font-weight: 600;
-    color: #f8fafc;
+    color: var(--text);
 }
 
 .flight-card__copy,
 .flight-card .muted-text {
-    color: #cbd5e1;
+    color: var(--text-secondary);
 }
 
 .flight-card__warning-block {
@@ -791,14 +1583,14 @@ ul, ol {
 
 .flight-card__meta dt {
     font-size: 0.75rem;
-    color: #94a3b8;
+    color: var(--text-muted);
     margin-bottom: 2px;
 }
 
 .flight-card__meta dd {
     font-size: 0.9rem;
     font-weight: 600;
-    color: #f8fafc;
+    color: var(--text);
 }
 
 .airport-select__option {
@@ -1712,9 +2504,9 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .trip-guide__hero {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
     padding: var(--space-8) var(--space-6);
-    color: white;
+    color: var(--text-inverse);
     position: relative;
     overflow: hidden;
 }
@@ -1801,9 +2593,11 @@ input[type="range"]::-webkit-slider-thumb:hover {
     display: grid;
     gap: var(--space-5);
     padding: var(--space-5);
-    background: linear-gradient(180deg, #091423 0%, #102033 100%);
-    border: 1px solid rgba(148, 163, 184, 0.18);
-    color: #e2e8f0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    color: var(--text);
 }
 
 .trip-package__header {
@@ -1815,12 +2609,12 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 .trip-package__header h3 {
-    color: #f8fafc;
+    color: var(--text);
     margin-top: var(--space-1);
 }
 
 .trip-package__header .muted-text {
-    color: #cbd5e1;
+    color: var(--text-secondary);
 }
 
 .trip-package__total {
@@ -1829,8 +2623,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
     min-width: 180px;
     padding: 14px 16px;
     border-radius: 16px;
-    background: rgba(15, 23, 42, 0.48);
-    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
 }
 
 .trip-package__total-label {
@@ -1844,7 +2638,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .trip-package__total strong {
     font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
     font-size: 1.9rem;
-    color: #f8fafc;
+    color: var(--text);
 }
 
 .trip-package__grid {
@@ -1858,20 +2652,20 @@ input[type="range"]::-webkit-slider-thumb:hover {
     gap: 6px;
     padding: 14px 16px;
     border-radius: 16px;
-    background: rgba(15, 23, 42, 0.42);
-    border: 1px solid rgba(148, 163, 184, 0.16);
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
 }
 
 .trip-package__line-item span {
     font-size: 0.78rem;
-    color: #94a3b8;
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
 
 .trip-package__line-item strong {
     font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
-    color: #f8fafc;
+    color: var(--text);
     font-size: 1.05rem;
 }
 
@@ -1887,22 +2681,25 @@ input[type="range"]::-webkit-slider-thumb:hover {
     gap: var(--space-4);
 }
 
+/* Same failure mode as the explore flight hero: the parent panel was converted
+   to white and its text to near-black, but this child kept a 42%-navy fill, so
+   its heading was black-on-navy. */
 .trip-package__booking-card {
     display: grid;
     gap: var(--space-3);
     padding: var(--space-4);
-    border-radius: 18px;
-    background: rgba(15, 23, 42, 0.42);
-    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: var(--radius-lg);
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
 }
 
 .trip-package__booking-card h4 {
-    color: #f8fafc;
+    color: var(--text);
     font-size: 1rem;
 }
 
 .trip-package__booking-card .muted-text {
-    color: #cbd5e1;
+    color: var(--text-secondary);
     font-size: 0.85rem;
 }
 
@@ -2265,6 +3062,29 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 /* Responsive */
+/* The header sheds weight in stages rather than wrapping: first the tagline,
+   then the sync wording, then the desktop nav entirely (the mobile bottom nav
+   takes over below 768px). */
+@media (max-width: 1180px) {
+    .brand-mark__subtitle {
+        display: none;
+    }
+
+    .header-sync-badge__label {
+        display: none;
+    }
+
+    .header-sync-badge {
+        padding: 6px;
+    }
+}
+
+@media (max-width: 768px) {
+    .site-nav {
+        display: none;
+    }
+}
+
 @media (max-width: 1024px) {
     .planner-layout {
         grid-template-columns: 1fr;
@@ -2321,8 +3141,24 @@ a,
         padding-bottom: env(safe-area-inset-bottom);
     }
 
+    /* Eight destinations do not fit a 375px bar: at flex:1 each the labels
+       truncated to "Hack flig…" and the last item was clipped off-screen
+       entirely. Fixed-width items that scroll keep every label whole and every
+       destination reachable, and snapping stops it drifting mid-item. */
+    .mobile-bottom-nav {
+        overflow-x: auto;
+        scroll-snap-type: x proximity;
+        scrollbar-width: none;
+    }
+
+    .mobile-bottom-nav::-webkit-scrollbar {
+        display: none;
+    }
+
     .mobile-bottom-nav__item {
-        flex: 1;
+        flex: 0 0 auto;
+        width: 72px;
+        scroll-snap-align: start;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -2348,9 +3184,6 @@ a,
         font-weight: 600;
         text-align: center;
         white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 56px;
     }
 }
 
@@ -3317,8 +4150,7 @@ a,
 .auth-wizard {
     padding: var(--space-8);
     border-radius: 28px;
-    background:
-        radial-gradient(circle at top left, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85) 38%, rgba(230, 240, 250, 0.82) 100%),
+    background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85) 38%, rgba(230, 240, 250, 0.82) 100%),
         linear-gradient(135deg, rgba(0, 87, 184, 0.08), rgba(0, 166, 153, 0.08));
     box-shadow: var(--shadow-xl);
 }
@@ -3602,3 +4434,278 @@ a,
     }
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SERVICE STATUS + ERROR BOUNDARY — telling people what is actually wrong
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.service-banner {
+    border-bottom: 1px solid var(--border);
+    background: var(--warning-light);
+    color: var(--text);
+}
+
+.service-banner--unreachable,
+.service-banner--degraded {
+    background: var(--error-light);
+    border-bottom-color: rgba(217, 48, 37, 0.28);
+}
+
+.service-banner--offline {
+    background: var(--surface-sunken);
+    border-bottom-color: var(--border-strong);
+}
+
+.service-banner__inner {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding-top: var(--space-3);
+    padding-bottom: var(--space-3);
+}
+
+.service-banner__icon {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    color: var(--error);
+    box-shadow: var(--shadow-xs);
+}
+
+.service-banner--offline .service-banner__icon {
+    color: var(--text-secondary);
+}
+
+.service-banner__content {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+}
+
+.service-banner__title {
+    font-size: var(--text-base);
+    font-weight: 600;
+}
+
+.service-banner__body {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+}
+
+.service-banner__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex: none;
+}
+
+.service-banner__retry {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 7px 14px;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.service-banner__retry:hover:not(:disabled) {
+    background: var(--surface-hover);
+    border-color: var(--text-light);
+}
+
+.service-banner__retry:disabled {
+    opacity: 0.65;
+    cursor: progress;
+}
+
+.service-banner__close {
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 1.35rem;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+.service-banner__close:hover {
+    color: var(--text);
+    background: rgba(15, 23, 42, 0.06);
+}
+
+.service-banner__retry:focus-visible,
+.service-banner__close:focus-visible,
+.error-boundary__button:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+/* ─── Error boundary fallback ─────────────────────────────────────────────── */
+
+.error-boundary {
+    display: grid;
+    place-items: center;
+    padding: var(--space-10) var(--space-4);
+}
+
+/* The app-scoped boundary replaces the whole screen, so it carries the page
+   background itself — there is no shell left around it to provide one. */
+.error-boundary--app {
+    min-height: 100vh;
+    background: var(--bg);
+}
+
+.error-boundary__panel {
+    width: min(560px, 100%);
+    display: grid;
+    justify-items: center;
+    text-align: center;
+    gap: var(--space-4);
+    padding: var(--space-8) var(--space-6);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+}
+
+.error-boundary__icon {
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    border-radius: var(--radius-full);
+    background: var(--error-light);
+    color: var(--error);
+    font-size: 1.35rem;
+}
+
+.error-boundary__title {
+    margin: 0;
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: var(--text);
+}
+
+.error-boundary__body {
+    margin: 0;
+    font-size: var(--text-base);
+    color: var(--text-secondary);
+    max-width: 44ch;
+}
+
+.error-boundary__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-2);
+}
+
+.error-boundary__button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 10px 18px;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.error-boundary__button:hover {
+    background: var(--surface-hover);
+    border-color: var(--text-light);
+}
+
+.error-boundary__button--primary {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--text-inverse);
+}
+
+.error-boundary__button--primary:hover {
+    background: var(--primary-hover);
+    border-color: var(--primary-hover);
+}
+
+.error-boundary__details {
+    width: 100%;
+    text-align: left;
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+}
+
+.error-boundary__details summary {
+    cursor: pointer;
+    padding: var(--space-2) 0;
+}
+
+.error-boundary__details code {
+    display: block;
+    margin-top: var(--space-2);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--surface-sunken);
+    color: var(--text-secondary);
+    font-size: var(--text-xs);
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+    .service-banner__inner {
+        flex-wrap: wrap;
+    }
+
+    .service-banner__actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
+
+.route-loading {
+    padding: var(--space-12) var(--space-4);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: var(--text-base);
+}
+
+/* ─── Beta labelling ────────────────────────────────────────────────────────
+   The product launches narrowly with known gaps in price and spot data. The
+   badge is deliberately part of the brand lockup rather than a dismissible
+   banner: it should still be true and still be visible on the hundredth visit.
+   ------------------------------------------------------------------------ */
+.brand-mark__beta {
+	display: inline-block;
+	margin-left: 0.4em;
+	padding: 0.05em 0.4em;
+	border: 1px solid var(--color-border, #cfd6e0);
+	border-radius: 999px;
+	font-size: 0.62em;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	vertical-align: middle;
+	color: var(--color-text-muted, #5a6472);
+	background: var(--color-surface-muted, #eef1f5);
+}
+
+.footer-inline-link {
+	color: inherit;
+	text-decoration: underline;
+}

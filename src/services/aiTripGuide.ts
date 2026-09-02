@@ -1,6 +1,8 @@
 // Client for POST /api/trips/ai-guide — AI-authored recommendations that load
 // separately from the core explore result so the dashboard stays fast.
 
+import { trackedFetch } from './serviceStatus';
+
 export interface AiGuideNeighborhood {
     name?: string | null;
     vibe?: string | null;
@@ -36,7 +38,7 @@ export interface AiTripGuide {
 
 export const fetchAiTripGuide = async (destination: string, activity?: string | null): Promise<AiTripGuide> => {
     // Relative URL — same CRA/prod proxy path the explore call uses.
-    const response = await fetch('/api/trips/ai-guide', {
+    const response = await trackedFetch('/api/trips/ai-guide', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ destination, activity: activity ?? undefined }),

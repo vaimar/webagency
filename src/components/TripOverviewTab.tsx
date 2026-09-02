@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId, useState } from 'react';
 import {
     asPositiveAmount,
     formatCurrency,
@@ -15,6 +15,10 @@ import {
     getGemRating,
     getTripCostEstimate,
     humanizeProviderLabel,
+    isFallbackOption,
+    looksLikeBackendConstant,
+    sanitizeAirline,
+    sanitizeFlightNumber,
     shouldPromotePendingStayAvailability,
 } from '../services/tripExploreSelectors';
 import { round2 } from '../services/driveEstimate';
@@ -76,6 +80,10 @@ const buildTimeline = (trip: TripExplorationResponse, flight: UnifiedFlightOptio
 };
 
 const TripOverviewTab: React.FC<TripOverviewTabProps> = ({ trip, selectedFlight = null, nights, driveMode }) => {
+    // Progressive disclosure: the fuel/toll/parking micro-logistics stay behind
+    // a single summary line until the shopper asks for the receipts.
+    const [isLogisticsOpen, setIsLogisticsOpen] = useState(false);
+    const logisticsPanelId = useId();
     const flight = selectedFlight ?? trip.bestUnifiedFlight;
     const truth = flight?.antiCauchemar;
     const pricing = getFlightPricing(flight);
@@ -89,6 +97,15 @@ const TripOverviewTab: React.FC<TripOverviewTabProps> = ({ trip, selectedFlight 
     );
     const catchMessage = flight ? getFlightCatchMessage(flight) : null;
     const providerLabel = humanizeProviderLabel(flight?.sourceLabel ?? flight?.source ?? null);
+    /**
+     * This card read `flight.airline` / `flight.flightNumber` straight off the
+     * wire, so a synthesised route announced itself as "FALLBACK ROUTING" /
+     * "FALLBACK-SNNIBZ". The sanitizers already existed for the flights list;
+     * the overview simply never used them.
+     */
+    const isFallback = isFallbackOption(flight);
+    const airlineLabel = sanitizeAirline(flight?.airline);
+    const flightNumberLabel = sanitizeFlightNumber(flight?.flightNumber);
     const routeLabel = flight?.departureAirport && flight?.arrivalAirport
         ? `${flight.departureAirport} → ${flight.arrivalAirport}`
         : null;
@@ -97,9 +114,22 @@ const TripOverviewTab: React.FC<TripOverviewTabProps> = ({ trip, selectedFlight 
         ? '⚠ Manual check required'
         : truth?.logisticVerdict ?? (transferMinutes != null ? `~${Math.round(transferMinutes)} min to center` : null);
     const arrivalLabel = formatDateTime(flight?.scheduledArrival);
-    const noFlightReason = trip.resolutionReason
-        ?? trip.routeSelectionSummary
-        ?? 'No flight data was returned for this route.';
+    /**
+     * Shown when no airline returned a fare. The backend used to synthesise a
+     * flight rather than admit this, so the branch below was rarely reached;
+     * now it is the honest answer and needs to say something useful.
+     *
+     * The backend fields are used only when they are real prose. Both sometimes
+     * arrive as raw enums — `resolutionReason` was putting
+     * "EXPLICIT_ARRIVAL_AIRPORT" in front of the user as an explanation — but
+     * they also carry genuinely useful sentences like "City coordinates could not
+     * be resolved for EXO 84", which are better than any generic wording.
+     */
+    const noFlightReason = [trip.resolutionReason, trip.routeSelectionSummary]
+        .map((value) => value?.trim())
+        .find((value): value is string => Boolean(value) && !looksLikeBackendConstant(value!))
+        ?? 'No airline returned a fare for this route on these dates. Try different dates or a '
+            + 'nearby airport — the total below leaves the flight out entirely.';
 
     // Backend pre-sorts hiddenGemHotels by composite score (best first).
     const bestGem = trip.hiddenGemHotels?.[0];
@@ -137,7 +167,11 @@ const TripOverviewTab: React.FC<TripOverviewTabProps> = ({ trip, selectedFlight 
                 <div className="trip-explore-dashboard__package-lines">
                     <div className="trip-explore-dashboard__package-line">
                         <span>Flight</span>
-                        <strong>{cost.flight != null ? formatCurrency(cost.flight, cost.currency) : '—'}</strong>
+                        <strong>
+                            {cost.flight != null
+                                ? formatCurrency(cost.flight, cost.currency)
+                                : 'Not priced'}
+                        </strong>
                     </div>
                     <div className="trip-explore-dashboard__package-line">
                         <span>Where to sleep</span>
@@ -161,33 +195,62 @@ const TripOverviewTab: React.FC<TripOverviewTabProps> = ({ trip, selectedFlight 
 
                 {drive && (
                     <div className="trip-explore-dashboard__drive-breakdown">
-                        <span className="trip-explore-dashboard__meta-label">
-                            🚗 Drive {drive.originCity} → {drive.departureAirport}
-                            {' · '}
-                            {formatMinutes(drive.addedMinutesRoundTrip)} added return
-                        </span>
-                        <div className="trip-explore-dashboard__drive-rows">
-                            <div className="trip-explore-dashboard__drive-row">
-                                <span>Fuel · {drive.distanceKm * 2} km return</span>
-                                <strong>{formatEur2(drive.fuelEur)}</strong>
-                            </div>
-                            {drive.tolls.map((toll) => (
-                                <div key={toll.name} className="trip-explore-dashboard__drive-row">
-                                    <span>{toll.name} <em>{formatEur2(toll.amountEur)} × 2 return</em></span>
-                                    <strong>{formatEur2(round2(toll.amountEur * 2))}</strong>
-                                </div>
-                            ))}
-                            <div className="trip-explore-dashboard__drive-row">
-                                <span>Airport parking · {drive.nights} × {formatEur2(drive.parkingPerDayEur)}/day</span>
-                                <strong>{formatEur2(drive.parkingEur)}</strong>
-                            </div>
-                        </div>
+                        {/* Collapsed by default: one sleek summary line owns the whole
+                            fuel/toll/parking story until the shopper opens the receipts. */}
+                        <button
+                            type="button"
+                            className="trip-explore-dashboard__drive-toggle"
+                            aria-expanded={isLogisticsOpen}
+                            aria-controls={logisticsPanelId}
+                            onClick={() => setIsLogisticsOpen((open) => !open)}
+                        >
+                            <span className="trip-explore-dashboard__drive-toggle-main">
+                                <span className="trip-explore-dashboard__drive-toggle-label">
+                                    📊 Door-to-airport logistics breakdown
+                                </span>
+                                <span className="trip-explore-dashboard__meta-label">
+                                    🚗 {drive.originCity} → {drive.departureAirport}
+                                    {' · '}
+                                    {formatMinutes(drive.addedMinutesRoundTrip)} added return
+                                </span>
+                            </span>
+                            <span className="trip-explore-dashboard__drive-toggle-amount">
+                                +{formatEur2(drive.totalEur)}
+                                <span aria-hidden="true" className="trip-explore-dashboard__drive-chevron">▾</span>
+                            </span>
+                        </button>
 
+                        {/* Split-airport trap stays impossible to miss even when the
+                            breakdown is collapsed — compact chip, detail on hover/focus. */}
                         {drive.splitAirport && (
-                            <div className="trip-explore-dashboard__drive-alert" role="alert">
-                                ⚠ Split-airport logistics: your car will be parked at <strong>{drive.departureAirport}</strong>,
-                                not your home airport <strong>{drive.returnAirport}</strong>. Make sure your return flight lands
-                                back at {drive.departureAirport} to collect it — parking is billed for the full stay there.
+                            <InfoTooltip
+                                tone="warn"
+                                ariaLabel="Split-airport parking warning"
+                                label="⚠ Split airport"
+                            >
+                                Your car will be parked at {drive.departureAirport}, not your home
+                                airport {drive.returnAirport}. Make sure the return flight lands back
+                                at {drive.departureAirport} to collect it — parking is billed for the
+                                full stay there.
+                            </InfoTooltip>
+                        )}
+
+                        {isLogisticsOpen && (
+                            <div id={logisticsPanelId} className="trip-explore-dashboard__drive-rows">
+                                <div className="trip-explore-dashboard__drive-row">
+                                    <span>Fuel · {drive.distanceKm * 2} km return</span>
+                                    <strong>{formatEur2(drive.fuelEur)}</strong>
+                                </div>
+                                {drive.tolls.map((toll) => (
+                                    <div key={toll.name} className="trip-explore-dashboard__drive-row">
+                                        <span>{toll.name} <em>{formatEur2(toll.amountEur)} × 2 return</em></span>
+                                        <strong>{formatEur2(round2(toll.amountEur * 2))}</strong>
+                                    </div>
+                                ))}
+                                <div className="trip-explore-dashboard__drive-row">
+                                    <span>Airport parking · {drive.nights} × {formatEur2(drive.parkingPerDayEur)}/day</span>
+                                    <strong>{formatEur2(drive.parkingEur)}</strong>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -209,27 +272,34 @@ const TripOverviewTab: React.FC<TripOverviewTabProps> = ({ trip, selectedFlight 
                                 {selectedFlight ? 'Your selected flight' : 'Top match flight'}
                             </h3>
                         </div>
+                        {/* The catch rides next to the fare as a compact warn chip —
+                            full Anti-Cauchemar note reveals on hover / focus. */}
                         {hasLogisticsCatch && (
-                            <span className="trip-explore-dashboard__badge trip-explore-dashboard__badge--warn">
-                                Logistics Catch
-                            </span>
+                            <InfoTooltip
+                                tone="warn"
+                                ariaLabel="Anti-Cauchemar: the catch behind this fare"
+                                label="⚠ The catch"
+                            >
+                                {catchMessage
+                                    ?? 'This fare hides logistics costs — check the honest total before booking.'}
+                            </InfoTooltip>
                         )}
                     </div>
 
                     {flight ? (
                         <>
-                            <div className="trip-explore-dashboard__flight-hero">
+                            <div className={`trip-explore-dashboard__flight-hero${isFallback ? ' trip-explore-dashboard__flight-hero--fallback' : ''}`}>
                                 <div>
                                     {/* Crisp title only — the raw source flag lives in the muted
                                         provider caption below, never in the headline. */}
-                                    {flight.airline && (
+                                    {(airlineLabel ?? (isFallback ? 'No fare found' : null)) && (
                                         <p className="trip-explore-dashboard__flight-airline">
-                                            {flight.airline}
+                                            {airlineLabel ?? 'No fare found'}
                                         </p>
                                     )}
-                                    {(flight.flightNumber ?? routeLabel) && (
+                                    {(flightNumberLabel ?? routeLabel) && (
                                         <p className="trip-explore-dashboard__flight-number">
-                                            {flight.flightNumber ?? routeLabel}
+                                            {flightNumberLabel ?? routeLabel}
                                         </p>
                                     )}
                                     {providerLabel && (
@@ -239,7 +309,9 @@ const TripOverviewTab: React.FC<TripOverviewTabProps> = ({ trip, selectedFlight 
                                     )}
                                 </div>
                                 <div className="trip-explore-dashboard__price-stack">
-                                    <span className="trip-explore-dashboard__price-caption">Base fare</span>
+                                    <span className="trip-explore-dashboard__price-caption">
+                                        {isFallback ? 'Placeholder' : 'Base fare'}
+                                    </span>
                                     <strong
                                         className={
                                             pricing.baseFare == null
@@ -267,6 +339,13 @@ const TripOverviewTab: React.FC<TripOverviewTabProps> = ({ trip, selectedFlight 
                                         </span>
                                     )}
                                 </div>
+                                {isFallback && (
+                                    <p className="trip-explore-dashboard__fallback-note">
+                                        No airline returned a fare for this route on this date. The figure
+                                        above is a placeholder, and the times below were not looked up —
+                                        check with the airline before planning around them.
+                                    </p>
+                                )}
                             </div>
 
                             {(arrivalLabel || airportReality) && (
@@ -296,16 +375,10 @@ const TripOverviewTab: React.FC<TripOverviewTabProps> = ({ trip, selectedFlight 
                                 </div>
                             )}
 
-                            {hasLogisticsCatch && catchMessage && (
-                                <div className="trip-explore-dashboard__alert-block">
-                                    <span className="trip-explore-dashboard__alert-label">Anti-Cauchemar</span>
-                                    <p>{catchMessage}</p>
-                                </div>
-                            )}
                         </>
                     ) : (
                         <div className="trip-explore-dashboard__alert-block">
-                            <span className="trip-explore-dashboard__alert-label">No flight, no trip</span>
+                            <span className="trip-explore-dashboard__alert-label">No flights found</span>
                             <p>{noFlightReason}</p>
                         </div>
                     )}
@@ -330,7 +403,7 @@ const TripOverviewTab: React.FC<TripOverviewTabProps> = ({ trip, selectedFlight 
                 <article className="trip-explore-dashboard__card trip-explore-dashboard__card--hotels trip-explore-dashboard__card--top-match">
                     <div className="trip-explore-dashboard__card-top">
                         <div>
-                            <p className="trip-explore-dashboard__label">Plan de ouf</p>
+                            <p className="trip-explore-dashboard__label">Where to stay</p>
                             <h3 className="trip-explore-dashboard__card-title">Best stay match</h3>
                         </div>
                         {!bestGem && (

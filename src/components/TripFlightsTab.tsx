@@ -189,6 +189,14 @@ const TripFlightsTab: React.FC<TripFlightsTabProps> = ({ trip, selectedFlightKey
                                                 : 'trip-explore-dashboard__chip'
                                         }
                                         aria-pressed={isSelected}
+                                        // Every row rendered a button reading exactly
+                                        // "Select flight", so a screen reader announced a
+                                        // column of identical controls with nothing to tell
+                                        // them apart. The visible label stays short; the
+                                        // accessible name names the flight.
+                                        aria-label={`${isSelected ? 'Selected' : 'Select flight'} ${
+                                            [row.flightNumber, row.routeLabel].filter(Boolean).join(' ') || row.key
+                                        }`}
                                         onClick={() => onSelectFlight(
                                             isSelected ? null : { key: row.key, option: row.option },
                                         )}

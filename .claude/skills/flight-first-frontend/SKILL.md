@@ -9,5 +9,5 @@ Load order:
 4. `agent-skills/context/backend-contracts.md`
 5. `agent-skills/skills/flight-first-frontend.md`
 
-Use this skill for Home search flow, selector coverage, and no-flight/no-trip enforcement.
+Use this skill for Home search flow, selector coverage, FirstMileAccess UI, and no-flight/no-trip enforcement.
 

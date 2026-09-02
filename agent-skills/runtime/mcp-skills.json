@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "runtime": "custom-mcp-loader",
   "project": "slumber-webagency",
   "sharedRules": [
@@ -7,7 +7,8 @@
   ],
   "context": [
     "agent-skills/context/frontend-surface.md",
-    "agent-skills/context/backend-contracts.md"
+    "agent-skills/context/backend-contracts.md",
+    "agent-skills/context/route-hacker.md"
   ],
   "skills": [
     {

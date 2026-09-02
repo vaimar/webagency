@@ -1,3 +1,5 @@
+import { faPlane, faShip, faUmbrellaBeach } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import BookingLinks from './components/BookingLinks';
 import { accommodationUrls } from './services/affiliates';
@@ -107,7 +109,7 @@ const IslandHop: React.FC = () => {
     return (
         <div className="island-hop">
             <div className="island-hop__intro">
-                <p className="island-hop__eyebrow">Plan de ouf</p>
+                <p className="island-hop__eyebrow">Multi-stop routing</p>
                 <h2 className="island-hop__title">Greek Islands Tour</h2>
                 <p className="island-hop__subtitle">
                     Open-jaw island hopping — fly into one island, ferry between the rest, fly home from another.
@@ -212,7 +214,7 @@ const IslandHop: React.FC = () => {
 
                     <div className="island-hop__timeline">
                         <div className="island-hop__leg island-hop__leg--flight">
-                            <span className="island-hop__leg-icon">✈</span>
+                            <span className="island-hop__leg-icon"><FontAwesomeIcon icon={faPlane} /></span>
                             <div>
                                 <strong>Fly in · {flightLabel(tour.flyIn?.from, tour.flyIn?.to, tour.flyIn?.airline)}</strong>
                                 <span className="island-hop__leg-price">{formatCurrency(tour.flyIn?.priceEur ?? 0, currency)}</span>
@@ -226,7 +228,7 @@ const IslandHop: React.FC = () => {
                             return (
                                 <React.Fragment key={`${stop.island}-${index}`}>
                                     <div className="island-hop__leg island-hop__leg--stay">
-                                        <span className="island-hop__leg-icon">🏝</span>
+                                        <span className="island-hop__leg-icon"><FontAwesomeIcon icon={faUmbrellaBeach} /></span>
                                         <div>
                                             <strong>{stop.island} · {stop.nights} {stop.nights === 1 ? 'night' : 'nights'}</strong>
                                             <span className="island-hop__leg-sub">
@@ -268,7 +270,7 @@ const IslandHop: React.FC = () => {
                                     </div>
                                     {ferry && (
                                         <div className="island-hop__leg island-hop__leg--ferry">
-                                            <span className="island-hop__leg-icon">⛴</span>
+                                            <span className="island-hop__leg-icon"><FontAwesomeIcon icon={faShip} /></span>
                                             <div>
                                                 <strong>Ferry {ferry.fromIsland} → {ferry.toIsland}</strong>
                                                 <span className="island-hop__leg-sub">{formatMinutes(ferry.durationMinutes)}</span>
@@ -281,7 +283,7 @@ const IslandHop: React.FC = () => {
                         })}
 
                         <div className="island-hop__leg island-hop__leg--flight">
-                            <span className="island-hop__leg-icon">✈</span>
+                            <span className="island-hop__leg-icon"><FontAwesomeIcon icon={faPlane} /></span>
                             <div>
                                 <strong>Fly home · {flightLabel(tour.flyOut?.from, tour.flyOut?.to, tour.flyOut?.airline)}</strong>
                                 <span className="island-hop__leg-price">{formatCurrency(tour.flyOut?.priceEur ?? 0, currency)}</span>

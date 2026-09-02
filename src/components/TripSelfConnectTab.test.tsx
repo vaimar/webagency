@@ -70,7 +70,7 @@ describe('TripSelfConnectTab', () => {
     });
 
     it('offers a retry on error', async () => {
-        const onRetry = jest.fn();
+        const onRetry = vi.fn();
         render(<TripSelfConnectTab status="error" result={null} onRetry={onRetry} />);
         expect(screen.getByText('Self-transfer search unavailable')).toBeInTheDocument();
         await userEvent.click(screen.getByRole('button', { name: /try again/i }));

@@ -18,6 +18,7 @@ import {
     StaysSortKey,
 } from '../services/tripExploreSelectors';
 import { HotelResult, TripExplorationResponse } from '../types/tripExploration';
+import NightlyRateCaveat from './NightlyRateCaveat';
 
 interface TripStaysTabProps {
     trip: TripExplorationResponse;
@@ -64,8 +65,9 @@ const TripStaysTab: React.FC<TripStaysTabProps> = ({ trip, extraStays = [] }) =>
         <article className="trip-explore-dashboard__card trip-explore-dashboard__card--hotels">
             <div className="trip-explore-dashboard__card-top">
                 <div>
-                    <p className="trip-explore-dashboard__label">Plan de ouf</p>
-                    <h3 className="trip-explore-dashboard__card-title">Hidden gems — all verified stays</h3>
+                    <p className="trip-explore-dashboard__label">Where to stay</p>
+                    <h3 className="trip-explore-dashboard__card-title">Stays with a live nightly rate</h3>
+                    <NightlyRateCaveat variant="block" />
                 </div>
                 {gems.length > 0 ? (
                     <span className="trip-explore-dashboard__badge trip-explore-dashboard__badge--accent">

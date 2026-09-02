@@ -2,6 +2,7 @@ import { faCar, faInfoCircle, faMapMarkerAlt, faPlane, faSearch } from '@fortawe
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useEffect, useMemo, useState } from 'react';
 import Select, { components, GroupBase, OptionProps, SingleValueProps, StylesConfig } from 'react-select';
+import { Link } from 'react-router-dom';
 import FlightCard from './components/FlightCard';
 import FlightDestinationCard from './components/FlightDestinationCard';
 import { RequestDiagnostics, TripGuide, TripGuideLoading } from './components/TripGuide';
@@ -30,9 +31,13 @@ import {
 } from './services/api';
 import { getAirportTransferContext, getArrivalHour } from './services/transferEstimate';
 import './Home.css';
+import NightlyRateCaveat from './components/NightlyRateCaveat';
 
 const LANDING_ORIGIN = 'DUB';
 const LANDING_MAX_PRICE = 260;
+
+/** Stable empty result, so clearing hotels twice is not a state change. */
+const NO_HOTELS: HotelResult[] = [];
 const NO_HONEST_ROUTES_FOUND = 'No Honest Routes Found';
 const DEFAULT_HOTEL_RADIUS_METERS = 2600;
 const LATE_ARRIVAL_HOTEL_RADIUS_METERS = 1700;
@@ -323,8 +328,22 @@ const Home: React.FC = () => {
     const [hotelRadiusMeters, setHotelRadiusMeters] = useState<number | null>(null);
 
     const hasResults = flights.length > 0 || tripSuggestion !== null;
-    const originAirport = state.origin ? getAirportDisplay(state.origin) : null;
-    const destinationAirport = state.destination ? getAirportDisplay(state.destination) : null;
+    // Memoised on the airport code, not called inline, because
+    // getAirportDisplay builds a fresh object on every call — both the
+    // metadata branch (`{ ...metadata, searchCode }`) and the unknown-airport
+    // fallback. Called inline, `destinationAirport` changed identity on every
+    // render, which re-ran the nearby-stays effect below on every render; that
+    // effect resets state with a fresh `[]`, which is never Object.is-equal to
+    // the previous value, so it rendered again — forever, the moment a
+    // destination was set with no flight selected yet.
+    const originAirport = useMemo(
+        () => (state.origin ? getAirportDisplay(state.origin) : null),
+        [state.origin],
+    );
+    const destinationAirport = useMemo(
+        () => (state.destination ? getAirportDisplay(state.destination) : null),
+        [state.destination],
+    );
     const originGroups = groupAirportsByCountry(ORIGIN_AIRPORT_OPTIONS);
     const destinationGroups = groupAirportsByCountry(DESTINATION_AIRPORT_OPTIONS);
     const originOptions = mapAirportGroupsToSelect(originGroups);
@@ -459,7 +478,7 @@ const Home: React.FC = () => {
 
                 setLandingDestinations([]);
                 setLandingNotice(null);
-                setLandingError(error instanceof Error ? error.message : 'Live DUB discovery is unavailable right now.');
+                setLandingError(error instanceof Error ? error.message : 'Cached Dublin route hints are unavailable right now.');
             } finally {
                 if (isActive) {
                     setIsLoadingLanding(false);
@@ -491,7 +510,11 @@ const Home: React.FC = () => {
 
     useEffect(() => {
         if (!selectedFlight || !destinationAirport) {
-            setLiveHotels([]);
+            // Shared constant, not a fresh []: a new array literal here is never
+            // equal to the previous state, so it forces a render every time this
+            // branch runs. Harmless once the deps above are stable, but it is
+            // half of what made the loop possible — so it does not come back.
+            setLiveHotels(NO_HOTELS);
             setHotelDiagnostics(null);
             setHotelNotice(null);
             setHotelError(null);
@@ -664,6 +687,11 @@ const Home: React.FC = () => {
                                 <p className="home-discovery-panel__copy">
                                     Selected: {selectedActivityLabels.length > 0 ? selectedActivityLabels.join(', ') : 'No activity filter yet'}.
                                 </p>
+                                {selectedActivities.includes('skiing') && (
+                                    <p className="home-discovery-panel__copy">
+                                        <Link to="/ski-map">Open the ski resort map</Link> for the pinned catalog and grouped hotel overlay.
+                                    </p>
+                                )}
                             </div>
 
                             <div className="home-discovery-panel__section">
@@ -720,8 +748,8 @@ const Home: React.FC = () => {
                     <div className="section-card__header section-card__header--plain">
                         <div>
                             <p className="eyebrow">❄️ Frozen Summer discovery board</p>
-                            <h2>Live DUB fares that populate the search box.</h2>
-                            <p className="muted-text">These cards are only here before search begins. Once you search, the page clears the deck and focuses on the route result.</p>
+                            <h2>Cached Dublin fares, undated — a starting point, not a quote.</h2>
+                            <p className="muted-text">Our fare source cannot say which dates these prices apply to, so treat them as a route hint and check the airline for the real figure. These cards clear once you search.</p>
                         </div>
                     </div>
                     {isLoadingLanding ? (
@@ -821,6 +849,7 @@ const Home: React.FC = () => {
                                     <span className="hotel-proof__summary-label">Lead stay</span>
                                     <strong>{leadHotel?.hotel.name ?? '—'}</strong>
                                     {leadHotel && <span className="muted-text">{formatPrice(leadHotel.price, leadHotel.hotel.priceCurrency ?? 'EUR')} / night</span>}
+                                    {leadHotel && <NightlyRateCaveat />}
                                 </div>
                                 <div className="hotel-proof__summary-item hotel-proof__summary-item--notice">
                                     <span className="hotel-proof__summary-label">Hotel lookup note</span>
@@ -852,8 +881,9 @@ const Home: React.FC = () => {
                                                 <strong>{priceLabel}</strong>
                                                 <span>per night</span>
                                             </div>
+                                            <NightlyRateCaveat />
                                             <p className="hotel-proof-card__meta">{reviewLabel}</p>
-                                            <p className="hotel-proof-card__copy">{hotel.reviewSummary ?? 'Live nearby stay surfaced from the backend. Price may vary for group size.'}</p>
+                                            <p className="hotel-proof-card__copy">{hotel.reviewSummary ?? 'Live nearby stay surfaced from the backend.'}</p>
                                             <div className="hotel-proof-card__links trip-booking-links">
                                                 {hotel.bookingLink
                                                     ? <a href={hotel.bookingLink} target="_blank" rel="noopener noreferrer" className="trip-external-link trip-external-link--primary">Open live hotel rate</a>

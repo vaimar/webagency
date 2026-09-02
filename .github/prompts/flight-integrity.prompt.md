@@ -8,7 +8,8 @@ Load:
 - `AGENTS.md`
 - `agent-skills/shared/core-rules.md`
 - `agent-skills/context/backend-contracts.md`
+- `agent-skills/context/route-hacker.md`
 - `agent-skills/skills/flight-integrity.md`
 
-Goal: keep flight pricing, refresh flow, and honest sorting stable.
+Goal: keep flight pricing, refresh flow, and honest sorting stable. auditedTotalCost > realWorldEntryPrice > marketing. Route Hacker: schedule-only from local grid, ingest via flightsFuture, respect the quota guard.
 

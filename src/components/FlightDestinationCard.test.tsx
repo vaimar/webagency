@@ -5,7 +5,7 @@ import FlightDestinationCard from './FlightDestinationCard';
 describe('FlightDestinationCard', () => {
     it('renders airport thumbnails, fare chips, and the real destination airport copy', () => {
         const props: Record<string, unknown> = {
-            onSelect: jest.fn(),
+            onSelect: vi.fn(),
             isSelected: true,
             showsDateMatch: true,
             shouldAnimate: true,
@@ -41,7 +41,9 @@ describe('FlightDestinationCard', () => {
 
         expect(screen.getByText(/paris beauvais, france/i)).toBeInTheDocument();
         expect(screen.getAllByText(/paris beauvais airport/i).length).toBeGreaterThan(0);
-        expect(screen.getByAltText(/paris beauvais airport view/i)).toBeInTheDocument();
+        // BVA resolves to a real Paris city photo (Wikimedia), not a generic stock image.
+        const media = screen.getByAltText(/^paris$/i);
+        expect(media).toHaveAttribute('src', expect.stringContaining('upload.wikimedia.org'));
         expect(screen.getAllByText(/anti-cauchemar/i).length).toBeGreaterThan(0);
         expect(screen.getByText((content, element) => content === '€112' && element?.classList.contains('flight-card__price') === true)).toBeInTheDocument();
         expect(screen.getByText((content, element) => content === '€69' && element?.classList.contains('flight-card__marketing-price') === true)).toBeInTheDocument();

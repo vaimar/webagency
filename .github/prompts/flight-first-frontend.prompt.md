@@ -11,5 +11,5 @@ Load:
 - `agent-skills/context/backend-contracts.md`
 - `agent-skills/skills/flight-first-frontend.md`
 
-Goal: keep route search flight-first and no-flight/no-trip.
+Goal: keep route search flight-first, no-flight/no-trip, and FirstMileAccess-ready.
 
