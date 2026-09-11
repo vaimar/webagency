@@ -1,0 +1,71 @@
+/* Ride Finder — the chip-based search surface.
+   Statuses map to the state machine in hooks/useRideFinder.ts. */
+
+.ride-finder { display: flex; flex-direction: column; gap: 18px; }
+
+.ride-finder__form { display: flex; gap: 10px; flex-wrap: wrap; }
+.ride-finder__input {
+    flex: 1 1 280px; min-width: 0; padding: 12px 14px;
+    border: 1px solid var(--border-strong, #cbd5e1); border-radius: 8px;
+    font-size: 1rem; font-family: inherit; color: var(--text, #1e293b);
+    background: var(--surface, #fff);
+}
+.ride-finder__submit {
+    padding: 12px 20px; border: 0; border-radius: 8px; cursor: pointer;
+    background: var(--primary, #0057b8); color: #fff; font-weight: 600; font-size: .95rem;
+}
+.ride-finder__submit:disabled { opacity: .55; cursor: not-allowed; }
+
+/* ── chips ───────────────────────────────────────────── */
+.ride-finder__chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ride-finder__chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--border-strong, #cbd5e1); background: var(--surface, #fff);
+    font-size: .85rem; color: var(--text, #1e293b); font-family: inherit;
+}
+.ride-finder__chip:hover { background: var(--surface-hover, #f8fafc); }
+/* Dashed = we assumed this. The user can see exactly what we filled in. */
+.ride-finder__chip--assumed { border-style: dashed; border-color: var(--warning, #f5a623); color: #8a5a00; }
+.ride-finder__chip--rank { background: var(--primary-light, #e6f0fa); border-color: var(--primary, #0057b8); color: var(--primary-dark, #003d82); }
+.ride-finder__chip-edit { opacity: .55; font-size: .78rem; }
+
+/* ── progress ────────────────────────────────────────── */
+.ride-finder__progress { display: flex; flex-wrap: wrap; gap: 10px; font-size: .85rem; color: var(--text-secondary, #475569); }
+.ride-finder__progress-item { display: inline-flex; gap: 6px; align-items: center; }
+.ride-finder__progress-item--done { color: var(--success, #00875a); }
+.ride-finder__progress-item--failed { color: var(--error, #d93025); }
+
+/* ── options ─────────────────────────────────────────── */
+.ride-finder__options { display: grid; gap: 12px; grid-template-columns: 1fr; }
+@media (min-width: 760px) { .ride-finder__options { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); } }
+.ride-finder__option {
+    border: 1px solid var(--border, #e2e8f0); border-radius: 10px; padding: 16px;
+    background: var(--surface, #fff); display: flex; flex-direction: column; gap: 8px;
+}
+.ride-finder__option-spot { font-weight: 700; font-size: 1.05rem; }
+.ride-finder__option-total { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ride-finder__option-meta { font-size: .82rem; color: var(--text-muted, #64748b); }
+
+.ride-finder__badge {
+    align-self: flex-start; font-size: .7rem; font-weight: 700; letter-spacing: .04em;
+    text-transform: uppercase; padding: 3px 8px; border-radius: 4px;
+}
+.ride-finder__badge--EXACT { background: var(--success-light, #e6f4ed); color: var(--success, #00875a); }
+.ride-finder__badge--ESTIMATED { background: var(--warning-light, #fef8eb); color: #8a5a00; }
+.ride-finder__badge--MANUAL_CHECK_REQUIRED { background: var(--error-light, #fce8e6); color: var(--error, #d93025); }
+.ride-finder__badge--OVERRIDDEN_BY_LOCAL_ACCESS_KNOWLEDGE { background: var(--primary-light, #e6f0fa); color: var(--primary-dark, #003d82); }
+
+/* ── notices ─────────────────────────────────────────── */
+.ride-finder__notice {
+    border: 1px solid var(--border, #e2e8f0); border-left-width: 4px;
+    border-radius: 0 8px 8px 0; padding: 12px 14px; font-size: .88rem;
+    background: var(--surface, #fff); color: var(--text-secondary, #475569);
+}
+.ride-finder__notice--info { border-left-color: var(--primary, #0057b8); }
+.ride-finder__notice--warn { border-left-color: var(--warning, #f5a623); }
+.ride-finder__notice--critical { border-left-color: var(--error, #d93025); }
+
+.ride-finder__warnings { display: flex; flex-direction: column; gap: 8px; }
+.ride-finder__confidence { font-size: .82rem; color: var(--text-muted, #64748b); }
+.ride-finder__examples { display: flex; flex-wrap: wrap; gap: 8px; }

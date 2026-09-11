@@ -154,6 +154,9 @@ export interface ExecuteOptions {
     fetcher?: ExploreFetcher;
     profile?: WeightProfile;
     limit?: number;
+    /** Fires as each call settles, so the UI can show per-candidate progress
+     *  instead of one long silence. Fan-out still runs fully in parallel. */
+    onCallSettled?: (spotLabel: string, ok: boolean) => void;
 }
 
 export const executePlan = async (
@@ -184,9 +187,19 @@ export const executePlan = async (
     }
 
     // All calls go out together. One failure must not sink the others, so
-    // allSettled rather than all.
+    // allSettled rather than all. The per-promise hook fires on settle, which
+    // is what lets the UI tick candidates off as they land.
     const settled = await Promise.allSettled(
-        plan.calls.map((call: PlannedCall) => fetcher(call.request)),
+        plan.calls.map((call: PlannedCall) => fetcher(call.request).then(
+            (value) => {
+                options.onCallSettled?.(call.spotLabel, true);
+                return value;
+            },
+            (error) => {
+                options.onCallSettled?.(call.spotLabel, false);
+                throw error;
+            },
+        )),
     );
 
     const rankable: RankableOption[] = [];
