@@ -60,6 +60,29 @@ Then **at most three** trip cards — the existing `TripExploreDashboard` truth 
 
 And below that, at most one follow-up, rendered as chips rather than a chat turn.
 
+
+### The nine states you actually have to build
+
+"Implementation-ready UX" means the state machine, not the happy path. Fan-out takes seconds and three subsystems can
+degrade independently, so most of these are reachable on a normal day.
+
+| State | What renders | Next |
+|---|---|---|
+| `idle` | Empty box seeded with three *real* catalogue intents, not generic placeholders | → `parsing` |
+| `parsing` | Box locks but **keeps its text**; skeleton chip row. ~600–1200ms | → `needs_answer` \| `searching` |
+| `needs_answer` | One follow-up chip row, results area empty. Never >1 question, never a chat bubble | → `searching` |
+| `searching` | Chips resolved and already editable; 3 skeleton cards + **per-candidate progress** (`Ibiza ✓ · Vilnius ✓ · Hypnotics …`) — seconds of silence read as broken | → `results` \| `partial` \| `no_backing` |
+| `results` | ≤3 cards, narrative, warnings, confidence | terminal |
+| `results_partial` | Fewer candidates returned than searched; the missing ones are **named** | terminal + `PARTIAL_FANOUT` |
+| `results_degraded` | `orchestrationStatus !== 'OK'`; banner, prices re-labelled estimated | terminal + `BACKEND_DEGRADED` |
+| `no_backing` | Every candidate dropped by the no-flights rule. **The state teams get wrong.** Show why + the nearest deterministic relaxation ("no DUB→IBZ on 12 Sep; nearest is 14 Sep"), computed from the payload. Never an empty state, never a model-written apology | → `searching` (relaxed) |
+| `narrative_failed` | Cards render normally, prose templated, quiet info note. **Not an error state** | terminal + `NARRATIVE_REJECTED` |
+
+**The one interaction rule that will bite you:** editing a chip re-enters at `searching`, **never** at `parsing`. A chip
+edit must not re-run the parser — if it does, correcting "4 people" can silently flip the date or the ranking profile,
+and the user fixes one field while two others move. Chips mutate `ResolvedIntent` directly and re-run the deterministic
+middle. The model is not in the correction loop at all.
+
 ### Where AI earns its place (beyond filters)
 
 1. **Vocabulary → catalogue.** "cable park", "wake park", "somewhere I can actually learn", "not too far" are not
@@ -367,9 +390,70 @@ the wording. That is the right amount.
 one midweek) and labels the result exactly that: *"Checked 3 dates in September, not all 30."* It does not claim
 "cheapest this month." Fixing it properly is a v2 `DATE_SWEEP` using `/api/flight-search/routes` as a cheap pre-filter.
 
+
 ---
 
-## 6. Roadmap
+## 6. Data gaps to fill first
+
+Ranked by what they block. Gaps 1 and 2 are the same file and should land in one PR.
+
+### 1 · Venue facts — blocking
+- **Blocks:** "cable park only", "beginner-friendly", "somewhere warm" — three of four target intents
+- **Today:** no endpoint returns surface, difficulty or climate. The model must refuse or invent
+- **Shape:** `src/data/rideSpots.ts`, hand-curated, ~8 rows, reviewed like code
+- **Source:** venue websites, human-checked, each row carrying `sourceNote` + `checkedOn`
+- **Interim:** intent parses the constraint, code can't apply it ⇒ `ASSUMPTION_APPLIED` — "we could not filter by surface"
+- **Done when:** every catalogue venue has all fields non-null, or is excluded from the shortlist
+
+```ts
+export interface RideSpot {
+  label:            string;   // MUST match destinationDirectory.ts exactly
+  arrivalAirport:   string;
+  surface:          'cable' | 'boat' | 'sea';
+  cableCount:       number | null;        // null = not a cable park
+  beginnerFriendly: boolean;              // has a beginner line / school
+  skillFloor:       'none' | 'some' | 'confident';
+  climateBand:      'warm' | 'temperate' | 'cold';
+  openingSeason:    { from: string; to: string } | 'year_round';  // MM-DD
+  sessionPriceEur:  { hourly: number | null; dayPass: number | null } | null;
+  sourceNote:       string;   // where a human verified this
+  checkedOn:        string;   // ISO date — staleness is a warning, not a guess
+}
+```
+
+### 2 · Opening season — blocking
+- **Blocks:** every date-flexible query. A closed park is a ruined trip, not a bad ranking
+- **Risk:** the highest-consequence hallucination in the product. "Open year-round" is exactly the fluent, plausible,
+  wrong sentence a model produces
+- **Interim:** the claim whitelist bans *season / open / closed* outright until the field exists
+- **Done when:** the shortlist filter drops out-of-season venues *before* fan-out, saving the explore call entirely
+
+### 3 · Activity session pricing — degrades the total
+- **Blocks:** any honest "what will this cost me". Already an open item in `AGENTS.md`
+- **Today:** flights and stays are priced; the actual riding is not. A "total" omitting it is misleading
+- **Interim:** ship without it, but label the total *"excludes ride sessions"* **structurally** — a CostLine with
+  `status: MANUAL_CHECK_REQUIRED`, not prose
+- **Done when:** `sessionPriceEur` is folded into the breakdown as its own line
+
+### 4 · Occupancy-aware stay pricing — degrades one intent
+- **Blocks:** "4 friends" — the bbox rate is a single nightly figure, not per-occupancy
+- **Interim:** already a core rule — label *"price may vary for group size"*. **Do not multiply by party size**; that
+  would be inventing a price
+- **Done when:** hotel search accepts occupancy and returns a rate for it
+
+### 5 · Date-range search — structural, not data
+- **Blocks:** "best trip this month" answered truthfully
+- **Today:** `explore` takes one `travelDate`; a month is 30 × N calls
+- **Interim:** sample three dates and say so on the card — "checked 3 dates in September, not all 30"
+- **Done when:** `/api/flight-search/routes` pre-filters which dates deserve a full explore
+
+**Order:** gaps 1 + 2 together in one PR — they unblock three of the four target intents. Gaps 3 and 4 ship as honest
+labels rather than blockers. Gap 5 is v2. None of this needs a model; all of it needs a human who has checked a venue's
+website.
+
+---
+
+## 7. Roadmap
 
 ### MVP — ~2–3 weeks
 Ride Finder box, 2 AI endpoints, `rideSpots.ts`, `SHORTLIST_FANOUT` + `SINGLE_SPOT`, fact ledger, chip row, computed
