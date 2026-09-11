@@ -103,6 +103,11 @@ export const fetchHackerRoutes = async (
     return (await response.json()) as HackerItinerary[];
 };
 
+/** "17:15:00" or an ISO stamp → "17:15"; null when there is no time to send. */
+const clockOf = (value?: string | null): string | null => (
+    value?.match(/(?:^|T)(\d{2}:\d{2})/)?.[1] ?? null
+);
+
 export const fetchHackerRoutePrice = async (
     itinerary: HackerItinerary,
     date: string,
@@ -119,6 +124,10 @@ export const fetchHackerRoutePrice = async (
             // Carriers let the backend price Ryanair legs directly from Ryanair.
             leg1Carriers: itinerary.leg1.airlineCodes ?? [],
             leg2Carriers: itinerary.leg2?.airlineCodes ?? [],
+            // …and the clocks let it price the flights on this card rather
+            // than whichever departure was cheapest that day.
+            leg1DepartureTime: clockOf(itinerary.leg1.departureTime),
+            leg2DepartureTime: clockOf(itinerary.leg2?.departureTime),
             date,
         }),
     });
@@ -128,12 +137,30 @@ export const fetchHackerRoutePrice = async (
     return (await response.json()) as HackerPriceResponse;
 };
 
+/**
+ * How a fare lookup ended.
+ *
+ * `unpriced` and `error` are BOTH a null price and mean opposite things. The
+ * feed answering "nothing on that date" is evidence a flight does not operate;
+ * the request failing is evidence of nothing at all. Collapsing them let a
+ * timeout delete a real itinerary, so they stay apart all the way to the caller.
+ */
+export type LegFareStatus = 'priced' | 'unpriced' | 'error';
+
 /** A leg's fare, and the departure that fare is for. */
 export interface LegFare {
     price: number | null;
     /** ISO date-time, or null when no single flight owns the price. */
     departure: string | null;
     antiCauchemar?: AntiCauchemarAnalysis | null;
+    status: LegFareStatus;
+    /**
+     * When this answer came back — stamped on the way into the session memory,
+     * absent on one that has just arrived from the API. It is what lets a card
+     * say "price seen 14:20" instead of presenting an hour-old number as if it
+     * had been fetched for this search. See `sessionFares`.
+     */
+    seenAt?: string;
 }
 
 /**
@@ -150,6 +177,12 @@ export const fetchLegPrice = async (
     destination: string,
     carriers: string[] | null | undefined,
     date: string,
+    /**
+     * The flight's own departure clock, "HH:mm". With it a Ryanair leg is
+     * priced for THAT departure; without it the backend answers with the day's
+     * cheapest, which on a twice-daily route is somebody else's flight.
+     */
+    departureTime?: string | null,
 ): Promise<LegFare> => {
     const response = await trackedFetch('/api/trips/fetch-price', {
         method: 'POST',
@@ -161,6 +194,7 @@ export const fetchLegPrice = async (
             leg2Destination: null,
             leg1Carriers: carriers ?? [],
             leg2Carriers: [],
+            leg1DepartureTime: departureTime ?? null,
             date,
         }),
     });
@@ -168,9 +202,13 @@ export const fetchLegPrice = async (
         throw new Error(`Leg price fetch failed with status ${response.status}`);
     }
     const body = (await response.json()) as HackerPriceResponse;
+    const price = body.leg1?.price ?? null;
     return {
-        price: body.leg1?.price ?? null,
+        price,
         departure: body.leg1?.departure ?? null,
         antiCauchemar: body.leg1?.antiCauchemar ?? null,
+        // The request came back, so a null price is the feed's answer rather
+        // than our failure to ask.
+        status: price === null ? 'unpriced' : 'priced',
     };
 };

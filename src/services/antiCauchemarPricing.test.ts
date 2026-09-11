@@ -1,4 +1,4 @@
-import { getAntiCauchemarPricingSummary, getComparableFlightPrice, stripCabinBag } from './antiCauchemarPricing';
+import { getAntiCauchemarPricingSummary, getComparableFlightPrice, rebaseFare, stripCabinBag } from './antiCauchemarPricing';
 
 describe('antiCauchemarPricing', () => {
     it('uses a concrete breakdown when the backend explains the extra cost', () => {
@@ -71,3 +71,37 @@ describe('antiCauchemarPricing', () => {
     });
 });
 
+describe('rebaseFare', () => {
+    // Ryanair quotes the day's cheapest — €21.99 for the 08:35 — against a
+    // 17:15 flight that really costs €34.78.
+    const dayFloor = {
+        ticketPrice: 21.99,
+        cabinBagEstimate: 24,
+        airportShuttleEstimate: 5,
+        realCost: 50.99,
+        realWorldEntryPrice: 50.99,
+        auditedTotalCost: 110.99,
+        theCatch: 'PRICE TRANSPARENCY: This flight advertised at 22 EUR really costs 111 EUR all-in.',
+        currency: 'EUR',
+    };
+
+    it('moves every total by the fare difference and leaves the extras alone', () => {
+        const rebased = rebaseFare(dayFloor, 34.78);
+
+        expect(rebased.ticketPrice).toBe(34.78);
+        expect(rebased.realCost).toBe(63.78);
+        // +12.79 on the fare, and not a cent on the bag, transfer or markup.
+        expect(rebased.auditedTotalCost).toBe(123.78);
+        expect(rebased.cabinBagEstimate).toBe(24);
+        expect(rebased.airportShuttleEstimate).toBe(5);
+    });
+
+    it('drops the catch, which quotes a fare that is no longer the fare', () => {
+        expect(rebaseFare(dayFloor, 34.78).theCatch).toBeUndefined();
+    });
+
+    it('changes nothing when there is no fare to rebase from', () => {
+        const noFare = { cabinBagEstimate: 24, currency: 'EUR' };
+        expect(rebaseFare(noFare, 34.78)).toBe(noFare);
+    });
+});

@@ -27,11 +27,20 @@
  *     --airports=BCN,PMI,NTE,AGP --coverage-fetched-at=2026-08-27T20:00:00Z \
  *     --travel-window-start=2026-08-27 --travel-window-end=2026-09-09
  *
- * Known limitation, and it is a provider one: /api/flights ignores its `date`
- * parameter, so no probe against it can state a travel window. Until that
- * contract changes, every record reports
- * "way in (fare schedule window unavailable from provider)" and nothing can be
- * trip-ready. That is the honest result, not a bug in this script.
+ * Do not type that airport list by hand. `scripts/spot-reachability.mjs`
+ * measures it against the schedule graph and prints this command with the set,
+ * the timestamp and the window already filled in:
+ *
+ *   eval "$(node scripts/spot-reachability.mjs --print-audit-command)"
+ *
+ * A hand-typed set makes "trip-ready" a number about whoever typed it.
+ *
+ * Superseded limitation, kept because the reasoning still applies elsewhere:
+ * /api/flights ignores its `date` parameter, so no probe against THAT endpoint
+ * can state a travel window, and for a long time this meant nothing could ever
+ * be trip-ready. /api/trips/hacker-routes does honour a date, so the reachability
+ * probe uses it instead and the window is now stateable. Anything else built on
+ * /api/flights inherits the original problem.
  */
 
 const arg = (name, fallback = undefined) => {
@@ -170,6 +179,8 @@ const run = async () => {
 
         const readiness = assessReadiness(spot, {
             freshDays: FRESH_DAYS,
+            // Off unless asked for: see the rollout order in the season-sourced check.
+            seasonProvenanceRequired: process.argv.includes('--require-season-provenance'),
             // Only a supplied set counts as tested; without --airports the
             // access check correctly reports coverage as untested rather than
             // silently passing.
@@ -200,7 +211,9 @@ const run = async () => {
             lastVerified: Number.isFinite(observed) ? new Date(observed).toISOString() : null,
             tier: readiness.tier,
             decisionScore: readiness.decisionScore,
-            decisionPct: Math.round((readiness.decisionScore / MAX_DECISION) * 100),
+            // Divided by what was actually assessed, not by the full-strength
+            // scale — otherwise defining a flagged-off check lowers every score.
+            decisionPct: Math.round((readiness.decisionScore / (readiness.maxDecisionScore ?? MAX_DECISION)) * 100),
             decisionMissing: readiness.missing,
             decisionGaps: readiness.gaps,
             presentationScore: readiness.presentationScore,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { airlineBookingUrl, airlineName, isRyanairCode, operatorBrands } from '../data/airlines';
+import { airlineBookingUrl, airlineName, isRyanairCode, splitOperators } from '../data/airlines';
 import { PlaceHint, flightUrls } from '../services/affiliates';
 import OutboundLink from './OutboundLink';
 import './BookingLinks.css';
@@ -17,6 +17,13 @@ interface BookingLinksProps {
      * airline that actually flies it. Omitted, the links stay as they were.
      */
     carriers?: string[] | null;
+    /**
+     * Time in the air for this leg. It is what tells `splitOperators` whether
+     * the flight is short enough that a long-haul carrier on the list cannot be
+     * the one flying it — which is often what narrows a codeshare down to a
+     * single airline worth linking to.
+     */
+    durationMinutes?: number | null;
     /**
      * The leg's own clock times. With them the Kiwi link filters to the hour
      * this flight departs and lands, so it opens on this leg rather than every
@@ -38,6 +45,7 @@ interface BookingLinksProps {
 // affiliate IDs are set, affiliates.ts appends them automatically.
 const BookingLinks: React.FC<BookingLinksProps> = ({
     origin, destination, date, label = 'Book', surface = 'booking-links', carriers = null,
+    durationMinutes = null,
     departureTime = null, arrivalTime = null, originPlace = null, destinationPlace = null,
 }) => {
     if (!origin || !destination) {
@@ -68,13 +76,20 @@ const BookingLinks: React.FC<BookingLinksProps> = ({
     // site for it is no airline link at all, because a wrong one is worse than
     // none. With no carriers named we cannot know, so nothing changes.
     //
-    // ONE brand only. A merged flight lists every marketing carrier on it, in no
-    // meaningful order — Madrid–Málaga comes through as "Azul · Aeroméxico · ITA
-    // · Etihad · SAS · Air Europa", where only the last one flies it and the
-    // first is simply alphabetical. Picking one of those is a coin flip, so a
-    // codeshare gets the aggregators alone; they resolve the operator properly.
-    const brands = operatorBrands(carriers);
-    const operator = brands.length === 1 ? brands[0] : null;
+    // ONE candidate only. A merged flight lists every marketing carrier on it, in
+    // no meaningful order — Madrid–Málaga comes through as "Azul · Aeroméxico ·
+    // ITA · Etihad · SAS · Air Europa", where only the last one flies it and the
+    // first is simply alphabetical. Picking between real candidates is still a
+    // coin flip, and a codeshare that stays ambiguous still gets the aggregators
+    // alone; they resolve the operator properly.
+    //
+    // What changed is how often it stays ambiguous. Three of that list are
+    // long-haul carriers that cannot be flying an 80-minute hop, and dropping
+    // them sometimes leaves exactly one airline standing — which then earns its
+    // own link. That matters most on the legs no free source can price, where
+    // the airline's own site is where the fare actually is.
+    const { operators } = splitOperators(carriers, durationMinutes);
+    const operator = operators.length === 1 ? operators[0] : null;
     const airlineLink: [string, string] | null = (() => {
         if (!operator) {
             return carriers === null ? ['Ryanair', urls.ryanair] : null;

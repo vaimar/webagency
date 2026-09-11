@@ -1,4 +1,4 @@
-import { faArrowRightArrowLeft } from '@fortawesome/free-solid-svg-icons';
+import { faArrowRightArrowLeft, faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useState } from 'react';
 import AirportAutocomplete from './components/AirportAutocomplete';
@@ -6,16 +6,41 @@ import FlightCard from './components/FlightCard';
 import TripSelfConnectTab from './components/TripSelfConnectTab';
 import { SelfConnectStatus } from './components/TripSelfConnectTab';
 import { getCityImageForAirport } from './data/cityImages';
+import { isAirportCity } from './data/airportCities';
+import { airportTitle, cityName } from './services/airportLabels';
 import { FlightAvailable, refreshFlights, searchFlights } from './services/api';
 import { getComparableFlightPrice, stripCabinBag } from './services/antiCauchemarPricing';
 import {
     ObservedFares,
+    ObservedFlight,
     forgetObservedFare,
     loadObservedFares,
     saveObservedFare,
 } from './services/observedFares';
-import { FLIGHT_SORT_OPTIONS, FlightSortKey, sortCachedFares } from './services/hackFlightSort';
+import { FlightSortKey, sortCachedFares } from './services/hackFlightSort';
+import FlightSortTabs from './components/FlightSortTabs';
+import FlightCart from './components/FlightCart';
 import HackerResults from './components/HackerResults';
+import {
+    CartDirection,
+    CartEstimate,
+    FlightCart as TripCart,
+    buildCartFlight,
+    clearCart,
+    flightFor,
+    loadCart,
+    markBooked,
+    recordPaid,
+    recordReference,
+    removeFlight,
+    selectFlight,
+} from './services/flightCart';
+import { HackerItinerary } from './services/hackerRoutes';
+import {
+    RememberedSearch,
+    recallHackerSearch,
+    rememberHackerSearch,
+} from './services/lastHackerSearch';
 import { SelfConnectResult, fetchSelfConnect } from './services/selfConnect';
 import './HackFlights.css';
 
@@ -116,6 +141,33 @@ export const defaultReturnDate = (departure: string): string => {
     return target.toISOString().slice(0, 10);
 };
 
+/**
+ * A search, as the result blocks that answer it.
+ *
+ * A round trip is two independent searches, not one. Coming home is a
+ * different route on a different day, with its own hubs, its own schedule and
+ * its own fares — Shannon → Málaga via Stansted says nothing about which hub
+ * works on the way back. So each direction gets its own block.
+ */
+const searchBlocks = (search: RememberedSearch): HackerSearch[] => (
+    search.isOneWay
+        ? [{ origin: search.origin, destination: search.destination, date: search.departureDate }]
+        : [
+            {
+                origin: search.origin,
+                destination: search.destination,
+                date: search.departureDate,
+                heading: 'Outbound',
+            },
+            {
+                origin: search.destination,
+                destination: search.origin,
+                date: search.returnDate,
+                heading: 'Return',
+            },
+        ]
+);
+
 /** Cached fares sorted by the honest price, exact-date matches first. */
 const rankCachedFares = (flights: FlightAvailable[], requestedDate: string): { flights: FlightAvailable[]; notice: string | null } => {
     const sorted = [...flights].sort((left, right) => (
@@ -133,36 +185,26 @@ const rankCachedFares = (flights: FlightAvailable[], requestedDate: string): { f
     };
 };
 
-/** Cheapest / take-off / landing / shortest — the order the results are read in. */
-const SortChips: React.FC<{ value: FlightSortKey; onChange: (key: FlightSortKey) => void }> = ({ value, onChange }) => (
-    <div className="hack-flights__sort" role="group" aria-label="Sort results">
-        <span className="hack-flights__sort-label">Sort by</span>
-        {FLIGHT_SORT_OPTIONS.map((option) => (
-            <button
-                key={option.key}
-                type="button"
-                className={`hack-flights__filter-chip ${value === option.key ? 'hack-flights__filter-chip--active' : ''}`}
-                aria-pressed={value === option.key}
-                onClick={() => onChange(option.key)}
-            >
-                {option.label}
-            </button>
-        ))}
-    </div>
-);
-
 const HackFlights: React.FC = () => {
     // Shannon stays — it is the home airport this was built around. The
     // destination does not: SNN → BCN is not a route Ryanair flies, so the
     // default search shipped a query that could never return anything, and the
     // empty state read as "this product is broken" rather than "pick a route
     // that exists". AGP is a real Shannon route and is in the cached feed.
-    const [origin, setOrigin] = useState('SNN');
-    const [destination, setDestination] = useState('AGP');
-    const [departureDate, setDepartureDate] = useState(defaultDepartureDate);
-    const [returnDate, setReturnDate] = useState(() => defaultReturnDate(defaultDepartureDate()));
+    //
+    // Unless the visitor has been here before: the search they last ran is
+    // read once, on the way in, and every field below seeds itself from it.
+    // Coming back to a trip you are half-way through booking should not mean
+    // typing the route in again.
+    const [remembered] = useState(recallHackerSearch);
+    const [origin, setOrigin] = useState(remembered?.origin ?? 'SNN');
+    const [destination, setDestination] = useState(remembered?.destination ?? 'AGP');
+    const [departureDate, setDepartureDate] = useState(remembered?.departureDate ?? defaultDepartureDate);
+    const [returnDate, setReturnDate] = useState(
+        () => remembered?.returnDate ?? defaultReturnDate(defaultDepartureDate()),
+    );
     // One-way ⟹ only the outbound leg is queried; the return date input goes away.
-    const [isOneWay, setIsOneWay] = useState(false);
+    const [isOneWay, setIsOneWay] = useState(remembered?.isOneWay ?? false);
     // CRUCIAL: default false. Unchecked = cached/non-billed endpoints only.
     const [extendWithSerpApi, setExtendWithSerpApi] = useState(false);
     // Display-only: drop the cabin-bag estimate from honest totals for
@@ -189,7 +231,11 @@ const HackFlights: React.FC = () => {
     // does not change when you switch engines.
     const [sortKey, setSortKey] = useState<FlightSortKey>('cheapest');
     // What the Route Hacker is currently showing: one direction, or two.
-    const [hackerSearches, setHackerSearches] = useState<HackerSearch[]>([]);
+    // Seeded from the remembered search, so the results are back on screen
+    // rather than waiting behind a button nobody knows to press again.
+    const [hackerSearches, setHackerSearches] = useState<HackerSearch[]>(
+        () => (remembered ? searchBlocks(remembered) : []),
+    );
     // Live fares fetched by individual Route Hacker cards, lifted here by
     // itinerary key so "cheapest" can rank them.
     // Fares fetched automatically, keyed by leg — every itinerary sharing a leg
@@ -198,13 +244,53 @@ const HackFlights: React.FC = () => {
     // from this device, and keyed by leg so one sighting completes every
     // itinerary routing through it.
     const [observedFares, setObservedFares] = useState<ObservedFares>(loadObservedFares);
+    // The trip being assembled: one flight per direction, and what has been
+    // booked of it. Loaded from the device, because a half-booked trip is
+    // exactly the thing someone comes back to tomorrow.
+    const [cart, setCart] = useState<TripCart>(loadCart);
+    // Which step the traveller has stepped BACK to, or forward through. Null
+    // means "wherever the trip has got to" — see activeStep.
+    const [step, setStep] = useState<CartDirection | null>(null);
 
-    const observeFare = (origin: string, destination: string, on: string, price: number) => {
-        setObservedFares((current) => saveObservedFare(current, origin, destination, on, price));
+    const observeFare = (flight: ObservedFlight, price: number) => {
+        setObservedFares((current) => saveObservedFare(current, flight, price));
     };
 
-    const forgetFare = (origin: string, destination: string, on: string) => {
-        setObservedFares((current) => forgetObservedFare(current, origin, destination, on));
+    const forgetFare = (flight: ObservedFlight) => {
+        setObservedFares((current) => forgetObservedFare(current, flight));
+    };
+
+    // A one-way search has no return half, so a return picked earlier is
+    // neither shown nor counted. It is not deleted either: switch back to a
+    // round trip and it is still there, booking reference and all.
+    const tripCart = isOneWay ? cart.filter((flight) => flight.direction === 'outbound') : cart;
+
+    /**
+     * Where the booking flow is: outbound first, then the return, then review.
+     *
+     * `step` overrides it, because "Change" has to be able to send someone back
+     * to a leg they have already chosen — a flow that only ever moved forwards
+     * would trap them on the last one they picked.
+     */
+    const activeStep: CartDirection | 'review' = step ?? (
+        !flightFor(tripCart, 'outbound')
+            ? 'outbound'
+            : !isOneWay && !flightFor(tripCart, 'return')
+                ? 'return'
+                : 'review'
+    );
+
+    const chooseFlight = (
+        direction: CartDirection,
+        itinerary: HackerItinerary,
+        date: string,
+        estimate: CartEstimate,
+    ) => {
+        setCart((current) => selectFlight(current, buildCartFlight(direction, itinerary, date, estimate)));
+        // Picking the outbound always hands over to the return, whatever is
+        // already in the cart — a round trip is chosen in that order, and
+        // someone who has just changed one leg should be shown the other.
+        setStep(direction === 'outbound' && !isOneWay ? 'return' : null);
     };
 
     /**
@@ -264,23 +350,62 @@ const HackFlights: React.FC = () => {
         }
     };
 
-    // Route Hacker: query the local schedule graph — instant, no paid calls.
     /**
-     * A round trip is two independent searches, not one.
+     * Route Hacker: query the local schedule graph — instant, no paid calls.
      *
-     * Coming home is a different route on a different day, with its own hubs,
-     * its own schedule and its own fares — Shannon → Málaga via Stansted says
-     * nothing about which hub works on the way back. So each direction gets its
-     * own results block, keyed on its parameters so a new search remounts it.
+     * Takes the search explicitly rather than reading the form, because the
+     * form is not the only thing that starts one: "Change", on a page that has
+     * been returned to with a trip but no results, searches the route the
+     * flight in the cart came from. The fields are set from the same values,
+     * so the search bar always says what the list below it answered.
      */
-    const runHackerSearch = () => {
-        const searches: HackerSearch[] = isOneWay
-            ? [{ origin, destination, date: departureDate }]
-            : [
-                { origin, destination, date: departureDate, heading: 'Outbound' },
-                { origin: destination, destination: origin, date: returnDate, heading: 'Return' },
-            ];
-        setHackerSearches(searches);
+    const runSearch = (search: RememberedSearch, step: CartDirection) => {
+        setOrigin(search.origin);
+        setDestination(search.destination);
+        setDepartureDate(search.departureDate);
+        setReturnDate(search.returnDate);
+        setIsOneWay(search.isOneWay);
+        setHackerSearches(searchBlocks(search));
+        // Kept for the next visit — see lastHackerSearch.
+        rememberHackerSearch(search);
+        setStep(step);
+    };
+
+    const runHackerSearch = () => runSearch(
+        { origin, destination, departureDate, returnDate, isOneWay },
+        // A new search starts at the beginning, even when the cart is full:
+        // otherwise a trip picked yesterday would leave the flow on "review"
+        // and the results of the search just run would never be shown.
+        'outbound',
+    );
+
+    /**
+     * "Change" — go back to the list a leg was picked from.
+     *
+     * On a page still holding its results that is just a step marker. On one
+     * that has been reopened it has to go and find the flights again, and the
+     * route to look for is the one the flight in the cart flew: the trip is
+     * the surviving record of what was searched.
+     */
+    const changeLeg = (direction: CartDirection) => {
+        // Changing a leg means going back to its list, which only the Route
+        // Hacker tab has.
+        setActiveTab('hacker');
+        if (hackerSearches.length > 0) {
+            setStep(direction);
+            return;
+        }
+        const outboundPick = flightFor(cart, 'outbound');
+        const returnPick = flightFor(cart, 'return');
+        runSearch({
+            // A cart holding only the return still knows the route: it is the
+            // way home, read backwards.
+            origin: outboundPick?.origin ?? returnPick?.destination ?? origin,
+            destination: outboundPick?.destination ?? returnPick?.origin ?? destination,
+            departureDate: outboundPick?.date ?? departureDate,
+            returnDate: returnPick?.date ?? returnDate,
+            isOneWay,
+        }, direction);
     };
 
     const handleSubmit = (event: React.FormEvent) => {
@@ -306,6 +431,12 @@ const HackFlights: React.FC = () => {
         }
         if (!isOneWay && (!returnDate || returnDate < departureDate)) {
             setFormError('Round-trip needs a return date on or after the departure date.');
+            return;
+        }
+        // A city stands for several airports, and this tab reads one cached
+        // fare feed per airport pair. Route Hacker is the one that fans out.
+        if (isAirportCity(origin) || isAirportCity(destination)) {
+            setFormError('Live deals searches one airport at a time. Pick a single airport, or use Route hacker to search every airport of a city.');
             return;
         }
         setFormError(null);
@@ -370,7 +501,33 @@ const HackFlights: React.FC = () => {
             </div>
 
             <form className="hack-flights__form" onSubmit={handleSubmit}>
-                <div className="hack-flights__fields">
+                {/* Trip type first, then one search bar, then the options —
+                    the order every flight search is read in. It used to be a
+                    checkbox sitting below the fields, so the return date box
+                    appeared and disappeared above the control that governs it. */}
+                <fieldset className="hack-flights__trip-type">
+                    <legend className="sr-only">Trip type</legend>
+                    <label className={`hack-flights__trip-option ${isOneWay ? '' : 'hack-flights__trip-option--active'}`}>
+                        <input
+                            type="radio"
+                            name="hack-flights-trip-type"
+                            checked={!isOneWay}
+                            onChange={() => setIsOneWay(false)}
+                        />
+                        <span>Round trip</span>
+                    </label>
+                    <label className={`hack-flights__trip-option ${isOneWay ? 'hack-flights__trip-option--active' : ''}`}>
+                        <input
+                            type="radio"
+                            name="hack-flights-trip-type"
+                            checked={isOneWay}
+                            onChange={() => setIsOneWay(true)}
+                        />
+                        <span>One-way flight</span>
+                    </label>
+                </fieldset>
+
+                <div className="hack-flights__searchbar">
                     <div className="hack-flights__route-fields">
                         <AirportAutocomplete
                             label="From"
@@ -382,7 +539,7 @@ const HackFlights: React.FC = () => {
                             type="button"
                             className="hack-flights__swap"
                             onClick={swapDirection}
-                            aria-label={`Swap direction — search ${destination || 'destination'} to ${origin || 'origin'}`}
+                            aria-label={`Swap direction — search ${cityName(destination) || 'destination'} to ${cityName(origin) || 'origin'}`}
                             title="Swap origin and destination"
                         >
                             <FontAwesomeIcon icon={faArrowRightArrowLeft} aria-hidden="true" />
@@ -415,22 +572,26 @@ const HackFlights: React.FC = () => {
                             />
                         </label>
                     )}
+                    {/* Inside the bar, not under it: the button belongs to the
+                        fields it submits. The visible word is "Search"; the
+                        accessible name still says which engine is about to run. */}
+                    <button
+                        type="submit"
+                        className="hack-flights__submit"
+                        aria-label={activeTab === 'hacker'
+                            ? 'Assemble hacker routes'
+                            : extendWithSerpApi ? 'Find creative routes' : 'Search cached fares'}
+                    >
+                        <FontAwesomeIcon icon={faMagnifyingGlass} aria-hidden="true" />
+                        <span>Search</span>
+                    </button>
                 </div>
 
+                {/* The bag question belongs to BOTH engines. It used to be
+                    live-deals only, which left the Route Hacker quoting "fare
+                    €15 + €89 extras" with no way to say that most of the bag
+                    half of it does not apply to you. */}
                 <div className="hack-flights__controls">
-                    <label className="hack-flights__checkbox">
-                        <input
-                            type="checkbox"
-                            checked={isOneWay}
-                            onChange={(event) => setIsOneWay(event.target.checked)}
-                        />
-                        <span>One-way flight</span>
-                        <em className="hack-flights__checkbox-hint">
-                            {isOneWay ? 'Outbound leg only' : 'Round-trip · both directions searched'}
-                        </em>
-                    </label>
-                    {activeTab === 'live' && (<>
-
                     <label className="hack-flights__checkbox">
                         <input
                             type="checkbox"
@@ -439,11 +600,13 @@ const HackFlights: React.FC = () => {
                         />
                         <span>Small bag only</span>
                         <em className="hack-flights__checkbox-hint">
-                            {smallBagOnly ? 'Cabin-bag estimate excluded' : 'Cabin-bag estimate included'}
+                            {smallBagOnly
+                                ? 'Cabin-bag fee excluded from every total'
+                                : 'Cabin-bag fee included — one per ticket'}
                         </em>
                     </label>
 
-                    {EXTENDED_SEARCH_ENABLED && (
+                    {activeTab === 'live' && EXTENDED_SEARCH_ENABLED && (
                         <label className="hack-flights__checkbox">
                             <input
                                 type="checkbox"
@@ -464,7 +627,6 @@ const HackFlights: React.FC = () => {
                             </em>
                         </label>
                     )}
-                    </>)}
                 </div>
 
                 {activeTab === 'live' && extendWithSerpApi && (
@@ -485,31 +647,83 @@ const HackFlights: React.FC = () => {
                 {formError && (
                     <p className="hack-flights__form-error" role="alert">{formError}</p>
                 )}
-
-                <button type="submit" className="hack-flights__submit">
-                    {activeTab === 'hacker'
-                        ? 'Assemble hacker routes'
-                        : extendWithSerpApi ? 'Find creative routes' : 'Search cached fares'}
-                </button>
             </form>
 
-            {hackerSearches.map((search) => (
-                <HackerResults
-                    key={`${search.heading}-${search.origin}-${search.destination}-${search.date}`}
-                    origin={search.origin}
-                    destination={search.destination}
-                    date={search.date}
-                    heading={search.heading}
-                    sortKey={sortKey}
-                    onSortChange={setSortKey}
-                    observedFares={observedFares}
-                    onObserveFare={observeFare}
-                    onForgetFare={forgetFare}
+            {/* Gated on the tab that produced them. Without this the Route
+                Hacker results stayed on screen under the Live deals tab, so a
+                cached-fare search appeared to return two sets of answers from
+                two different engines — one of them for a search nobody had just
+                run. */}
+            {/* The trip so far, above the list it is being picked from — the
+                place a booking site puts your basket, and the only surface
+                where the two halves are ever seen as one number. Stays on
+                screen under Live deals too, so a leg booked in another tab can
+                still be ticked off. */}
+            {(tripCart.length > 0 || (activeTab === 'hacker' && hackerSearches.length > 0)) && (
+                <FlightCart
+                    cart={tripCart}
+                    isOneWay={isOneWay}
+                    activeStep={activeStep}
+                    onChoose={changeLeg}
+                    onRemove={(id) => setCart((current) => removeFlight(current, id))}
+                    onBooked={(id, booked) => setCart((current) => markBooked(current, id, booked))}
+                    onPaid={(id, paid) => setCart((current) => recordPaid(current, id, paid))}
+                    onReference={(id, reference) => setCart((current) => recordReference(current, id, reference))}
+                    onClear={() => setCart(clearCart())}
                 />
-            ))}
+            )}
+
+            {activeTab === 'hacker' && hackerSearches.map((search, index) => {
+                const direction: CartDirection = search.heading === 'Return' ? 'return' : 'outbound';
+                // One list at a time, the way a booking site asks: outbound,
+                // then return, then neither — at review the trip panel above is
+                // the whole screen, and "Change" is what comes back here.
+                const showing = activeStep === direction;
+                return (
+                    /* Hidden rather than unmounted: the block owns its fetched
+                       routes, its filters and its fares, so stepping back to
+                       change the outbound returns to the list as it was left
+                       instead of re-running the search. */
+                    <div
+                        key={`${search.heading}-${search.origin}-${search.destination}-${search.date}`}
+                        className={`hack-flights__step-panel ${showing ? '' : 'hack-flights__step-panel--hidden'}`}
+                    >
+                        {!isOneWay && (
+                            <p className="hack-flights__step-banner">
+                                Step {index + 1} · Choose your {direction === 'return' ? 'return' : 'outbound'} flight
+                            </p>
+                        )}
+                        <HackerResults
+                            origin={search.origin}
+                            destination={search.destination}
+                            date={search.date}
+                            heading={search.heading}
+                            sortKey={sortKey}
+                            onSortChange={setSortKey}
+                            observedFares={observedFares}
+                            onObserveFare={observeFare}
+                            onForgetFare={forgetFare}
+                            direction={direction}
+                            smallBagOnly={smallBagOnly}
+                            selectedId={flightFor(cart, direction)?.id ?? null}
+                            onSelect={(itinerary, estimate) => (
+                                chooseFlight(direction, itinerary, search.date, estimate)
+                            )}
+                        />
+                    </div>
+                );
+            })}
+
+            {activeTab === 'hacker' && hackerSearches.length > 0 && activeStep === 'review' && (
+                <p className="hack-flights__muted" role="status">
+                    That is the trip. Book each ticket on the airline's own site using the links in
+                    your trip above, tick it off, and put in what you were charged — the total then
+                    stops being an estimate. <strong>Change</strong> takes you back to either list.
+                </p>
+            )}
 
             {activeTab === 'live' && legs.some((leg) => leg.mode === 'cached' && leg.flights.length > 1) && (
-                <SortChips value={sortKey} onChange={setSortKey} />
+                <FlightSortTabs value={sortKey} onChange={setSortKey} />
             )}
 
             {activeTab === 'live' && legs.map((leg, index) => {
@@ -528,7 +742,9 @@ const HackFlights: React.FC = () => {
                                 />
                             )}
                             <h2 className="hack-flights__leg-title">
-                                {leg.label} · {leg.from} → {leg.to}
+                                {leg.label} · <span title={airportTitle(leg.from)}>{cityName(leg.from)}</span>
+                                {' → '}
+                                <span title={airportTitle(leg.to)}>{cityName(leg.to)}</span>
                             </h2>
                         </div>
                         <span className="hack-flights__leg-date">{leg.date}</span>
@@ -564,7 +780,7 @@ const HackFlights: React.FC = () => {
                                    is the honest next step — free, and it knows carriers
                                    beyond Ryanair. */
                                 <p className="hack-flights__muted" role="status">
-                                    No cached fares for {leg.from} → {leg.to}. The free search covers routes
+                                    No cached fares for {cityName(leg.from)} → {cityName(leg.to)}. The free search covers routes
                                     Ryanair flies itself, for the next {CACHED_FARE_WINDOW_DAYS} days — this pair
                                     is not in it, so most likely Ryanair does not fly it direct. Try{' '}
                                     <strong>Route hacker</strong>, which builds routes from stored timetables

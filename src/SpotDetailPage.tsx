@@ -10,6 +10,11 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { getMapStyle } from './services/mapStyle';
 import { API_BASE, searchFlights, FlightAvailable } from './services/api';
+import { fetchHackerRoutes, HackerItinerary } from './services/hackerRoutes';
+import { formatClock, formatDuration } from './services/flightFormat';
+import { nextScheduleProbeDate } from './hooks/routeSearchDates';
+import { useDepartureOrigin } from './hooks/useDepartureOrigin';
+import { DEPARTURES } from './services/departureOrigin';
 import { resolveOriginAirport } from './services/destinationDirectory';
 import { accommodationUrls, placeUrls, flightUrls } from './services/affiliates';
 import { trackedFetch } from './services/serviceStatus';
@@ -22,6 +27,7 @@ import './SpotDetailPage.css';
 // and SpotFinder.tsx imports SpotFinder.css before SpotTile — listing them in the
 // other order here gives webpack two conflicting orderings for the same pair of
 // stylesheets and fails the production build on a mini-css-extract warning.
+import NearbyRestaurants, { NearbyRestaurantsSkeleton } from './components/NearbyRestaurants';
 import SpotTariff, { PriceLine } from './components/SpotTariff';
 import SpotTile from './components/SpotTile';
 
@@ -166,7 +172,6 @@ const CURATION_BADGE: Record<string, string> = {
     DISCOVERED: 'Unverified', ROUTE_ONLY: 'Route only',
 };
 
-const DEPARTURES = ['Limerick, Ireland', 'Dublin, Ireland', 'Cork, Ireland', 'Galway, Ireland'];
 const SPOT_STAY_RADIUS_KM = 15;
 const STAY_PREVIEW_COUNT = 6;
 
@@ -318,26 +323,45 @@ const DetailMap: React.FC<DetailMapProps> = ({
                 map.fitBounds(bounds, { padding: 60, maxZoom: 12, duration: 500 });
             }
         } else if (activeTab === 'hotels') {
-            stays.filter((s) => s.latitude != null && s.longitude != null)
-                .slice(0, 20)
-                .forEach((stay) => {
-                    const m = new maplibregl.Marker({ element: buildMapMarker('stay', stay.name) })
-                        .setLngLat([stay.longitude!, stay.latitude!])
-                        .setPopup(new maplibregl.Popup({ offset: 14 }).setText(stay.name))
-                        .addTo(map);
-                    markersRef.current.push(m);
-                });
-            map.easeTo({ center: [lon, lat], zoom: 13, duration: 400 });
+            const pinned = stays
+                .filter((s) => s.latitude != null && s.longitude != null)
+                .slice(0, 20);
+            pinned.forEach((stay) => {
+                const m = new maplibregl.Marker({ element: buildMapMarker('stay', stay.name) })
+                    .setLngLat([stay.longitude!, stay.latitude!])
+                    .setPopup(new maplibregl.Popup({ offset: 14 }).setText(stay.name))
+                    .addTo(map);
+                markersRef.current.push(m);
+            });
+            // Same reason as the restaurants below: stays are drawn from a 15 km
+            // radius and a fixed zoom 13 frames about 3 km of it, so the map sat
+            // empty beside a list of places it had already pinned.
+            if (pinned.length > 0) {
+                const bounds = new maplibregl.LngLatBounds([lon, lat], [lon, lat]);
+                pinned.forEach((stay) => bounds.extend([stay.longitude!, stay.latitude!]));
+                map.fitBounds(bounds, { padding: 56, maxZoom: 13, duration: 400 });
+            } else {
+                map.easeTo({ center: [lon, lat], zoom: 13, duration: 400 });
+            }
         } else if (activeTab === 'restaurants') {
-            pois.filter((p) => p.kind === 'restaurant')
-                .forEach((poi) => {
-                    const m = new maplibregl.Marker({ element: buildMapMarker('restaurant', poi.name) })
-                        .setLngLat([poi.lon, poi.lat])
-                        .setPopup(new maplibregl.Popup({ offset: 14 }).setText(poi.name))
-                        .addTo(map);
-                    markersRef.current.push(m);
-                });
-            map.easeTo({ center: [lon, lat], zoom: 14, duration: 400 });
+            const eateries = pois.filter((p) => p.kind === 'restaurant');
+            eateries.forEach((poi) => {
+                const m = new maplibregl.Marker({ element: buildMapMarker('restaurant', poi.name) })
+                    .setLngLat([poi.lon, poi.lat])
+                    .setPopup(new maplibregl.Popup({ offset: 14 }).setText(poi.name))
+                    .addTo(map);
+                markersRef.current.push(m);
+            });
+            // The lookup covers 5 km; a fixed zoom 14 frames about 1.5 km of it,
+            // so most of the pins it had just dropped sat outside the viewport
+            // and the map read as empty next to a list of ten places.
+            if (eateries.length > 0) {
+                const bounds = new maplibregl.LngLatBounds([lon, lat], [lon, lat]);
+                eateries.forEach((poi) => bounds.extend([poi.lon, poi.lat]));
+                map.fitBounds(bounds, { padding: 56, maxZoom: 14, duration: 400 });
+            } else {
+                map.easeTo({ center: [lon, lat], zoom: 14, duration: 400 });
+            }
         }
     }, [activeTab, airports, stays, pois, lat, lon]);
 
@@ -400,7 +424,7 @@ const DetailMap: React.FC<DetailMapProps> = ({
     );
 };
 
-// ─── Flight teaser ──────────────────────────────────────────────────────────
+// ─── Ways in ────────────────────────────────────────────────────────────────
 
 interface FlightTeaserProps {
     arrivalAirport: string;
@@ -408,52 +432,167 @@ interface FlightTeaserProps {
     spotLabel: string;
 }
 
+/**
+ * What the page can say about getting here, best evidence first.
+ *
+ * `fares` is a cached fare with a real price and an honest total. `schedule` is
+ * the Route Hacker graph answering a weaker question — which routes exist,
+ * including self-transfers no airline will sell as one ticket — with no price
+ * at all. They are different states rather than one state with a missing field,
+ * because the honest label differs: one is a price, the other is a possibility.
+ */
+type WaysIn =
+    | { kind: 'loading' }
+    | { kind: 'fares'; flights: FlightAvailable[] }
+    | { kind: 'schedule'; itineraries: HackerItinerary[]; date: string }
+    | { kind: 'none' };
+
+/** Direct first, then the shortest door-to-door. Nothing here is a price rank. */
+const rankWaysIn = (itineraries: HackerItinerary[]): HackerItinerary[] => (
+    [...itineraries].sort((left, right) => {
+        if (left.type !== right.type) return left.type === 'DIRECT' ? -1 : 1;
+        return left.totalJourneyMinutes - right.totalJourneyMinutes;
+    })
+);
+
+const carriersOf = (itinerary: HackerItinerary): string => {
+    const codes = [
+        ...(itinerary.leg1.airlineCodes ?? []),
+        ...(itinerary.leg2?.airlineCodes ?? []),
+    ];
+    return Array.from(new Set(codes)).join(' + ');
+};
+
 const FlightTeaser: React.FC<FlightTeaserProps> = ({ arrivalAirport, departure }) => {
-    const [flights, setFlights] = useState<FlightAvailable[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(false);
+    const [waysIn, setWaysIn] = useState<WaysIn>({ kind: 'loading' });
 
     useEffect(() => {
         let cancelled = false;
-        setLoading(true);
-        setError(false);
         const originIata = resolveOriginAirport(departure);
-        searchFlights({ origin: originIata, destination: arrivalAirport })
-            .then((result) => {
+        setWaysIn({ kind: 'loading' });
+
+        const resolve = async () => {
+            // 1. Cached fares first. They are the only path that carries a real
+            //    price and an honest total, so they outrank a schedule always.
+            let fares: FlightAvailable[] = [];
+            try {
+                const result = await searchFlights({ origin: originIata, destination: arrivalAirport });
+                fares = result.flights.slice(0, 3);
+            } catch {
+                // Fall through: a failed fare lookup is not evidence about routes.
+            }
+            if (cancelled) return;
+            if (fares.length > 0) {
+                setWaysIn({ kind: 'fares', flights: fares });
+                return;
+            }
+
+            // 2. No cached fare is not the same as no way in — it mostly means
+            //    Ryanair does not fly the pair direct. The schedule graph knows
+            //    routes no fare feed covers, self-transfers included.
+            //
+            //    Deliberately left unpriced: pricing a leg spends provider
+            //    quota, and a spot page opened by anyone who lands on it is the
+            //    last place to spend it. A route without a fare is still the
+            //    answer to "can I get there", which is the question being asked.
+            const date = nextScheduleProbeDate();
+            try {
+                const itineraries = await fetchHackerRoutes(originIata, arrivalAirport, date);
                 if (cancelled) return;
-                setFlights(result.flights.slice(0, 3));
-            })
-            .catch(() => { if (!cancelled) setError(true); })
-            .finally(() => { if (!cancelled) setLoading(false); });
+                if (itineraries.length > 0) {
+                    setWaysIn({ kind: 'schedule', itineraries: rankWaysIn(itineraries).slice(0, 3), date });
+                    return;
+                }
+            } catch {
+                // Nothing further to try; fall through to the empty state.
+            }
+            if (!cancelled) setWaysIn({ kind: 'none' });
+        };
+
+        void resolve();
         return () => { cancelled = true; };
     }, [arrivalAirport, departure]);
 
     const originCity = departure.split(',')[0];
 
-    if (loading) {
+    if (waysIn.kind === 'loading') {
         return (
             <div className="sdp-section">
                 <h3 className="sdp-section__title">
-                    <FontAwesomeIcon icon={faPlane} /> Flights from {originCity}
+                    <FontAwesomeIcon icon={faPlane} /> Ways in from {originCity}
                 </h3>
-                <p className="spot-finder__muted">Checking flights to {arrivalAirport}...</p>
+                <p className="spot-finder__muted">Checking routes to {arrivalAirport}...</p>
             </div>
         );
     }
 
-    if (error || flights.length === 0) {
+    if (waysIn.kind === 'none') {
         const urls = flightUrls(resolveOriginAirport(departure), arrivalAirport, '');
         return (
             <div className="sdp-section">
                 <h3 className="sdp-section__title">
-                    <FontAwesomeIcon icon={faPlane} /> Flights from {originCity}
+                    <FontAwesomeIcon icon={faPlane} /> Ways in from {originCity}
                 </h3>
                 <p className="spot-finder__muted">
-                    No cached flights to {arrivalAirport} right now.
+                    No cached fare and no stored timetable reaches {arrivalAirport} from{' '}
+                    {originCity}. That is a gap in our data as often as it is a gap in the
+                    map — worth checking directly.
                 </p>
                 <div className="sdp-links">
                     <a href={urls.googleFlights} target="_blank" rel="noopener noreferrer" className="sdp-link-pill">
                         Google Flights
+                    </a>
+                </div>
+            </div>
+        );
+    }
+
+    if (waysIn.kind === 'schedule') {
+        const whenLabel = new Date(`${waysIn.date}T00:00:00Z`).toLocaleDateString('en-IE', {
+            weekday: 'short', day: 'numeric', month: 'short',
+        });
+        const hasSelfTransfer = waysIn.itineraries.some((it) => it.type === 'SELF_TRANSFER');
+        const urls = flightUrls(resolveOriginAirport(departure), arrivalAirport, '');
+
+        return (
+            <div className="sdp-section">
+                <h3 className="sdp-section__title">
+                    <FontAwesomeIcon icon={faPlane} /> Ways in from {originCity}
+                </h3>
+                <p className="sdp-ways-in__note">
+                    No cached fare for {arrivalAirport}, so these come from stored timetables
+                    for {whenLabel}. Routes, not prices — no fare has been checked, and a
+                    route that runs that Saturday may not run on yours.
+                </p>
+                <div className="sdp-flights">
+                    {waysIn.itineraries.map((itinerary, i) => (
+                        <div key={i} className="sdp-flight">
+                            <div className="sdp-flight__info">
+                                <span className="sdp-flight__date">
+                                    {itinerary.type === 'DIRECT' ? 'Direct' : `via ${itinerary.hub}`}
+                                </span>
+                                {carriersOf(itinerary) && (
+                                    <span className="sdp-flight__airline">{carriersOf(itinerary)}</span>
+                                )}
+                                <span className="sdp-flight__label">
+                                    dep {formatClock(itinerary.leg1.departureTime)}
+                                    {' · '}{formatDuration(itinerary.totalJourneyMinutes)} total
+                                    {itinerary.type === 'SELF_TRANSFER'
+                                        && ` · ${formatDuration(itinerary.layoverMinutes)} layover`}
+                                </span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                {hasSelfTransfer && (
+                    <p className="sdp-ways-in__risk">
+                        A self-transfer is two separate tickets. Miss the second flight and no
+                        airline owes you the next one, so leave more time than feels necessary.
+                    </p>
+                )}
+                <div className="sdp-links">
+                    <a href={urls.googleFlights} target="_blank" rel="noopener noreferrer" className="sdp-link-pill">
+                        Check fares
                     </a>
                 </div>
             </div>
@@ -466,7 +605,7 @@ const FlightTeaser: React.FC<FlightTeaserProps> = ({ arrivalAirport, departure }
                 <FontAwesomeIcon icon={faPlane} /> Flights from {originCity} to {arrivalAirport}
             </h3>
             <div className="sdp-flights">
-                {flights.map((flight, i) => {
+                {waysIn.flights.map((flight, i) => {
                     const price = typeof flight.price === 'number' ? flight.price : parseFloat(String(flight.price));
                     const honest = flight.realWorldEntryPrice ?? flight.antiCauchemar?.realWorldEntryPrice;
                     const dateLabel = flight.departureDate
@@ -493,10 +632,6 @@ const FlightTeaser: React.FC<FlightTeaserProps> = ({ arrivalAirport, departure }
                     );
                 })}
             </div>
-            {flights[0]?.departureDate && (
-                <div className="sdp-links" style={{ marginTop: 8 }}>
-                </div>
-            )}
         </div>
     );
 };
@@ -510,11 +645,36 @@ export default function SpotDetailPage() {
     const [arrival, setArrival] = useState<ArrivalOptions | null>(null);
     const [stays, setStays] = useState<NearbyStay[]>([]);
     const [staysStatus, setStaysStatus] = useState<'loading' | 'done' | 'error'>('loading');
-    const [departure, setDeparture] = useState<string>(DEPARTURES[0]);
+    const [departure, setDeparture] = useDepartureOrigin();
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
     const [activeTab, setActiveTab] = useState<SpotTab>('getting-there');
     const [selectedAirport, setSelectedAirport] = useState<NearbyAirport | null>(null);
+    const tabsRef = useRef<HTMLElement | null>(null);
+
+    /**
+     * Switch tabs, and bring the tab you just pressed fully into view.
+     *
+     * Four tabs do not fit a phone. Pressing one that was half past the right
+     * edge left it half past the right edge, so the only indication of which
+     * tab was active sat off screen and the strip had to be dragged by hand to
+     * find it. Only the strip is scrolled — scrollIntoView would take the whole
+     * page with it and throw the reader back to the top of the card.
+     */
+    const selectTab = (tab: SpotTab, button: HTMLButtonElement | null): void => {
+        setActiveTab(tab);
+        setSelectedAirport(null);
+
+        const strip = tabsRef.current;
+        if (!strip || !button) return;
+        const offset = button.getBoundingClientRect().left - strip.getBoundingClientRect().left;
+        const centred = strip.scrollLeft + offset - (strip.clientWidth - button.offsetWidth) / 2;
+        // Assigned, not animated. The panel below re-renders in the same commit
+        // and the reflow cancels an in-flight smooth scroll, so the strip was
+        // left exactly where it started — and an animation nobody asked for is
+        // the wrong thing to fight the layout for anyway.
+        strip.scrollLeft = Math.max(0, centred);
+    };
 
     // Fetch the spot card from the full list (filter by slug)
     useEffect(() => {
@@ -599,15 +759,40 @@ export default function SpotDetailPage() {
         setSelectedAirport((prev) => prev?.iata === airport.iata ? null : airport);
     };
 
-    const { pois, status: poiStatus, retry: retryPois } = useNearbyPois(lat, lon, activeTab === 'restaurants');
-    const restaurants = pois.filter((p) => p.kind === 'restaurant');
+    // Started as soon as the coordinates land, not when the tab is clicked.
+    // Overpass takes 5-11 s cold, and gating it on the click meant every reader
+    // who opened Restaurants sat in front of a sentence for the whole of it. The
+    // backend caches each area for 7 days, so the cost is one slow lookup per
+    // spot rather than one per reader, and by the time anyone has read the hero
+    // the answer is usually already here.
+    const { pois, status: poiStatus, retry: retryPois } = useNearbyPois(lat, lon, lat != null && lon != null);
+    const restaurants = useMemo(() => pois.filter((p) => p.kind === 'restaurant'), [pois]);
 
     if (loading) {
+        // The page used to open on the words "Loading spot..." centred in an
+        // otherwise empty viewport, and then replace them with a full page in
+        // one jump. This holds the real layout — hero, then two cards — so the
+        // wait looks like the page arriving rather than the page missing.
         return (
-            <section className="sdp">
-                <p className="spot-finder__muted" style={{ padding: 40, textAlign: 'center' }}>
-                    Loading spot...
-                </p>
+            <section className="sdp" aria-busy="true">
+                <p className="sdp-loading__label" role="status">Loading this spot…</p>
+                <div className="sdp-hero sdp-hero--skeleton" aria-hidden="true">
+                    <div className="sdp-hero__photo sdp-hero__photo--skeleton">
+                        <span className="skeleton-bar skeleton-bar--block" />
+                    </div>
+                    <div className="sdp-hero__info">
+                        <span className="skeleton-bar skeleton-bar--title" />
+                        <span className="skeleton-bar skeleton-bar--sub" />
+                    </div>
+                </div>
+                <div className="sdp-card sdp-loading__card" aria-hidden="true">
+                    <span className="skeleton-bar skeleton-bar--sub" />
+                    <span className="skeleton-bar skeleton-bar--line" />
+                    <span className="skeleton-bar skeleton-bar--line" />
+                </div>
+                <div className="sdp-card sdp-loading__card sdp-loading__card--map" aria-hidden="true">
+                    <span className="skeleton-bar skeleton-bar--block" />
+                </div>
             </section>
         );
     }
@@ -668,7 +853,7 @@ export default function SpotDetailPage() {
                     <h1 className="sdp-hero__name">{spot.destinationLabel}</h1>
                     <div className="sdp-hero__badges">
                         {curationBadge && (
-                            <span className={`sdp-badge ${curationBadge === 'Verified' ? 'sdp-badge--verified' : ''}`}>
+                            <span className={`sdp-badge ${curationBadge === 'Verified' ? 'sdp-badge--verified' : 'sdp-badge--unverified'}`}>
                                 {curationBadge}
                             </span>
                         )}
@@ -823,40 +1008,67 @@ export default function SpotDetailPage() {
                         pois={pois}
                     />
 
-                    {/* Tab bar */}
-                    <nav className="sdp-tabs">
+                    {/* Tab bar.
+
+                        Every tab carries the size of what is behind it, and says
+                        so while it is still counting. Both lookups run from the
+                        moment the coordinates land, so a reader who spends ten
+                        seconds on the setup card arrives to numbers already in
+                        place rather than to a spinner they caused. */}
+                    <nav className="sdp-tabs" role="tablist" aria-label="What is near this spot" ref={tabsRef}>
                         <button
                             type="button"
+                            role="tab"
+                            id="sdp-tab-getting-there"
+                            aria-selected={activeTab === 'getting-there'}
+                            aria-controls="sdp-panel-getting-there"
                             className={`sdp-tab ${activeTab === 'getting-there' ? 'sdp-tab--active' : ''}`}
-                            onClick={() => { setActiveTab('getting-there'); setSelectedAirport(null); }}
+                            onClick={(event) => selectTab('getting-there', event.currentTarget)}
                         >
                             <FontAwesomeIcon icon={faPlane} /> Getting there
+                            {allAirports.length > 0 && (
+                                <span className="sdp-tab__count">{allAirports.length}</span>
+                            )}
                         </button>
                         <button
                             type="button"
+                            role="tab"
+                            id="sdp-tab-hotels"
+                            aria-selected={activeTab === 'hotels'}
+                            aria-controls="sdp-panel-hotels"
                             className={`sdp-tab ${activeTab === 'hotels' ? 'sdp-tab--active' : ''}`}
-                            onClick={() => { setActiveTab('hotels'); setSelectedAirport(null); }}
+                            onClick={(event) => selectTab('hotels', event.currentTarget)}
                         >
                             <FontAwesomeIcon icon={faBed} /> Hotels
+                            {staysStatus === 'loading' && <span className="sdp-tab__pending" aria-hidden="true" />}
                             {staysStatus === 'done' && stays.length > 0 && (
                                 <span className="sdp-tab__count">{stays.length}</span>
                             )}
                         </button>
                         <button
                             type="button"
+                            role="tab"
+                            id="sdp-tab-restaurants"
+                            aria-selected={activeTab === 'restaurants'}
+                            aria-controls="sdp-panel-restaurants"
                             className={`sdp-tab ${activeTab === 'restaurants' ? 'sdp-tab--active' : ''}`}
-                            onClick={() => { setActiveTab('restaurants'); setSelectedAirport(null); }}
+                            onClick={(event) => selectTab('restaurants', event.currentTarget)}
                         >
                             <FontAwesomeIcon icon={faUtensils} /> Restaurants
-                            {restaurants.length > 0 && (
+                            {poiStatus === 'loading' && <span className="sdp-tab__pending" aria-hidden="true" />}
+                            {poiStatus === 'done' && restaurants.length > 0 && (
                                 <span className="sdp-tab__count">{restaurants.length}</span>
                             )}
                         </button>
                         {arrivalAirport && (
                             <button
                                 type="button"
+                                role="tab"
+                                id="sdp-tab-flights"
+                                aria-selected={activeTab === 'flights'}
+                                aria-controls="sdp-panel-flights"
                                 className={`sdp-tab ${activeTab === 'flights' ? 'sdp-tab--active' : ''}`}
-                                onClick={() => { setActiveTab('flights'); setSelectedAirport(null); }}
+                                onClick={(event) => selectTab('flights', event.currentTarget)}
                             >
                                 <FontAwesomeIcon icon={faPlane} /> Flights
                             </button>
@@ -865,7 +1077,7 @@ export default function SpotDetailPage() {
 
                     {/* ── Getting there panel ── */}
                     {activeTab === 'getting-there' && (
-                        <div className="sdp-tab-panel">
+                        <div className="sdp-tab-panel" role="tabpanel" id="sdp-panel-getting-there" aria-labelledby="sdp-tab-getting-there">
                             {ways.length > 0 && (
                                 <div className="spot-detail__ways">
                                     {ways.map((way, index) => (
@@ -957,9 +1169,21 @@ export default function SpotDetailPage() {
 
                     {/* ── Hotels panel ── */}
                     {activeTab === 'hotels' && (
-                        <div className="sdp-tab-panel">
+                        <div className="sdp-tab-panel" role="tabpanel" id="sdp-panel-hotels" aria-labelledby="sdp-tab-hotels">
                             {staysStatus === 'loading' && (
-                                <p className="spot-finder__muted">Looking for places to sleep...</p>
+                                <>
+                                    <p className="sdp-tab-panel__meta" role="status">
+                                        Looking for places to sleep within {SPOT_STAY_RADIUS_KM} km.
+                                    </p>
+                                    <ul className="spot-stays" aria-hidden="true">
+                                        {Array.from({ length: 4 }, (unused, index) => (
+                                            <li key={index} className="spot-stay spot-stay--skeleton">
+                                                <span className="skeleton-bar skeleton-bar--title" />
+                                                <span className="skeleton-bar skeleton-bar--sub" />
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </>
                             )}
 
                             {staysStatus === 'error' && (
@@ -982,8 +1206,14 @@ export default function SpotDetailPage() {
 
                             {stays.length > 0 && (
                                 <>
+                                    {/* The tab now carries the full count, so the
+                                        panel has to say it is showing a slice of
+                                        it — "37 within 15 km" above six rows read
+                                        as thirty-one missing ones. */}
                                     <p className="sdp-tab-panel__meta">
-                                        {stays.length} within {SPOT_STAY_RADIUS_KM} km
+                                        {stays.length <= STAY_PREVIEW_COUNT
+                                            ? `${stays.length} within ${SPOT_STAY_RADIUS_KM} km`
+                                            : `Nearest ${STAY_PREVIEW_COUNT} of ${stays.length} within ${SPOT_STAY_RADIUS_KM} km`}
                                     </p>
                                     <ul className="spot-stays">
                                         {stays.slice(0, STAY_PREVIEW_COUNT).map((stay) => {
@@ -1036,73 +1266,58 @@ export default function SpotDetailPage() {
 
                     {/* ── Restaurants panel ── */}
                     {activeTab === 'restaurants' && (
-                        <div className="sdp-tab-panel">
+                        <div className="sdp-tab-panel" role="tabpanel" id="sdp-panel-restaurants" aria-labelledby="sdp-tab-restaurants">
                             {/* Four distinct outcomes, because "Looking for
                                 restaurants nearby..." was shown for all of them —
                                 including after the lookup had finished and found
                                 nothing, which is most spots. It read as a request
                                 that never came back. */}
-                            {poiStatus === 'loading' && (
-                                <p className="spot-finder__muted" role="status">
-                                    Looking for restaurants within {POI_RADIUS_M / 1000} km — this can take a few seconds.
-                                </p>
+                            {(poiStatus === 'loading' || poiStatus === 'idle') && (
+                                <>
+                                    <p className="sdp-tab-panel__meta" role="status">
+                                        Reading OpenStreetMap for places to eat within {POI_RADIUS_M / 1000} km.
+                                    </p>
+                                    <NearbyRestaurantsSkeleton />
+                                </>
                             )}
                             {poiStatus === 'error' && (
-                                <div className="spot-finder__muted" role="alert">
-                                    <p>The nearby-restaurant lookup failed.</p>
-                                    <button
-                                        type="button"
-                                        className="sdp-back"
-                                        onClick={retryPois}
-                                    >
+                                <div className="sdp-state sdp-state--error" role="alert">
+                                    <p className="sdp-state__title">The nearby-restaurant lookup didn't come back.</p>
+                                    <p className="sdp-state__body">
+                                        OpenStreetMap's query service is slow under load and sometimes times out.
+                                        Nothing is wrong with the spot.
+                                    </p>
+                                    <button type="button" className="sdp-state__action" onClick={retryPois}>
                                         Try again
                                     </button>
                                 </div>
                             )}
                             {poiStatus === 'done' && restaurants.length === 0 && (
-                                <p className="spot-finder__muted" role="status">
-                                    No restaurants mapped within {POI_RADIUS_M / 1000} km of this spot. These parks are
-                                    often rural, and OpenStreetMap simply has nothing tagged here — it does not mean
-                                    there is nowhere to eat.
-                                </p>
-                            )}
-                            {restaurants.length > 0 && (
-                                <>
-                                    {/* Radius comes from the constant the request
-                                        uses, so the copy cannot drift from it. */}
-                                    <p className="sdp-tab-panel__meta">
-                                        {restaurants.length} {restaurants.length === 1 ? 'restaurant' : 'restaurants'} within {POI_RADIUS_M / 1000} km
+                                <div className="sdp-state" role="status">
+                                    <p className="sdp-state__title">
+                                        Nothing tagged within {POI_RADIUS_M / 1000} km.
                                     </p>
-                                    <ul className="spot-stays">
-                                        {restaurants.slice(0, 12).map((poi) => (
-                                            <li key={poi.id} className="spot-stay">
-                                                <div className="spot-detail__way-icon">
-                                                    <FontAwesomeIcon icon={faUtensils} />
-                                                </div>
-                                                <div className="spot-detail__way-content">
-                                                    <span className="spot-detail__way-hub">{poi.name}</span>
-                                                    <span className="spot-stay__links">
-                                                        <a
-                                                            className="spot-detail__link"
-                                                            href={`https://www.google.com/maps/search/?api=1&query=${poi.lat},${poi.lon}`}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                        >
-                                                            View on map ↗
-                                                        </a>
-                                                    </span>
-                                                </div>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </>
+                                    <p className="sdp-state__body">
+                                        These parks are often rural and OpenStreetMap simply has no entries here.
+                                        That is a gap in the map, not a verdict on the area — there is very likely
+                                        somewhere to eat.
+                                    </p>
+                                </div>
+                            )}
+                            {restaurants.length > 0 && lat != null && lon != null && (
+                                <NearbyRestaurants
+                                    restaurants={restaurants}
+                                    lat={lat}
+                                    lon={lon}
+                                    radiusKm={POI_RADIUS_M / 1000}
+                                />
                             )}
                         </div>
                     )}
 
                     {/* ── Flights panel ── */}
                     {activeTab === 'flights' && arrivalAirport && (
-                        <div className="sdp-tab-panel">
+                        <div className="sdp-tab-panel" role="tabpanel" id="sdp-panel-flights" aria-labelledby="sdp-tab-flights">
                             <FlightTeaser
                                 arrivalAirport={arrivalAirport}
                                 departure={departure}

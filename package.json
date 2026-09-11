@@ -20,6 +20,11 @@
     "react-slider": "^2.0.6"
   },
   "scripts": {
+    "audit:coverage": "node scripts/spot-coverage-audit.mjs",
+    "backfill:season": "node scripts/backfill-season-provenance.mjs",
+    "extract": "node scripts/extract-catalogue-facts.mjs",
+    "extract:eval": "node scripts/extract-catalogue-facts.mjs --eval",
+    "audit:reachability": "node scripts/spot-reachability.mjs",
     "audit:ryanair-destinations": "node scripts/audit-ryanair-destinations.mjs",
     "build": "npm run typecheck && vite build",
     "dev": "vite",

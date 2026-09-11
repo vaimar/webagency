@@ -1,3 +1,5 @@
+import { faPlaneUp } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
     AirportMetadata,
@@ -6,6 +8,13 @@ import {
     getAirportMetadata,
     groupAirportsByCountry,
 } from '../data/airportMetadata';
+import {
+    AIRPORT_CITIES,
+    AirportCity,
+    formatAirportCityLabel,
+    getAirportCity,
+    searchAirportCities,
+} from '../data/airportCities';
 import { AirportOption, formatAirportLabel, getAirport, searchAirports } from '../services/airports';
 import './AirportAutocomplete.css';
 
@@ -21,10 +30,14 @@ const DEBOUNCE_MS = 220;
 const MIN_QUERY = 2;
 
 /**
- * Hybrid airport picker. On focus (empty box) it shows the curated shortlist
- * grouped by country with flags — the familiar, browsable ~90 routes. As soon as
- * the user types, it switches to a live search across the full imported airport
- * set (~9k) via GET /api/airports. Stores the IATA code as its value.
+ * Hybrid airport picker. On focus (empty box) it shows the cities served by
+ * more than one airport, then the curated shortlist grouped by country with
+ * flags — the familiar, browsable ~90 routes. As soon as the user types, it
+ * switches to a live search across the full imported airport set (~9k) via GET
+ * /api/airports, with any matching cities kept at the top.
+ *
+ * Stores the IATA code as its value — or a city token (see `airportCities`),
+ * which every search expands into the airports it stands for.
  */
 const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({ label, value, onChange, placeholder }) => {
     const inputId = useId();
@@ -44,20 +57,36 @@ const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({ label, value,
     // Curated shortlist, grouped by country (flags) for the browse view. Flattened
     // for keyboard navigation, which walks airports and skips the country headers.
     const browseGroups = useMemo(() => groupAirportsByCountry(ORIGIN_AIRPORT_OPTIONS), []);
-    const browseFlat = useMemo(() => browseGroups.flatMap((group) => group.airports), [browseGroups]);
+    // Cities lead: "Paris" is what someone came here to say, and it is the one
+    // option that cannot be typed as a code.
+    const browseFlat = useMemo(() => [
+        ...AIRPORT_CITIES.map((city) => city.code),
+        ...browseGroups.flatMap((group) => group.airports.map((airport) => airport.code)),
+    ], [browseGroups]);
     const browseIndexByCode = useMemo(
-        () => new Map(browseFlat.map((airport, index) => [airport.code, index])),
+        () => new Map(browseFlat.map((code, index) => [code, index])),
         [browseFlat],
     );
 
     const searching = query.trim().length >= MIN_QUERY;
-    const navLength = searching ? results.length : browseFlat.length;
+    // Cities are matched here rather than by the airport API, which has never
+    // heard of them: it indexes airports, and a city is a group of them.
+    const cityMatches = useMemo(
+        () => (searching ? searchAirportCities(query) : []),
+        [query, searching],
+    );
+    const navLength = searching ? cityMatches.length + results.length : browseFlat.length;
 
     // Resolve a friendly label for the selected code. Curated codes keep their
     // flag + city + country; anything else resolves to "Name · City (CODE)".
     useEffect(() => {
         if (!value) {
             setSelectedLabel('');
+            return;
+        }
+        const city = getAirportCity(value);
+        if (city) {
+            setSelectedLabel(formatAirportCityLabel(city));
             return;
         }
         if (getAirportMetadata(value)) {
@@ -136,17 +165,29 @@ const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({ label, value,
 
     const selectApiOption = (airport: AirportOption) => finishSelection(airport.iata, formatAirportLabel(airport));
     const selectCurated = (airport: AirportMetadata) => finishSelection(airport.code, formatAirportOptionLabel(airport.code));
+    const selectCity = (city: AirportCity) => finishSelection(city.code, formatAirportCityLabel(city));
 
     const selectActive = () => {
         if (activeIndex < 0) {
             return;
         }
         if (searching) {
-            if (activeIndex < results.length) {
-                selectApiOption(results[activeIndex]);
+            if (activeIndex < cityMatches.length) {
+                selectCity(cityMatches[activeIndex]);
+            } else if (activeIndex - cityMatches.length < results.length) {
+                selectApiOption(results[activeIndex - cityMatches.length]);
             }
-        } else if (activeIndex < browseFlat.length) {
-            selectCurated(browseFlat[activeIndex]);
+            return;
+        }
+        const code = browseFlat[activeIndex];
+        const city = getAirportCity(code);
+        if (city) {
+            selectCity(city);
+            return;
+        }
+        const airport = getAirportMetadata(code);
+        if (airport) {
+            selectCurated(airport);
         }
     };
 
@@ -186,6 +227,31 @@ const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({ label, value,
 
     const showList = open && focused;
 
+    /** One city row: the flag and the name lead, the airports it covers follow. */
+    const cityRow = (city: AirportCity, index: number) => (
+        <li
+            key={city.code}
+            role="option"
+            /* Spelled out rather than left to the markup: an accessible name
+               assembled from a count chip, a flag and two spans reads as
+               "3✈🇫🇷Paris· CDG". This is the option, said once. */
+            aria-label={`${city.name} — ${city.airports.join(', ')}`}
+            aria-selected={index === activeIndex}
+            className={`airport-select__option ${index === activeIndex ? 'airport-select__option--active' : ''}`}
+            onMouseDown={(event) => { event.preventDefault(); selectCity(city); }}
+            onMouseEnter={() => setActiveIndex(index)}
+        >
+            <span className="airport-select__flag" aria-hidden="true">{city.flag}</span>
+            <span className="airport-select__text">
+                <span className="airport-select__primary">{city.name}, {city.country}</span>
+                <span className="airport-select__secondary">
+                    Any airport · {city.airports.join(' · ')}
+                </span>
+            </span>
+            <span className="airport-select__code airport-select__code--city">ANY</span>
+        </li>
+    );
+
     return (
         <div className="airport-select" ref={containerRef}>
             <label className="airport-select__label" htmlFor={inputId}>{label}</label>
@@ -214,34 +280,54 @@ const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({ label, value,
                 <ul className="airport-select__list" id={listboxId} role="listbox" aria-live="polite">
                     {searching ? (
                         <>
+                            {cityMatches.length > 0 && (
+                                <>
+                                    <li className="airport-select__group" role="presentation">
+                                        Cities
+                                    </li>
+                                    {cityMatches.map((city, index) => cityRow(city, index))}
+                                </>
+                            )}
                             {loading && results.length === 0 && (
                                 <li className="airport-select__hint" role="presentation">Searching…</li>
                             )}
-                            {!loading && results.length === 0 && (
+                            {!loading && results.length === 0 && cityMatches.length === 0 && (
                                 <li className="airport-select__hint" role="presentation">No airports match “{query.trim()}”.</li>
                             )}
-                            {results.map((airport, index) => (
+                            {results.map((airport, resultIndex) => {
+                                // Cities sit above the airports, so an airport's
+                                // place in the keyboard walk is offset by them.
+                                const index = cityMatches.length + resultIndex;
+                                return (
                                 <li
-                                    key={`${airport.iata}-${airport.icao ?? index}`}
+                                    key={`${airport.iata}-${airport.icao ?? resultIndex}`}
                                     role="option"
                                     aria-selected={index === activeIndex}
                                     className={`airport-select__option ${index === activeIndex ? 'airport-select__option--active' : ''}`}
                                     onMouseDown={(event) => { event.preventDefault(); selectApiOption(airport); }}
                                     onMouseEnter={() => setActiveIndex(index)}
                                 >
-                                    <span className="airport-select__code">{airport.iata}</span>
-                                    <span className="airport-select__name">
-                                        {airport.name}
-                                        {airport.municipality && airport.municipality !== airport.name && (
-                                            <span className="airport-select__muni"> · {airport.municipality}</span>
-                                        )}
+                                    <span className="airport-select__pin" aria-hidden="true">
+                                        <FontAwesomeIcon icon={faPlaneUp} />
                                     </span>
-                                    {airport.isoCountry && <span className="airport-select__country">{airport.isoCountry}</span>}
+                                    <span className="airport-select__text">
+                                        <span className="airport-select__primary">{airport.name}</span>
+                                        <span className="airport-select__secondary">
+                                            {[airport.municipality, airport.isoCountry].filter(Boolean).join(', ')}
+                                        </span>
+                                    </span>
+                                    <span className="airport-select__code">{airport.iata}</span>
                                 </li>
-                            ))}
+                                );
+                            })}
                         </>
                     ) : (
-                        browseGroups.map((group) => (
+                        <>
+                        <li className="airport-select__group" role="presentation">
+                            Cities · search every airport at once
+                        </li>
+                        {AIRPORT_CITIES.map((city) => cityRow(city, browseIndexByCode.get(city.code) ?? -1))}
+                        {browseGroups.map((group) => (
                             <React.Fragment key={group.country}>
                                 <li className="airport-select__group" role="presentation">
                                     <span className="airport-select__group-flag">{group.flag}</span>
@@ -258,16 +344,18 @@ const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({ label, value,
                                             onMouseDown={(event) => { event.preventDefault(); selectCurated(airport); }}
                                             onMouseEnter={() => setActiveIndex(index)}
                                         >
-                                            <span className="airport-select__code">{airport.code}</span>
-                                            <span className="airport-select__name">
-                                                <span className="airport-select__flag">{airport.flag}</span>
-                                                {airport.city}
+                                            <span className="airport-select__flag" aria-hidden="true">{airport.flag}</span>
+                                            <span className="airport-select__text">
+                                                <span className="airport-select__primary">{airport.city}</span>
+                                                <span className="airport-select__secondary">{airport.airportName}</span>
                                             </span>
+                                            <span className="airport-select__code">{airport.code}</span>
                                         </li>
                                     );
                                 })}
                             </React.Fragment>
-                        ))
+                        ))}
+                        </>
                     )}
                 </ul>
             )}

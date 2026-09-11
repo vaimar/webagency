@@ -151,6 +151,30 @@ export const DECISION_CHECKS = [
         why: 'Sending someone to a closed park is the worst failure this product can have.',
     },
     {
+        /**
+         * The season's source, held to the same standard as a tariff's.
+         *
+         * OFF BY DEFAULT, and that is the whole point of the flag. Twenty spots
+         * carry a season today and not one of them has provenance, because
+         * until V21 there were no columns to put it in. Enabling this check
+         * before those twenty are backfilled takes trip-ready from 15 to 0 in a
+         * single commit — a number that would look like a catastrophic
+         * regression and would in fact be the gate working correctly on
+         * un-backfilled data.
+         *
+         * Rollout order is therefore: migrate, backfill, verify the backfill
+         * covers every currently trip-ready spot, then pass
+         * `seasonProvenanceRequired: true` here and in the audit.
+         */
+        key: 'season-sourced',
+        label: 'season source and date',
+        required: true,
+        weight: 3,
+        enabledWhen: (ctx) => ctx.seasonProvenanceRequired === true,
+        test: (r) => Boolean(r.seasonSourceUrl) && Boolean(r.seasonObservedAt),
+        why: 'A season with no source or observation date cannot be defended or re-checked — the same rule tariffs already answer to.',
+    },
+    {
         key: 'access',
         // Copy varies by *why* it failed: an empty access response means no
         // known way in, a failed lookup means unknown, and untested coverage
@@ -229,6 +253,30 @@ export const PRESENTATION_CHECKS = [
     { key: 'geo', label: 'mappable coordinates', weight: 1, test: (r) => Number.isFinite(r.latitude) && Number.isFinite(r.longitude), why: 'Without coordinates there is no map pin and no access derivation.' },
 ];
 
+/**
+ * The checks that apply under this context.
+ *
+ * A check carrying `enabledWhen` is inert until its flag is set, and — this is
+ * the part that matters — it must not sit in the denominator either. Counting a
+ * disabled check's weight in the maximum would drop every spot's percentage the
+ * moment the check was defined, before anything about the catalogue changed.
+ */
+export const activeDecisionChecks = (ctx = {}) => (
+    DECISION_CHECKS.filter((check) => !check.enabledWhen || check.enabledWhen(ctx))
+);
+
+/** Denominator for the decision percentage, under this context. */
+export const maxDecisionFor = (ctx = {}) => (
+    activeDecisionChecks(ctx).reduce((t, c) => t + c.weight, 0)
+);
+
+/**
+ * Full-strength maximum, every check enabled.
+ *
+ * Kept for callers that want a stable scale. `maxDecisionFor(ctx)` is the one
+ * that matches what was actually assessed, and is what a percentage should be
+ * divided by.
+ */
 export const MAX_DECISION = DECISION_CHECKS.reduce((t, c) => t + c.weight, 0);
 export const MAX_PRESENTATION = PRESENTATION_CHECKS.reduce((t, c) => t + c.weight, 0);
 
@@ -251,6 +299,8 @@ export const assessReadiness = (record, options = {}) => {
         freshDays: options.freshDays ?? FRESH_DAYS,
         coverage: evaluateCoverage(options.fareCoverage, options.tripDate ?? null),
         accessLookupFailed: options.accessLookupFailed === true,
+        // Opt-in, never inferred. See the `season-sourced` check.
+        seasonProvenanceRequired: options.seasonProvenanceRequired === true,
     };
 
     if (options.auditable === false) {
@@ -265,7 +315,8 @@ export const assessReadiness = (record, options = {}) => {
         };
     }
 
-    const failed = DECISION_CHECKS.filter((check) => {
+    const active = activeDecisionChecks(ctx);
+    const failed = active.filter((check) => {
         try { return !check.test(record, ctx); } catch { return true; }
     });
     const observed = newestObservedAt(record);
@@ -279,7 +330,9 @@ export const assessReadiness = (record, options = {}) => {
         gaps: failed.map(labelOf),
         lastVerified: observed === null ? null : new Date(observed),
         stale: hasTariff && (observed === null || (Date.now() - observed) / 86_400_000 > ctx.freshDays),
-        decisionScore: DECISION_CHECKS.filter((c) => !failed.includes(c)).reduce((t, c) => t + c.weight, 0),
+        decisionScore: active.filter((c) => !failed.includes(c)).reduce((t, c) => t + c.weight, 0),
+        // What that score is out of, given which checks were switched on.
+        maxDecisionScore: maxDecisionFor(ctx),
         presentationScore: PRESENTATION_CHECKS.filter((c) => {
             try { return c.test(record); } catch { return false; }
         }).reduce((t, c) => t + c.weight, 0),

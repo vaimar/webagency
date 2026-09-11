@@ -109,16 +109,41 @@
     color: var(--success);
 }
 
+/* "Unverified" is a statement about how much to trust this page, not another
+   category chip. Rendered identically to "Cable" and "France" it disappeared
+   into them; outlined and amber, it reads as the caveat it is. */
+.sdp-badge--unverified {
+    background: transparent;
+    border: 1px dashed var(--warning, #d98324);
+    color: var(--warning, #d98324);
+}
+
+/* Raw latitude and longitude sat directly under the spot's name in monospace,
+   which reads as debug output on a page meant for travellers. Still present —
+   people do copy them into a map — but demoted to a caption so the name and the
+   badges own the top of the card. */
 .sdp-hero__coords {
-    font-size: var(--text-sm);
+    font-size: var(--text-xs);
     color: var(--text-muted);
-    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
     margin: 0;
+    opacity: 0.85;
 }
 
 /* Departure selector bar */
+/* Sat bare between two cards, breaking the page's rhythm — every other block
+   is a surface. It is a control, so it gets one too. */
 .sdp-origin-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
     margin-bottom: var(--space-4);
+    padding: 10px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--border);
 }
 
 .sdp-origin-bar__label {
@@ -201,28 +226,46 @@
     border-top: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
     background: var(--surface-sunken);
+    /* Four tabs do not fit a phone. They scrolled off invisibly before; now the
+       row scrolls on purpose, without a scrollbar cutting through the labels. */
+    overflow-x: auto;
+    scrollbar-width: none;
 }
 
+.sdp-tabs::-webkit-scrollbar { display: none; }
+
 .sdp-tab {
-    flex: 1;
+    flex: 1 0 auto;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    padding: 10px 12px;
+    gap: 7px;
+    padding: 12px 14px;
     border: none;
     background: none;
     font-size: var(--text-sm);
     font-weight: 600;
+    white-space: nowrap;
     color: var(--text-muted);
     cursor: pointer;
-    transition: color 0.15s, box-shadow 0.15s;
+    transition: color var(--transition-fast), background var(--transition-fast),
+        box-shadow var(--transition-fast);
     position: relative;
 }
 
-.sdp-tab:hover { color: var(--text); }
+.sdp-tab:hover {
+    color: var(--text);
+    background: var(--surface-hover);
+}
 
-.sdp-tab--active {
+.sdp-tab:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+    z-index: 1;
+}
+
+.sdp-tab--active,
+.sdp-tab--active:hover {
     color: var(--primary);
     box-shadow: inset 0 -2px 0 var(--primary);
     background: var(--surface);
@@ -230,17 +273,39 @@
 
 .sdp-tab__count {
     font-size: 0.65rem;
-    font-weight: 700;
-    background: var(--surface-sunken);
+    font-weight: 800;
+    background: var(--surface);
+    border: 1px solid var(--border);
     color: var(--text-muted);
-    padding: 1px 6px;
+    padding: 1px 7px;
     border-radius: var(--radius-full);
-    line-height: 1.2;
+    line-height: 1.35;
+    font-variant-numeric: tabular-nums;
 }
 
 .sdp-tab--active .sdp-tab__count {
     background: var(--primary-light);
+    border-color: transparent;
     color: var(--primary);
+}
+
+/* Sits where the count will be, so the label does not shift when it lands. The
+   count itself is the answer; this only says the answer is on its way. */
+.sdp-tab__pending {
+    width: 6px;
+    height: 6px;
+    border-radius: var(--radius-full);
+    background: var(--text-light);
+    animation: sdp-pending-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes sdp-pending-pulse {
+    0%, 100% { opacity: 0.25; }
+    50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sdp-tab__pending { animation: none; opacity: 0.6; }
 }
 
 /* Tab panel */
@@ -319,6 +384,22 @@
     border-color: var(--primary);
     background: var(--primary-light);
     color: var(--primary);
+}
+
+/* Ways in — the schedule-only tier carries its provenance in the copy, so the
+   note reads as part of the answer rather than as fine print under it. */
+.sdp-ways-in__note {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.sdp-ways-in__risk {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    margin: 0;
+    padding-left: var(--space-3);
+    border-left: 2px solid var(--border);
 }
 
 /* Flight teaser */
@@ -461,25 +542,178 @@
    they answer the question a rider is actually asking (can I sleep here, can I
    eat here, can I rent a wetsuit) in one pass instead of a close read. */
 
+/* Facilities wrap as chips rather than filling a fixed grid. The grid used
+   175px columns, so a fourth facility was stranded alone on a second row with
+   two empty cells beside it — the layout looked broken rather than full. */
 .sdp-amenities {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
-    gap: 6px 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
     list-style: none;
     margin: 0 0 14px;
     padding: 0;
 }
 
 .sdp-amenity {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 7px;
+    padding: 5px 12px;
+    border-radius: var(--radius-full, 999px);
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
     font-size: var(--text-sm);
-    color: var(--text-secondary);
+    font-weight: 600;
+    color: var(--text);
 }
 
 .sdp-amenity__icon {
     flex: 0 0 auto;
     width: 14px;
     color: var(--truth-transfer);
+}
+
+
+/* ─── Panel states ───────────────────────────────────────────────────────────
+   "Couldn't load stays." and "No restaurants mapped within 5 km" were set in
+   the same muted grey as a caption, floating in an otherwise empty panel — the
+   panel read as broken either way, and the two cases read as each other. A
+   bordered block with a heading line separates the two questions a reader has:
+   did this fail, or is there genuinely nothing here. */
+
+.sdp-state {
+    padding: var(--space-4) var(--space-5);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface-sunken);
+}
+
+.sdp-state--error {
+    border-color: #f3cfcb;
+    background: var(--error-light);
+}
+
+.sdp-state__title {
+    margin: 0;
+    font-size: var(--text-base);
+    font-weight: 700;
+    color: var(--text);
+}
+
+.sdp-state--error .sdp-state__title {
+    color: var(--truth-warn);
+}
+
+.sdp-state__body {
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    color: var(--text-secondary);
+    max-width: 60ch;
+}
+
+.sdp-state__action {
+    margin-top: var(--space-3);
+    padding: 7px var(--space-4);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--text);
+    cursor: pointer;
+    transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.sdp-state__action:hover {
+    border-color: var(--primary);
+    color: var(--primary-dark);
+}
+
+.sdp-state__action:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+/* ─── Loading skeletons ──────────────────────────────────────────────────────
+   Shaped like the page that is coming. The bars themselves are the shared
+   .skeleton-bar primitive in index.css. */
+
+.sdp-loading__label {
+    margin: 0 0 var(--space-4);
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+}
+
+.sdp-hero--skeleton .sdp-hero__info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.sdp-hero__photo--skeleton {
+    height: 260px;
+}
+
+.sdp-loading__card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+
+.sdp-loading__card--map {
+    height: 300px;
+    padding: 0;
+    overflow: hidden;
+}
+
+.spot-stay--skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    pointer-events: none;
+}
+
+
+/* ─── Stay rows inside the tab panel ─────────────────────────────────────────
+   The restaurants tab moved to cards; these stayed as bare rows separated by
+   nothing but whitespace, and switching between the two tabs looked like
+   switching between two products. Same surface, same border, same hover — the
+   list keeps its icon/content/price rhythm, it just sits on something now.
+
+   Scoped to the panel rather than pushed into .spot-stay itself so the shared
+   "way in" rows on the Getting there tab are untouched. */
+
+.sdp-tab-panel .spot-stays {
+    gap: var(--space-2);
+}
+
+.sdp-tab-panel .spot-stay {
+    align-items: center;
+    padding: 10px var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.sdp-tab-panel .spot-stay:hover {
+    border-color: var(--border-strong);
+    background: var(--surface-hover);
+}
+
+/* The curated rail was a negative margin tuned for a row with no box around it;
+   inside one it hung outside the border. As an inset left edge it still marks
+   the row without breaking the card. */
+.sdp-tab-panel .spot-stay--curated {
+    margin-left: 0;
+    padding-left: 10px;
+    border-left: 3px solid var(--primary);
+}
+
+.sdp-tab-panel .spot-stay--skeleton {
+    align-items: stretch;
+    min-height: 58px;
+    justify-content: center;
 }

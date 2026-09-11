@@ -136,6 +136,16 @@ Additive:    doorToTripPrice                        (never replaces, only extend
 Never use:   marketing fare as the headline price
 ```
 
+**Route Hacker exception (2026-09-05).** `HackerRouteCard` leads with the FARE and
+puts the all-in on the line below it, with the extras itemised (`cabin bag €24 ·
+airport transfer €5 · late-night taxi €60`). The rule above was written against
+airlines that hide costs *inside* an unrealistic total; on this card it produced
+the opposite failure — a €22 Ryanair fare displayed as €46 because we had added a
+cabin bag the traveller may not be carrying, matching nothing they could see on
+ryanair.com. The honest total is not hidden, it is labelled and adjacent, and the
+"Small bag only" control removes the bag from it. The list, the sort tabs and the
+trip cart all rank and total on the same fare, so no surface contradicts another.
+
 ## Frontend Transfer Estimator — `src/services/transferEstimate.ts`
 
 - Haversine formula → straight-line GPS distance

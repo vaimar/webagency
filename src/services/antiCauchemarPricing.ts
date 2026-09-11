@@ -83,6 +83,52 @@ export const getAntiCauchemarPricingSummary = (
  * zero (so breakdown renderers hide it) and the stale with-bag PRICE
  * TRANSPARENCY sentence is removed from theCatch rather than left lying.
  */
+/**
+ * The same analysis, recomputed around a different fare.
+ *
+ * Ryanair's free feed publishes one fare per route per day — the cheapest —
+ * so the number that comes back with a 17:15 flight is often the 08:35 one's.
+ * When the traveller can see the real fare and types it in, the extras do not
+ * change: the cabin bag, the airport transfer and the late-night taxi belong
+ * to the journey, not to the ticket price. Only the fare moves, and every
+ * total moves with it by the same delta.
+ */
+export const rebaseFare = (truth: AntiCauchemarAnalysis, fare: number): AntiCauchemarAnalysis => {
+    const previous = asFiniteAmount(truth.ticketPrice);
+    if (previous === undefined || !Number.isFinite(fare)) {
+        return truth;
+    }
+    const delta = fare - previous;
+    if (delta === 0) {
+        return truth;
+    }
+    const shifted = (value?: number | null): number | undefined => (
+        typeof value === 'number' && Number.isFinite(value) ? Math.round((value + delta) * 100) / 100 : undefined
+    );
+    const rebased: AntiCauchemarAnalysis = {
+        ...truth,
+        ticketPrice: Math.round(fare * 100) / 100,
+        realCost: shifted(truth.realCost),
+        realWorldEntryPrice: shifted(truth.realWorldEntryPrice),
+        auditedTotalCost: shifted(truth.auditedTotalCost),
+        doorToTripPrice: truth.doorToTripPrice != null ? shifted(truth.doorToTripPrice) : truth.doorToTripPrice,
+        // The old fare is quoted inside it, and it is no longer the fare.
+        theCatch: undefined,
+    };
+    if (truth.priceBreakdown?.baseFare) {
+        rebased.priceBreakdown = {
+            ...truth.priceBreakdown,
+            baseFare: {
+                ...truth.priceBreakdown.baseFare,
+                amount: Math.round(fare * 100) / 100,
+                status: 'EXACT',
+                note: 'Fare you entered after looking it up on the airline site.',
+            },
+        };
+    }
+    return rebased;
+};
+
 export const stripCabinBag = (truth: AntiCauchemarAnalysis): AntiCauchemarAnalysis => {
     const bag = asFiniteAmount(truth.cabinBagEstimate) ?? 0;
     if (bag <= 0) {

@@ -21,6 +21,17 @@ if (typeof window !== 'undefined' && typeof window.URL.createObjectURL !== 'func
   window.URL.revokeObjectURL = () => undefined;
 }
 
+// react-slider measures its track with a ResizeObserver, which jsdom does not
+// implement. Nothing under test depends on a measured width — the slider's
+// value comes from props — so a stub that exists is enough to render it.
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  (globalThis as any).ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
+
 // Node 25 ships its own `localStorage`/`sessionStorage` globals (the
 // --localstorage-file experiment). They land on globalThis before the jsdom
 // environment installs its own, and without the flag they are inert objects

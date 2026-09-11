@@ -13,7 +13,28 @@
 // not a price feed: never presented as a quoted fare, always attributed and
 // dated, because a fare seen last week may be nothing like today's.
 
-const STORAGE_KEY = 'travelhub.observedFares.v1';
+/**
+ * v2: entries are keyed by the FLIGHT (route, date, carriers, departure), where
+ * v1 keyed only route and date. A v1 entry can never be matched or removed
+ * under the new scheme, so it is discarded once rather than left to sit in
+ * storage forever. Nothing of value is lost — a sighting only counts for 24
+ * hours, so anything still in v1 had already stopped counting.
+ */
+const STORAGE_KEY = 'travelhub.observedFares.v2';
+const LEGACY_STORAGE_KEYS = ['travelhub.observedFares.v1'];
+
+/**
+ * How long a sighting is allowed to count.
+ *
+ * Airline pricing moves daily, and a sighting is one person's glance at one
+ * moment. Left indefinite it does real damage: an entry from three weeks ago
+ * still completes a journey total, and — worse — still excuses a leg Ryanair
+ * now publishes no fare for, quietly keeping a route alive on the strength of
+ * a fare that has expired. Kept SHORT for that reason. Expired entries are not
+ * deleted, so the traveller can see what they typed and refresh it rather than
+ * wondering where it went.
+ */
+export const OBSERVED_FARE_TTL_MS = 24 * 60 * 60 * 1000;
 
 export interface ObservedFare {
     /** What the traveller saw, in EUR. */
@@ -24,12 +45,61 @@ export interface ObservedFare {
 
 export type ObservedFares = Record<string, ObservedFare>;
 
-/** Same shape as the fetched-price key: a fare belongs to a route on a day. */
-export const observedFareKey = (origin: string, destination: string, date: string): string => (
-    `${origin.toUpperCase()}-${destination.toUpperCase()}-${date}`
-);
+/** Is this sighting recent enough to count towards a price? */
+export const isObservedFareFresh = (fare: ObservedFare | null | undefined, now: Date = new Date()): boolean => {
+    if (!fare) {
+        return false;
+    }
+    const savedAt = Date.parse(fare.savedAt);
+    if (!Number.isFinite(savedAt)) {
+        return false;
+    }
+    const age = now.getTime() - savedAt;
+    // A clock that has gone backwards is not a fresh fare, it is a broken clock.
+    return age >= 0 && age < OBSERVED_FARE_TTL_MS;
+};
+
+/**
+ * The flight a sighting belongs to.
+ *
+ * Route and date are not enough. A hub pair like Madrid → Málaga is flown
+ * several times a day by different airlines, and keying on the route alone made
+ * one entered price appear on every one of them — a Vueling fare shown against
+ * an Air Europa departure three hours later. What the traveller actually saw
+ * was ONE flight, so the carrier and the departure time are part of its
+ * identity.
+ */
+export interface ObservedFlight {
+    origin: string;
+    destination: string;
+    /** The leg's own date, YYYY-MM-DD. */
+    date: string;
+    /** Operating carriers as the schedule lists them. */
+    carriers?: string[] | null;
+    /** Departure clock — what separates two flights on the same route and day. */
+    departureTime?: string | null;
+}
+
+/** "HH:mm" out of "HH:mm:ss" or an ISO stamp; '' when there is no time. */
+const clockOf = (value?: string | null): string => value?.match(/(?:^|T)(\d{2}:\d{2})/)?.[1] ?? '';
+
+export const observedFareKey = (flight: ObservedFlight): string => [
+    flight.origin.toUpperCase(),
+    flight.destination.toUpperCase(),
+    flight.date,
+    // Sorted so a codeshare listed in a different order is still the same flight.
+    (flight.carriers ?? []).map((code) => code.trim().toUpperCase()).sort().join('+'),
+    clockOf(flight.departureTime),
+].join('-');
 
 export const loadObservedFares = (): ObservedFares => {
+    try {
+        for (const legacy of LEGACY_STORAGE_KEYS) {
+            window.localStorage.removeItem(legacy);
+        }
+    } catch {
+        // Storage unavailable — nothing to clean up.
+    }
     try {
         const raw = window.localStorage.getItem(STORAGE_KEY);
         if (!raw) {
@@ -38,6 +108,11 @@ export const loadObservedFares = (): ObservedFares => {
         const parsed = JSON.parse(raw) as ObservedFares;
         // Anything that is not a usable number is dropped rather than trusted:
         // a corrupted entry would otherwise surface as a confident price.
+        //
+        // EXPIRED ENTRIES ARE KEPT. They stop counting towards totals and stop
+        // excusing a missing fare, but the traveller still needs to see what
+        // they typed, labelled as spent, so they can refresh or remove it.
+        // Deleting them here would make an entry silently disappear instead.
         return Object.fromEntries(
             Object.entries(parsed ?? {}).filter(([, fare]) => (
                 fare && typeof fare.price === 'number' && Number.isFinite(fare.price) && fare.price > 0
@@ -59,9 +134,7 @@ const persist = (fares: ObservedFares): void => {
 /** Records a sighting, replacing any earlier one for the same leg and day. */
 export const saveObservedFare = (
     fares: ObservedFares,
-    origin: string,
-    destination: string,
-    date: string,
+    flight: ObservedFlight,
     price: number,
     now: Date = new Date(),
 ): ObservedFares => {
@@ -70,7 +143,7 @@ export const saveObservedFare = (
     }
     const next = {
         ...fares,
-        [observedFareKey(origin, destination, date)]: {
+        [observedFareKey(flight)]: {
             price: Math.round(price * 100) / 100,
             savedAt: now.toISOString(),
         },
@@ -79,28 +152,26 @@ export const saveObservedFare = (
     return next;
 };
 
-export const forgetObservedFare = (
-    fares: ObservedFares,
-    origin: string,
-    destination: string,
-    date: string,
-): ObservedFares => {
+export const forgetObservedFare = (fares: ObservedFares, flight: ObservedFlight): ObservedFares => {
     const next = { ...fares };
-    delete next[observedFareKey(origin, destination, date)];
+    delete next[observedFareKey(flight)];
     persist(next);
     return next;
 };
 
-/** "today", "yesterday", "6 days ago" — how much to trust it is the reader's call. */
+/**
+ * "seen today", "expired — seen 6 days ago". How much to trust a fresh one is
+ * the reader's call; an expired one has already stopped counting, and the label
+ * has to say so rather than implying it is still in the total.
+ */
 export const describeFareAge = (savedAt: string, now: Date = new Date()): string => {
     const saved = Date.parse(savedAt);
     if (!Number.isFinite(saved)) {
         return 'saved earlier';
     }
     const days = Math.floor((now.getTime() - saved) / 86_400_000);
-    if (days <= 0) return 'seen today';
-    if (days === 1) return 'seen yesterday';
-    return `seen ${days} days ago`;
+    const age = days <= 0 ? 'seen today' : days === 1 ? 'seen yesterday' : `seen ${days} days ago`;
+    return isObservedFareFresh({ price: 0, savedAt }, now) ? age : `expired · ${age}`;
 };
 
 /**

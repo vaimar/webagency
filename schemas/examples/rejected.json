@@ -1,0 +1,47 @@
+{
+  "slug": "koba-wake-park-fr",
+  "runId": "extract-2026-09-08T09:00:00Z-a41c",
+  "extractedAt": "2026-09-08T09:07:40Z",
+  "modelId": "nvidia/llama-3.3-nemotron-super-49b-v1",
+  "verdict": "rejected",
+  "pagesFetched": [
+    {
+      "url": "https://kobawakepark.fr/",
+      "fetchedAt": "2026-09-08T09:07:21Z",
+      "sourceTier": "T1_OPERATOR",
+      "status": 200,
+      "contentHash": "sha256:c1d4e79a20b6f8351e9c7a04d2b8f65039ea1c7d4b60f829e5a3c7d1b04f6e92",
+      "yieldedFacts": false
+    },
+    {
+      "url": "https://www.tripadvisor.fr/Attraction_Review-koba-wake-park",
+      "fetchedAt": "2026-09-08T09:07:33Z",
+      "sourceTier": "T3_INSTITUTIONAL",
+      "status": 200,
+      "contentHash": "sha256:7e0b3a6c15d9f2481c6b0a3e97d4f8250bc9e1a7d306f4b82e5c9a0d7f31b648",
+      "yieldedFacts": false
+    }
+  ],
+  "reasons": [
+    {
+      "code": "E_QUOTE_NOT_FOUND",
+      "field": "season.seasonStartMonth",
+      "detail": "Model returned seasonStartMonth 5 quoting \"ouvert de mai à septembre\". That string does not appear in kobawakepark.fr after whitespace normalisation (sha256:c1d4e7…). Treated as fabricated; nothing written."
+    },
+    {
+      "code": "E_SOURCE_TIER_DISALLOWED",
+      "field": "prices[0].provenance.sourceUrl",
+      "detail": "tripadvisor.fr is a review site. Not T1, T2 or T3 — reviewer-entered prices are not operator tariffs regardless of how plausible they look."
+    },
+    {
+      "code": "E_VALUE_NOT_IN_QUOTE",
+      "field": "prices[1].amount",
+      "detail": "amount 30 quoted from \"formule à partir de 25 €\". 30 is not the number in the quote, and \"à partir de\" is a floor rather than a tariff."
+    },
+    {
+      "code": "E_YEAR_ROUND_INFERRED",
+      "field": "season.yearRound",
+      "detail": "yearRound true was inferred from the absence of closing dates on the homepage. Absence of a stated closure is not a statement of opening."
+    }
+  ]
+}

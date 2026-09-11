@@ -3061,6 +3061,41 @@ input[type="range"]::-webkit-slider-thumb:hover {
     100% { background-position: -200% 0; }
 }
 
+/* ── Skeleton primitive ──────────────────────────────────────────────────────
+   One placeholder bar for the whole product. Every panel that waits on a slow
+   lookup had been writing its own — HackFlights has a full set, the spot page
+   had a grey sentence — so a reader met a different idea of "loading" on each
+   screen. Compose these into the shape of the content that is coming, so the
+   layout does not jump when it lands. */
+
+.skeleton-bar {
+    display: block;
+    height: 12px;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(90deg, var(--surface-sunken) 25%, #e6ecf4 50%, var(--surface-sunken) 75%);
+    background-size: 240% 100%;
+    animation: skeleton-sweep 1.4s ease-in-out infinite;
+}
+
+.skeleton-bar--title { width: 62%; height: 15px; }
+.skeleton-bar--sub { width: 42%; height: 10px; margin-top: 7px; }
+.skeleton-bar--line { width: 84%; }
+.skeleton-bar--pill { width: 104px; height: 28px; border-radius: var(--radius-full); }
+.skeleton-bar--block { width: 100%; height: 100%; border-radius: inherit; }
+
+@keyframes skeleton-sweep {
+    from { background-position: 140% 0; }
+    to { background-position: -40% 0; }
+}
+
+/* A sweeping gradient is exactly the kind of motion vestibular triggers react
+   to, and it never stops on its own. Flat grey still reads as "not here yet". */
+@media (prefers-reduced-motion: reduce) {
+    .skeleton-bar {
+        animation: none;
+    }
+}
+
 /* Responsive */
 /* The header sheds weight in stages rather than wrapping: first the tagline,
    then the sync wording, then the desktop nav entirely (the mobile bottom nav
@@ -4708,4 +4743,20 @@ a,
 .footer-inline-link {
 	color: inherit;
 	text-decoration: underline;
+}
+
+/* Present to assistive technology, absent from the page. For a control whose
+   label is carried by the visual design — a fieldset legend over a segmented
+   control, say — but which a screen reader still has to hear. */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
 }

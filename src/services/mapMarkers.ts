@@ -68,6 +68,25 @@ export interface MapPoi {
     lat: number;
     lon: number;
     kind: 'restaurant' | 'shop';
+    /**
+     * What OpenStreetMap records about the place. Every field is optional and
+     * absent means NOT RECORDED, never "no" — an untagged restaurant is not a
+     * restaurant without a website.
+     *
+     * There is deliberately no rating here. OSM holds facts, not opinions, so
+     * there is no quality score to show and none is invented; the website and
+     * map links are how a reader reaches reviews.
+     */
+    amenity?: string | null;
+    cuisine?: string | null;
+    website?: string | null;
+    openingHours?: string | null;
+    phone?: string | null;
+    address?: string | null;
+    outdoorSeating?: boolean | null;
+    vegetarian?: boolean | null;
+    vegan?: boolean | null;
+    wheelchair?: boolean | null;
 }
 
 /** Radius the POI lookup covers. Exported so UI copy cannot claim a different one. */

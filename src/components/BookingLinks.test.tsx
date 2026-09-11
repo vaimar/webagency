@@ -72,6 +72,45 @@ describe('BookingLinks', () => {
         expect(linkNames()).toEqual(['easyJet', 'Google Flights', 'Kiwi']);
     });
 
+    it('names the airline once the long-haul codes are ruled out', () => {
+        // MAD–IBZ, 75 minutes. American Airlines sells it and cannot be flying
+        // it, which leaves Iberia Express alone — and a leg with no free fare
+        // is exactly where the airline's own site is worth reaching.
+        render(
+            <BookingLinks
+                origin="MAD"
+                destination="IBZ"
+                date="2026-09-27"
+                carriers={['AA', 'I2']}
+                durationMinutes={75}
+            />,
+        );
+
+        expect(linkNames()).toEqual(['Iberia Express', 'Google Flights', 'Kiwi']);
+        expect(hrefOf(/Iberia Express/)).toContain('iberia.com');
+    });
+
+    it('still names nobody when two real candidates survive', () => {
+        render(
+            <BookingLinks
+                origin="MAD"
+                destination="IBZ"
+                date="2026-09-27"
+                carriers={['AA', 'I2', 'VY']}
+                durationMinutes={75}
+            />,
+        );
+
+        expect(linkNames()).toEqual(['Google Flights', 'Kiwi']);
+    });
+
+    it('makes no ruling without a duration to rule on', () => {
+        // Every other surface passes no duration, and must behave as it did.
+        render(<BookingLinks origin="MAD" destination="IBZ" date="2026-09-27" carriers={['AA', 'I2']} />);
+
+        expect(linkNames()).toEqual(['Google Flights', 'Kiwi']);
+    });
+
     it('keeps its previous behaviour when no carrier is named', () => {
         // Other surfaces pass no carriers and must not change.
         render(<BookingLinks origin="SNN" destination="AGP" date="2026-09-11" />);

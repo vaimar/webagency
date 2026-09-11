@@ -12,8 +12,9 @@ const AIRLINE_NAMES: Record<string, string> = {
     VY: 'Vueling', W6: 'Wizz Air', W9: 'Wizz Air UK',
     EW: 'Eurowings', TO: 'Transavia France', HV: 'Transavia',
     LS: 'Jet2', DY: 'Norwegian', UX: 'Air Europa', V7: 'Volotea',
+    X3: 'TUI fly', BY: 'TUI Airways', OR: 'TUI fly Netherlands',
     // European legacy / flag carriers
-    BA: 'British Airways', IB: 'Iberia', AF: 'Air France',
+    BA: 'British Airways', IB: 'Iberia', I2: 'Iberia Express', AF: 'Air France',
     KL: 'KLM', LH: 'Lufthansa', SN: 'Brussels Airlines', AZ: 'ITA Airways',
     EI: 'Aer Lingus', LX: 'Swiss', OS: 'Austrian Airlines', TP: 'TAP Air Portugal',
     A3: 'Aegean Airlines', SK: 'SAS', AY: 'Finnair', LO: 'LOT Polish Airlines',
@@ -70,6 +71,94 @@ export const operatorBrands = (codes?: string[] | null): AirlineBrand[] => {
 export const operatorCodes = (codes?: string[] | null): string[] => (
     Array.from(new Set((codes ?? []).filter(Boolean).map((code) => code.toUpperCase())))
 );
+
+/**
+ * Carriers whose entire network is on another continent.
+ *
+ * A merged flight arrives carrying every marketing carrier printed on it, so a
+ * 1h15 Madrid–Ibiza hop comes through as "American Airlines · Iberia Express ·
+ * Vueling" and a Madrid–Málaga one as "Azul · Aeroméxico · Etihad · SAS · Air
+ * Europa". One airline flies each of those and it is never the one in São
+ * Paulo. Naming all of them as the operator is not a rounding error: it sends
+ * someone hunting the fare to an airline that does not sell the flight.
+ *
+ * Used only to DEMOTE, never to select. A code missing from this set stays a
+ * candidate operator, so forgetting one costs nothing, while wrongly adding one
+ * would cost a real booking link. That is also why the carriers within about
+ * four hours of Europe — Turkish, Royal Air Maroc, Tunisair, Air Algérie,
+ * EgyptAir, MEA, El Al — are deliberately NOT here: each of them really does
+ * operate flights this product can return, and a wrong demotion is the
+ * expensive mistake.
+ */
+const INTERCONTINENTAL = new Set([
+    // Americas
+    'DL', 'AA', 'UA', 'AC', 'WS', 'B6', 'AS', 'VS', 'LA', 'AM', 'G3', 'AD', 'AV', 'AR',
+    // Gulf and Asia
+    'QR', 'EK', 'EY', 'SV', 'GF', 'SQ', 'CX', 'NH', 'JL', 'KE', 'OZ', 'CI', 'BR',
+    'MU', 'CZ', 'CA', 'MF', 'AI', '6E', 'VN', 'TG', 'MH', 'GA', 'QF', 'UL', 'WY',
+    'G9', 'HU', 'PK',
+    // Sub-Saharan Africa
+    'KQ', 'ET', 'MK',
+    // French overseas, long-haul only despite the European parent
+    'UU', 'TX',
+]);
+
+/**
+ * The longest a flight can run and still be certainly intra-European.
+ *
+ * The demotion below holds only where an intercontinental carrier could not
+ * plausibly be the operator. Madrid–Doha is a Qatar Airways flight that Iberia
+ * sells, and demoting Qatar there would be exactly backwards; at four hours or
+ * less that case does not arise. Longer than this, or with no duration known at
+ * all, no split is attempted.
+ */
+const SHORT_HAUL_MAX_MINUTES = 240;
+
+export interface OperatorSplit {
+    /** Carriers that could be the one actually flying this leg. */
+    operators: AirlineBrand[];
+    /** Carriers selling it under their own code while flying nothing here. */
+    codeshares: AirlineBrand[];
+}
+
+/**
+ * Split a merged flight's carriers into who might be flying it and who is only
+ * selling it.
+ *
+ * Deliberately stops short of naming ONE operator. The provider hands over an
+ * unordered list with no operating flag, so choosing between Iberia Express and
+ * Vueling on a Madrid–Ibiza hop would be a coin flip — but choosing between
+ * those two and American Airlines is not, and narrowing six candidates to two
+ * is worth doing even when it cannot get to one.
+ *
+ * Both conditions are required before anything is demoted:
+ *   1. the leg is short enough to be certainly intra-European, and
+ *   2. somebody else on the list could actually be flying it.
+ *
+ * Fails to `{ operators: everything, codeshares: [] }` — the shape callers had
+ * before this existed — whenever either is unmet.
+ */
+export const splitOperators = (
+    codes?: string[] | null,
+    durationMinutes?: number | null,
+): OperatorSplit => {
+    const brands = operatorBrands(codes);
+    const undecided: OperatorSplit = { operators: brands, codeshares: [] };
+
+    if (durationMinutes == null || durationMinutes > SHORT_HAUL_MAX_MINUTES) {
+        return undecided;
+    }
+
+    const operators = brands.filter((brand) => !INTERCONTINENTAL.has(brand.code));
+    // Nothing left to attribute the flight to. A long-haul carrier alone on a
+    // short leg is all we know, so it keeps its billing rather than being
+    // demoted to a codeshare of nobody.
+    if (operators.length === 0) {
+        return undecided;
+    }
+
+    return { operators, codeshares: brands.filter((brand) => INTERCONTINENTAL.has(brand.code)) };
+};
 
 // Display name → IATA code, for the surfaces that only ever got a name from
 // the provider. First declaration wins, so "Ryanair" resolves to FR and not to
@@ -143,10 +232,28 @@ const BOOKING_DEEP_LINKS: Record<string, BookingUrlBuilder> = {
         + `&departureDate_0=${encodeURIComponent(date)}`
         + '&numAdults=1&numYoungAdults=0&numChildren=0&numInfants=0&promoCode=&groupBooking=false',
 
+    // TUI's flight search. Array-style airport params, and the empty
+    // `childAge`/`currency` keys are part of the shape the site expects.
+    //
+    // `adults=1`: the captured URL asked for two, but every price on this page
+    // is per traveller — Ryanair's fares, the cabin bag, the transfer — so a
+    // two-adult search would open showing roughly double the honest total it
+    // sits beside.
+    ...Object.fromEntries(['X3', 'BY'].map((code) => [code,
+        (origin: string, destination: string, date: string) => 'https://www.tui.co.uk/flight/search'
+            + `?flyingFrom%5B%5D=${encodeURIComponent(origin)}`
+            + `&flyingTo%5B%5D=${encodeURIComponent(destination)}`
+            + `&depDate=${encodeURIComponent(date)}`
+            + '&adults=1&children=0&childAge='
+            + '&choiceSearch=true&searchType=pricegrid&nearByAirports=true&currency=&isOneWay=true',
+    ])),
+
     // Iberia's booking form takes the date in three fields, with the month as
     // YYYYMM rather than MM, and carries the city names for display. Empty
     // END_* fields are what makes it one-way alongside TRIP_TYPE=1.
-    IB: (origin, destination, date) => {
+    // I2 is Iberia Express — a different airline code on the same booking site,
+    // and the one that actually operates a lot of what "Iberia" sells.
+    ...Object.fromEntries(['IB', 'I2'].map((code) => [code, (origin: string, destination: string, date: string) => {
         const [year, month, day] = date.split('-');
         return 'https://www.iberia.com/flights/'
             + '?market=IE&language=en&appliesOMB=false&splitEndCity=false&initializedOMB=true'
@@ -160,7 +267,7 @@ const BOOKING_DEEP_LINKS: Record<string, BookingUrlBuilder> = {
             + '&FARE_TYPE=R&quadrigam=IBHMPA&ADT=1&CHD=0&INF=0&BNN=0&YTH=0&YCD=0'
             + '&residentCode=&familianumerosa=&BV_UseBVCookie=no&boton=Search&bookingMarket=IE'
             + '#!/availability';
-    },
+    }])),
 };
 
 const BOOKING_SITES: Record<string, string> = {
@@ -171,9 +278,11 @@ const BOOKING_SITES: Record<string, string> = {
     VY: 'https://www.vueling.com/', W6: 'https://wizzair.com/', W9: 'https://wizzair.com/',
     EW: 'https://www.eurowings.com/', TO: 'https://www.transavia.com/', HV: 'https://www.transavia.com/',
     LS: 'https://www.jet2.com/', DY: 'https://www.norwegian.com/',
+    X3: 'https://www.tui.co.uk/', BY: 'https://www.tui.co.uk/', OR: 'https://www.tui.nl/',
     UX: 'https://www.aireuropa.com/', V7: 'https://www.volotea.com/',
     // European legacy / flag carriers
     BA: 'https://www.britishairways.com/', IB: 'https://www.iberia.com/',
+    I2: 'https://www.iberia.com/',
     AF: 'https://www.airfrance.com/', KL: 'https://www.klm.com/', LH: 'https://www.lufthansa.com/',
     SN: 'https://www.brusselsairlines.com/', AZ: 'https://www.ita-airways.com/',
     EI: 'https://www.aerlingus.com/', LX: 'https://www.swiss.com/', OS: 'https://www.austrian.com/',
