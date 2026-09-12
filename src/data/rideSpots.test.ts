@@ -59,7 +59,7 @@ describe('rideSpots — the shipped catalogue', () => {
                 }
                 // Spots we have been told about, or found in a listing,
                 // carry real facts. Only the untouched ones stay blank.
-                if (['Ibiza Wake', 'Wake Paradise', '313 Cable Park', 'Lakecity 33'].includes(entry.label)) {
+                if (['Ibiza Wake', 'Wake Paradise', '313 Cable Park', 'Lakecity 33', 'Langenfeld'].includes(entry.label)) {
                     continue;
                 }
                 if (key === 'climateBand') {
@@ -106,7 +106,7 @@ describe('rideSpots — the shipped catalogue', () => {
     it('has coordinates for every spot it knows where to find', () => {
         const placed = RIDE_SPOTS.filter((s) => s.point);
         expect(placed.map((s) => s.label).sort())
-            .toEqual(['313 Cable Park', 'Ibiza Wake', 'Lakecity 33', 'Wake Paradise']);
+            .toEqual(['313 Cable Park', 'Ibiza Wake', 'Lakecity 33', 'Langenfeld', 'Wake Paradise']);
     });
 
     it('does not claim a cable park where there is none', () => {
@@ -125,16 +125,15 @@ describe('rideSpots — the shipped catalogue', () => {
         expect(RIDE_SPOTS.map((s) => s.label)).not.toContain('Hypnotics');
     });
 
-    it('leaves a venue launch-blocked until the three observed facts are read', () => {
+    // Langenfeld is the first spot with every launch-critical fact filled.
+    it('reports the first launch-ready venue', () => {
         const coverage = getCoverage(RIDE_SPOTS, AT);
 
         expect(coverage.totalSpots).toBe(7);
-        expect(coverage.launchReady).toBe(0);
-        // Four spots now have a surface; one has a season. Nothing is
-        // launch-ready yet because none has all three observed fields.
-        expect(coverage.byField.surface).toBe(4);
-        expect(coverage.byField.openingSeason).toBe(1);
-        expect(coverage.byField.beginnerFriendly).toBe(0);
+        expect(coverage.launchReady).toBe(2);   // Langenfeld and 313
+        expect(coverage.byField.surface).toBe(5);
+        expect(coverage.byField.openingSeason).toBe(2);
+        expect(coverage.byField.beginnerFriendly).toBe(2);
     });
 });
 
@@ -304,20 +303,21 @@ describe('shortlistRideSpots — hard filters fail closed, soft ones fail open',
         expect(result.included[0].staleFacts).toEqual(['openingSeason']);
     });
 
-    it('reports three different reasons for hiding a venue, not one', () => {
+    it('distinguishes every reason a venue is missing from a result', () => {
         const result = shortlistRideSpots({ surface: 'cable', beginnerOnly: true }, RIDE_SPOTS, AT);
 
-        expect(result.included).toEqual([]);
+        // Two spots now answer the beginner question.
+        expect(result.included.map((e) => e.spot.label).sort())
+            .toEqual(['313 Cable Park', 'Langenfeld']);
 
-        const reasons = result.excluded.map((e) => e.reason);
-        expect(reasons).toContain('NOT_OPERATING');     // EXO 84 has closed
-        expect(reasons).toContain('SURFACE_MISMATCH');  // Ibiza is boat-pulled
-        expect(reasons).toContain('SURFACE_UNVERIFIED');// the rest are unchecked
+        const reasons = new Set(result.excluded.map((e) => e.reason));
+        expect(reasons.has('NOT_OPERATING')).toBe(true);        // EXO 84 has closed
+        expect(reasons.has('SURFACE_MISMATCH')).toBe(true);     // Ibiza is boat-pulled
+        expect(reasons.has('SURFACE_UNVERIFIED')).toBe(true);   // Paris Wakepark
+        expect(reasons.has('BEGINNER_UNVERIFIED')).toBe(true);  // cable, no school listed
 
-        // Only the unchecked ones are a gap in our data; the rest are
-        // answers. Conflating them would tell the user the wrong thing.
-        expect(result.hiddenForMissingData).toBeLessThan(RIDE_SPOTS.length);
-        expect(result.hiddenForMissingData).toBeGreaterThan(0);
+        // Only the unchecked ones are a gap in our data; the rest are answers.
+        expect(result.hiddenForMissingData).toBe(3);
     });
 
     it('excludes Ibiza from a cable-only search, because it is boat-pulled', () => {

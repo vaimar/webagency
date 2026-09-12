@@ -339,8 +339,21 @@ export const RIDE_SPOTS: RideSpot[] = [
         openingSeason: listed({ from: '05-01', to: '09-30' },
             'https://www.visit-palanga.lt/en/activities/313-cable-park/',
             'Season runs roughly May to September.'),
+        beginnerFriendly: listed(true, 'https://313cablepark.lt/en/paslaugos/naujokams/',
+            'Beginner group session around EUR 20; most riders complete first laps after one.'),
+        amenities: ['school', 'beginner-line', 'accommodation', 'restaurant'],
     },
-    spot('Paris Wakepark', 'ORY'),
+    {
+        // NOT A SINGLE VENUE. paris-wakepark.fr is a directory listing every
+        // wakepark around Paris, so this label names a website rather than a
+        // place. Real venues near Paris include My Little Wake Park
+        // (Ponthierry-Pringy, RER D) and sites at Choisy-le-Roi and
+        // Neuilly-sur-Marne. Left unplaceable on purpose: routing to "a
+        // directory" would be inventing a destination. Replace it with a
+        // named venue once one is chosen.
+        ...spot('Paris Wakepark', 'ORY'),
+        locality: 'ambiguous — see note, this label is a directory not a venue',
+    },
     {
         ...spot('Lakecity 33', 'BOD'),
         locality: 'Mios, between Bordeaux and Arcachon, France',
@@ -348,7 +361,19 @@ export const RIDE_SPOTS: RideSpot[] = [
         surface: listed('cable', 'https://lakecity.fr/',
             'Two cables: a 5-pylon 760 m and a 2-pylon.'),
     },
-    spot('Langenfeld', 'DUS'),
+    {
+        ...spot('Langenfeld', 'DUS'),
+        locality: 'Baumberger Str. 88, Langenfeld (Rheinland), between Düsseldorf and Leverkusen',
+        point: { lat: 51.1265, lon: 6.9285 },   // the lake off Baumberger Str., approximate
+        amenities: ['restaurant', 'school', 'beginner-line', 'rails', 'kicker'],
+        surface: listed('cable', 'https://www.wasserski-langenfeld.de/en/',
+            'Four large and two smaller cables.'),
+        openingSeason: listed({ from: '03-01', to: '12-31' },
+            'https://www.langenfeld.de/Startseite/Leben-und-Gesellschaft/Sport-und-Freizeit/Wasserskianlage.htm',
+            'Open March to December; the Seehaus restaurant runs year-round.'),
+        beginnerFriendly: listed(true, 'https://www.wasserski-langenfeld.de/en/',
+            'Beginner lines on every cable, lessons available, children from 10 who can swim.'),
+    },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────

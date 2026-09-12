@@ -36,6 +36,16 @@ describe('the TGV problem — the question that started this', () => {
     // Worth stating plainly, because it is the finding: SNCF caps special
     // baggage at 130 cm and the SHORTEST typical adult board is 134 cm bare.
     // No adult wakeboard fits, bagged or not. Only a child's board does.
+    it('takes the same board on a German train, where SNCF will not', () => {
+        const db = findCarrierRule('Deutsche Bahn (ICE / long distance)')!;
+        const verdict = assessCarriage(db, commonBoard);
+
+        expect(verdict.verdict).toBe('FINE');
+        expect(verdict.costEur).toBe(0);
+        // Still a lead, not the carrier's own page.
+        expect(verdict.confirmBeforeBooking).toBe(true);
+    });
+
     it('rules out even the shortest adult board, bagged or bare', () => {
         const sncf = findCarrierRule('SNCF (TGV INOUI / Intercités)')!;
 
@@ -49,8 +59,8 @@ describe('the TGV problem — the question that started this', () => {
     });
 
     it('never reports a cost of zero for a leg it could not assess', () => {
-        const db = findCarrierRule('Deutsche Bahn')!;
-        const verdict = assessCarriage(db, commonBoard);
+        const unresearched = findCarrierRule('Renfe')!;
+        const verdict = assessCarriage(unresearched, commonBoard);
 
         expect(verdict.verdict).toBe('UNKNOWN');
         expect(verdict.costEur).toBeNull();
@@ -91,14 +101,18 @@ describe('the car', () => {
 describe('choosing a carrier', () => {
     it('picks the cheapest workable option for a mode', () => {
         expect(bestCarrierForMode('car', commonBoard)?.verdict).toBe('FINE');
-        expect(bestCarrierForMode('plane', commonBoard)?.rule.carrier).toBe('Ryanair');
+        // easyJet is EUR 50 online against Ryanair's EUR 60.
+        expect(bestCarrierForMode('plane', commonBoard)?.rule.carrier).toBe('easyJet');
     });
 
-    it('surfaces the problem rather than returning nothing when none work', () => {
-        // Trains: SNCF is over-limit for this board, the rest are unresearched.
+    // The contrast that matters to a rider with a board and a rail ticket:
+    // the German train takes it free, the French one does not.
+    it('picks the train that will actually take the board', () => {
         const best = bestCarrierForMode('train', commonBoard);
-        expect(best).not.toBeNull();
-        expect(['OVER_LIMIT', 'UNKNOWN']).toContain(best!.verdict);
+
+        expect(best!.rule.carrier).toContain('Deutsche Bahn');
+        expect(best!.verdict).toBe('FINE');
+        expect(best!.rule.maxLengthCm).toBe(200);
     });
 });
 
@@ -107,8 +121,8 @@ describe('research backlog', () => {
         const coverage = ruleCoverage();
 
         expect(coverage.total).toBe(CARRIER_RULES.length);
-        // Car, Ryanair, SNCF.
-        expect(coverage.researched).toBe(3);
+        // Car, Ryanair, easyJet, SNCF, Deutsche Bahn.
+        expect(coverage.researched).toBe(5);
         expect(coverage.researched).toBeLessThan(coverage.total);
     });
 

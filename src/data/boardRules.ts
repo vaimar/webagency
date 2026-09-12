@@ -134,15 +134,47 @@ export const CARRIER_RULES: CarrierBoardRule[] = [
             'https://www.sncf-connect.com/aide/transport-de-vos-bagages',
         ),
     },
+    {
+        carrier: 'easyJet',
+        mode: 'plane',
+        allowed: true,
+        feeOnlineEur: 50, feeAtDepartureEur: 60,
+        // Generous on length: a board bag is nowhere near this.
+        maxLengthCm: 275,
+        maxWeightKg: 32,
+        excessEurPerKg: null,
+        mustDeclareInAdvance: true,
+        penaltyNote: 'One piece of sports equipment per passenger. Adding it at the airport costs more.',
+        provenance: LEAD(
+            'Large sports equipment EUR 50 online / EUR 60 at the airport per flight, up to 32 kg and 275 cm.',
+            'https://www.airline-baggage-fees.com/sports/surfboards/easyjet.html',
+        ),
+    },
+    {
+        carrier: 'Deutsche Bahn (ICE / long distance)',
+        mode: 'train',
+        allowed: true,
+        // Free, and long enough that a board actually fits — unlike SNCF.
+        feeOnlineEur: 0, feeAtDepartureEur: 0,
+        maxLengthCm: 200,
+        maxWeightKg: null,
+        excessEurPerKg: null,
+        mustDeclareInAdvance: false,
+        penaltyNote: 'Carried only if there is room to stow it safely — no reservation for luggage.',
+        provenance: LEAD(
+            'Properly packed sports equipment up to 200 x 50 x 30 cm, no charge on long-distance services.',
+            'https://www.eurosender.com/en/train/db-baggage-allowance',
+        ),
+    },
     // Shape is in place; these need a phone call or an unblocked browser.
-    ...(['easyJet', 'Vueling', 'Transavia', 'Air France'] as const).map((carrier): CarrierBoardRule => ({
+    ...(['Vueling', 'Transavia', 'Air France'] as const).map((carrier): CarrierBoardRule => ({
         carrier, mode: 'plane',
         allowed: null, feeOnlineEur: null, feeAtDepartureEur: null,
         maxLengthCm: null, maxWeightKg: null, excessEurPerKg: null,
         mustDeclareInAdvance: null, penaltyNote: null,
         provenance: { kind: 'third_party', sourceUrl: null, checkedOn: null, note: 'Not researched yet.' },
     })),
-    ...(['Deutsche Bahn', 'Renfe', 'Trenitalia', 'Eurostar'] as const).map((carrier): CarrierBoardRule => ({
+    ...(['Renfe', 'Trenitalia', 'Eurostar'] as const).map((carrier): CarrierBoardRule => ({
         carrier, mode: 'train',
         allowed: null, feeOnlineEur: null, feeAtDepartureEur: null,
         maxLengthCm: null, maxWeightKg: null, excessEurPerKg: null,

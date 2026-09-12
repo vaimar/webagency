@@ -233,11 +233,13 @@ describe('planSearch — catalogue fan-out fails closed', () => {
         expect(plan.warnings.map((w) => w.kind)).toContain('HIDDEN_FOR_MISSING_DATA');
     });
 
-    it('still blocks a beginner search, because no spot lists a school yet', () => {
+    // Two spots now list a school, so the beginner filter finally returns.
+    it('returns beginner-friendly cable parks now that two list a school', () => {
         const plan = planSearch(intentOf({ rideSurface: 'cable', skillLevel: 'none' }), { now: NOW });
 
-        expect(plan.strategy).toBe('BLOCKED');
-        expect(plan.blocked?.reason).toBe('NO_VERIFIED_CANDIDATES');
+        expect(plan.strategy).toBe('SHORTLIST_FANOUT');
+        expect(plan.calls.map((c) => c.spotLabel).sort()).toEqual(['313 Cable Park', 'Langenfeld']);
+        expect(plan.warnings.map((w) => w.kind)).toContain('HIDDEN_FOR_MISSING_DATA');
     });
 });
 

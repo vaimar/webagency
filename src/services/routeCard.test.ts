@@ -136,7 +136,7 @@ describe('degraded semantics', () => {
         const plan = optimiseRoute(LYON, [SPAY]);
         const c = buildRouteCard({
             id: 'deg', origin: LYON, plan, spots: [], board: BOARD, partySize: 1,
-            carrierByLeg: { 0: findCarrierRule('Deutsche Bahn')! },
+            carrierByLeg: { 0: findCarrierRule('Renfe')! },
             now: new Date('2026-09-20T00:00:00Z'),
         });
 
@@ -205,7 +205,7 @@ describe('an unknown carrier', () => {
         const plan = optimiseRoute(LYON, [SPAY]);
         const c = buildRouteCard({
             id: 'r4', origin: LYON, plan, spots: [], board: BOARD, partySize: 1,
-            carrierByLeg: { 0: findCarrierRule('Deutsche Bahn')! },
+            carrierByLeg: { 0: findCarrierRule('Renfe')! },
             now: new Date('2026-09-20T00:00:00Z'),
         });
 
@@ -240,5 +240,32 @@ describe('the trust panel', () => {
 
         expect(c.trust.excluded).toEqual([{ spot: 'Langenfeld', reason: 'no coordinates yet' }]);
         expect(c.warnings.some((w) => w.kind === 'SPOT_EXCLUDED')).toBe(true);
+    });
+});
+
+// Hardcoded defaults (driving rate, nightly room, daily food) are estimates.
+// They must stay visibly so: a route built entirely from them can never
+// report an EXACT total, however confident the arithmetic looks.
+describe('cost defaults stay estimates', () => {
+    it('never reports EXACT when driving, stays or food are in the total', () => {
+        const c = card();
+
+        expect(c.totals.status).not.toBe('EXACT');
+        expect(c.totals.status).toBe('ESTIMATED');
+        expect(c.totals.baseTravelEur).toBeGreaterThan(0);
+        expect(c.totals.staysEur).toBeGreaterThan(0);
+    });
+
+    it('keeps session prices exact while the estimated lines stay estimated', () => {
+        const plan = optimiseRoute(LYON, [SPAY, MIOS]);
+        const c = buildRouteCard({
+            id: 'est', origin: LYON, plan, spots: [], board: BOARD, partySize: 1,
+            nightlyEur: 74, mealsEurPerDay: 35, now: new Date('2026-09-20T00:00:00Z'),
+        });
+
+        // Sessions come from published rates; the rest are our defaults.
+        expect(c.totals.sessionsEur).toBeGreaterThan(0);
+        // The weakest line still decides the headline.
+        expect(c.totals.status).toBe('ESTIMATED');
     });
 });

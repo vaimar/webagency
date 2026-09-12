@@ -104,6 +104,21 @@ Each of these came from a third-party listing, not the venue. Treat as a startin
 | Is MRS right for EXO 84? | **Moot — the park has stopped operating.** | `operating: false` recorded against the venue (`sourceKind: 'user_report'`). It is excluded from every shortlist, and its one-click chip is gone from `/explore`. The row is kept rather than deleted so nobody re-adds it. |
 | Does Hypnotics near Perpignan exist? | **No — it is in Turkey.** | Removed from `rideSpots.ts`, `destinationDirectory.ts` and the preset chips. Its `PGF` mapping made both the airport and the climate derived from it wrong by a country. **The backend still resolves it to PGF.** Re-add only with a confirmed location. |
 
+### Data pass 2026-09-12
+
+| Spot | Added | Source grade |
+|---|---|---|
+| **Langenfeld** | Baumberger Str. 88, coordinates, season Mar–Dec, beginner lines + lessons + school, restaurant, 4+2 cables | third-party listings |
+| **313 Cable Park** | beginner group session (~€20), school, accommodation, restaurant | third-party listing |
+| **Paris Wakepark** | **flagged — not a venue.** `paris-wakepark.fr` is a directory of every wakepark near Paris. Real venues nearby: My Little Wake Park (Ponthierry-Pringy, RER D, Apr–Oct), Choisy-le-Roi, Neuilly-sur-Marne. Left unplaceable on purpose | — |
+
+**Carriers added:** easyJet (€50 online / €60 airport, 32 kg, boards to 275 cm) and Deutsche Bahn
+(free, 200 × 50 × 30 cm). The DB limit matters: **a wakeboard fits on a German long-distance train
+but not on a French TGV**, whose special-baggage limit is 130 cm.
+
+Everything in this pass is `third_party` — a lead, not the venue's own page, since the egress proxy
+blocks carrier and venue domains. Upgrade any row to `user_report` by confirming it.
+
 ### Also corrected 2026-09-12
 
 | Finding | Answer | Applied |
