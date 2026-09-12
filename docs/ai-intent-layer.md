@@ -1,6 +1,18 @@
 # Slumber AI Intent Layer — Architecture
 
-> **Status:** design. Not yet implemented.
+> **Status (2026-09-12): partly built, AI layer deferred.**
+>
+> | Section | State |
+> |---|---|
+> | §2 deterministic middle | **Built** — `tripIntent`, `tripPlanner`, `tripSearch`, `tripRanking` |
+> | §01b UX states | **Built** — `useRideFinder`, `RideFinder`, mounted at `/ride-finder` behind `REACT_APP_RIDE_FINDER` |
+> | §6 venue dataset | **Partly** — `rideSpots.ts`, 7 spots, surface 4/7, season 1/7, beginner 0/7 |
+> | §3 fact ledger, §4 narrative validation | **Deleted, recoverable.** Built at `dda8c57`, removed in the cleanup after the product direction moved from search to packages and routes. Nothing imported it. Restore from git if an AI narration layer is ever added. |
+> | §7 roadmap | **Superseded.** The product is now packages and multi-stop routes, not a search engine — see `weekendBudget.ts` and `wakeRoute.ts`. |
+>
+> The anti-hallucination *principles* below still hold and are enforced in
+> `rideSpots.ts` (provenance per fact) and `boardRules.ts` (unverified warns
+> loudly rather than failing silent). Only the model-facing plumbing is gone.
 > **Grounded in:** `POST /api/trips/explore` (`src/types/tripExploration.ts`), `src/services/tripExploreSelectors.ts`,
 > `src/services/destinationDirectory.ts`, `agent-skills/context/backend-contracts.md`, `agent-skills/shared/core-rules.md`.
 

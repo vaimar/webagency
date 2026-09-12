@@ -16,10 +16,12 @@
 //                genuinely hard to find, which is precisely why they are
 //                worth owning.
 
+import { assessCarriage, BoardSpec, CarrierBoardRule, CarrierMode, findCarrierRule } from '../data/boardRules';
+
+/** Route legs use the same mode vocabulary as the carrier registry. */
+export type TravelMode = CarrierMode;
 import { round2 } from './driveEstimate';
 import { BudgetLineInput } from './weekendBudget';
-
-export type TravelMode = 'car' | 'train' | 'ferry' | 'plane';
 
 export interface GeoPoint {
     lat: number;
@@ -34,44 +36,8 @@ export interface RouteStop {
     sessionEur?: number | null;
 }
 
-/**
- * Whether a board can travel on this leg, and what it costs.
- *
- * `allowed: null` means nobody has checked — the leg still plans, but the
- * board line is flagged rather than assumed free. This is the dataset that
- * does not exist anywhere in one place: "can I get a wakeboard on a TGV,
- * and what does Ryanair charge for a board bag."
- */
-export interface BoardPolicy {
-    mode: TravelMode;
-    carrier?: string;
-    allowed: boolean | null;
-    feeEur: number | null;
-    maxLengthCm: number | null;
-    note: string;
-    /** Same discipline as the venue catalogue: say where this came from. */
-    sourceUrl?: string | null;
-    checkedOn?: string | null;
-}
-
-/** Your own car: the board just goes in. No carrier, no fee, no rules. */
-export const CAR_BOARD_POLICY: BoardPolicy = {
-    mode: 'car',
-    allowed: true,
-    feeEur: 0,
-    maxLengthCm: null,
-    note: 'Your own vehicle — no carrier rule applies.',
-};
-
-/** An unchecked mode. Plans fine; the board line is surfaced as unknown. */
-export const unknownBoardPolicy = (mode: TravelMode, carrier?: string): BoardPolicy => ({
-    mode,
-    carrier,
-    allowed: null,
-    feeEur: null,
-    maxLengthCm: null,
-    note: `Board carriage on ${carrier ?? mode} not verified — check before booking.`,
-});
+/** Your own car — the one carrier with no policy, because it is yours. */
+export const CAR_CARRIER = findCarrierRule('Your own car')!;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Distance
@@ -104,7 +70,9 @@ export interface Leg {
     durationMinutes: number;
     /** Null when the mode is not priced — never treated as free. */
     costEur: number | null;
-    board: BoardPolicy;
+    /** Who carries it. The board verdict depends on the rider's own board,
+     *  so it is computed at costing time rather than baked into the leg. */
+    carrier: CarrierBoardRule;
     note?: string;
 }
 
@@ -130,7 +98,7 @@ export const buildCarLeg = (
         distanceKm,
         durationMinutes: Math.round((distanceKm / rates.averageKph) * 60),
         costEur: round2(distanceKm * rates.eurPerKm),
-        board: CAR_BOARD_POLICY,
+        carrier: CAR_CARRIER,
     };
 };
 
@@ -273,6 +241,8 @@ export const optimiseRoute = (
 export interface RouteCostInput {
     plan: RoutePlan;
     partySize: number;
+    /** The rider's actual board. Without it, carriage cannot be judged. */
+    board?: BoardSpec;
     /** Nightly room rate, per room rather than per head. */
     nightlyEur?: number | null;
     /** Per person per day. */
@@ -300,18 +270,25 @@ export const routeToBudgetLines = (input: RouteCostInput): BudgetLineInput[] => 
         note: `${Math.round(plan.totalDriveMinutes / 60)}h at the wheel across the trip`,
     });
 
-    // A leg nobody has checked the board rules for is its own line, priced null.
-    for (const leg of plan.legs.filter((l) => l.board.allowed === null)) {
-        lines.push({
-            kind: 'transport',
-            label: `Board carriage: ${leg.from} → ${leg.to} by ${leg.mode}`,
-            unitAmount: leg.board.feeEur,
-            units: 1,
-            perPerson: true,
-            status: 'MANUAL_CHECK_REQUIRED',
-            source: leg.board.carrier ?? leg.mode,
-            note: leg.board.note,
-        });
+    // Every leg that is not simply "in the car" gets its own board line —
+    // charged, over-limit or unchecked. Never silently free.
+    if (input.board) {
+        for (const leg of plan.legs) {
+            const verdict = assessCarriage(leg.carrier, input.board);
+            if (verdict.verdict === 'FINE' && verdict.costEur === 0) {
+                continue;
+            }
+            lines.push({
+                kind: 'transport',
+                label: `Board: ${leg.from} → ${leg.to} by ${leg.mode}`,
+                unitAmount: verdict.costEur,
+                units: 1,
+                perPerson: true,
+                status: verdict.costEur === null ? 'MANUAL_CHECK_REQUIRED' : 'ESTIMATED',
+                source: leg.carrier.carrier,
+                note: verdict.message,
+            });
+        }
     }
 
     for (const stop of plan.order) {
