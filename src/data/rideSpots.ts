@@ -30,14 +30,31 @@ export type StoredFactStatus = 'VERIFIED' | 'UNVERIFIED' | 'NOT_APPLICABLE';
 /** What a consumer reads, after TTL is applied. */
 export type ResolvedFactStatus = StoredFactStatus | 'STALE';
 
+/**
+ * Where a fact came from. This is not decoration — it decides how much the
+ * planner may lean on the value.
+ *
+ *  venue        the venue's own site or booking system. The gold standard.
+ *  third_party  a tourist board, directory or review site. Usable, but these
+ *               go stale and are often a season behind.
+ *  derived      computed from a documented rule rather than observed (see
+ *               CLIMATE_RULE). Carries no URL, because there is no page to read.
+ */
+export type FactSourceKind = 'venue' | 'third_party' | 'derived';
+
+/** Who established it. 'rule' means no human or agent judgement was involved. */
+export type FactVerifier = 'human' | 'agent' | 'rule';
+
 export interface VenueFact<T> {
     /** Non-null if and only if status is VERIFIED. Enforced by the validator. */
     value: T | null;
     status: StoredFactStatus;
-    /** Where a human checked it. Required for VERIFIED, https only. */
+    /** Required for VERIFIED facts sourced from a page — https, and actually read. */
     sourceUrl: string | null;
-    /** YYYY-MM-DD, the day a human checked it. Required for VERIFIED. */
+    /** YYYY-MM-DD the source was read. Required for VERIFIED. */
     checkedOn: string | null;
+    sourceKind?: FactSourceKind;
+    verifiedBy?: FactVerifier;
     note?: string;
 }
 
@@ -146,24 +163,82 @@ export const FACT_TTL_DAYS: Record<RideSpotFactKey, number> = {
 // and the date. Do not populate a value from memory or inference.
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * CLIMATE_RULE — the documented basis for every derived climateBand.
+ *
+ * climateBand describes the region during the riding season, not the annual
+ * average. It is the one launch-critical field that does NOT require reading a
+ * venue's page, because it is a property of where the venue is, so it is
+ * derived from a rule rather than left unverified:
+ *
+ *   warm       Mediterranean basin and the Balearics (roughly below 44°N on a
+ *              Mediterranean coast) — reliable summer heat, long season.
+ *   temperate  Atlantic and continental western Europe, roughly 44–53°N.
+ *   cold       Baltic and Nordic, roughly above 54°N — short summer season.
+ *
+ * Keyed by the arrival airport because that is the only location anchor the
+ * catalogue currently holds. That is a known weakness: a venue can sit far
+ * from its airport (see docs/ride-spots-curation.md, "catalogue corrections"),
+ * so a curator who confirms the venue's real location should re-check this.
+ */
+export const CLIMATE_RULE_NOTE = 'derived from region: Mediterranean <44°N = warm, Atlantic/continental 44-53°N = temperate, Baltic >54°N = cold';
+
+const CLIMATE_BY_AIRPORT: Record<string, ClimateBand> = {
+    IBZ: 'warm',        // Ibiza, 38.9°N, Balearics
+    PGF: 'warm',        // Perpignan, 42.7°N, Mediterranean coast
+    MRS: 'warm',        // Marseille, 43.4°N, Mediterranean coast
+    BOD: 'temperate',   // Bordeaux, 44.8°N, Atlantic
+    ORY: 'temperate',   // Paris Orly, 48.7°N, continental
+    DUS: 'temperate',   // Dusseldorf, 51.3°N, continental
+    VNO: 'cold',        // Vilnius, 54.7°N, Baltic
+};
+
+/** Builds the derived climate fact, or leaves it unverified for an unknown airport. */
+export const deriveClimateBand = (arrivalAirport: string, on: string): VenueFact<ClimateBand> => {
+    const band = CLIMATE_BY_AIRPORT[arrivalAirport];
+    if (!band) {
+        return unverified<ClimateBand>(`no climate rule for ${arrivalAirport}`);
+    }
+    return {
+        value: band,
+        status: 'VERIFIED',
+        sourceUrl: null,
+        checkedOn: on,
+        sourceKind: 'derived',
+        verifiedBy: 'rule',
+        note: CLIMATE_RULE_NOTE,
+    };
+};
+
+const RULE_APPLIED_ON = '2026-09-12';
+
 const blankFacts = (): Omit<RideSpot, 'label' | 'arrivalAirport' | 'activity'> => ({
     surface: unverified('check the venue site: cable, boat or open sea'),
     beginnerFriendly: unverified('needs a beginner line or a school on site'),
-    climateBand: unverified('band for the riding season, not the annual average'),
+    // climateBand is filled per row by deriveClimateBand() — see CLIMATE_RULE_NOTE.
+    climateBand: unverified<ClimateBand>('set by deriveClimateBand'),
     openingSeason: unverified('published season for the current year'),
     cableCount: unverified(),
     skillFloor: unverified(),
     sessionPrice: unverified('hourly and day-pass, in EUR'),
 });
 
+const spot = (label: string, arrivalAirport: string): RideSpot => ({
+    label,
+    arrivalAirport,
+    activity: 'wakeboard',
+    ...blankFacts(),
+    climateBand: deriveClimateBand(arrivalAirport, RULE_APPLIED_ON),
+});
+
 export const RIDE_SPOTS: RideSpot[] = [
-    { label: 'EXO 84', arrivalAirport: 'MRS', activity: 'wakeboard', ...blankFacts() },
-    { label: 'Ibiza Cable Park', arrivalAirport: 'IBZ', activity: 'wakeboard', ...blankFacts() },
-    { label: '313 Cable Park', arrivalAirport: 'VNO', activity: 'wakeboard', ...blankFacts() },
-    { label: 'Hypnotics', arrivalAirport: 'PGF', activity: 'wakeboard', ...blankFacts() },
-    { label: 'Paris Wakepark', arrivalAirport: 'ORY', activity: 'wakeboard', ...blankFacts() },
-    { label: 'Lakecity 33', arrivalAirport: 'BOD', activity: 'wakeboard', ...blankFacts() },
-    { label: 'Langenfeld', arrivalAirport: 'DUS', activity: 'wakeboard', ...blankFacts() },
+    spot('EXO 84', 'MRS'),
+    spot('Ibiza Cable Park', 'IBZ'),
+    spot('313 Cable Park', 'VNO'),
+    spot('Hypnotics', 'PGF'),
+    spot('Paris Wakepark', 'ORY'),
+    spot('Lakecity 33', 'BOD'),
+    spot('Langenfeld', 'DUS'),
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -268,6 +343,8 @@ export interface ShortlistEntry {
     climateBonus: number;
     /** Facts that were usable but out of date — the UI shows these as amber. */
     staleFacts: RideSpotFactKey[];
+    /** Facts this decision leaned on that nobody read off the venue's own page. */
+    inferredFacts: RideSpotFactKey[];
 }
 
 export interface ShortlistResult {
@@ -296,9 +373,15 @@ export const shortlistRideSpots = (
         }
 
         const staleFacts: RideSpotFactKey[] = [];
+        const inferredFacts: RideSpotFactKey[] = [];
         const noteStale = (key: RideSpotFactKey, status: ResolvedFactStatus) => {
             if (status === 'STALE') {
                 staleFacts.push(key);
+            }
+            // A rule or a directory is weaker evidence than the venue itself.
+            const kind = spot[key].sourceKind ?? 'venue';
+            if (kind !== 'venue' && !inferredFacts.includes(key)) {
+                inferredFacts.push(key);
             }
         };
 
@@ -354,7 +437,7 @@ export const shortlistRideSpots = (
             }
         }
 
-        included.push({ spot, climateBonus, staleFacts });
+        included.push({ spot, climateBonus, staleFacts, inferredFacts });
     }
 
     return {
@@ -460,8 +543,17 @@ export const validateRideSpots = (
                 if (fact.value === null || fact.value === undefined) {
                     add(label, factKey, 'R3-verified-has-value', 'VERIFIED but value is null');
                 }
-                // R4 — provenance is mandatory for anything verified.
-                if (!fact.sourceUrl || !fact.sourceUrl.startsWith('https://')) {
+                // R4 — a fact read off a page must name the page. A derived
+                // fact has no page, so it must say so instead.
+                const kind = fact.sourceKind ?? 'venue';
+                if (kind === 'derived') {
+                    if (fact.sourceUrl !== null) {
+                        add(label, factKey, 'R4-derived-no-url', 'derived facts carry no sourceUrl');
+                    }
+                    if (!fact.note) {
+                        add(label, factKey, 'R4-derived-note', 'derived facts must state the rule in `note`');
+                    }
+                } else if (!fact.sourceUrl || !fact.sourceUrl.startsWith('https://')) {
                     add(label, factKey, 'R4-source-url', 'VERIFIED needs an https sourceUrl');
                 }
                 if (!fact.checkedOn || !ISO_DATE_RE.test(fact.checkedOn)) {

@@ -70,3 +70,51 @@ A stale fact **still filters**, with an amber "checked March 2026" note. An unve
 - **Every February**, before the northern season opens: re-check `openingSeason` on all venues. One sitting, ~2 hours.
 - **On any user report** of a wrong fact: re-check that venue, bump `checkedOn` even if the value is unchanged.
 - `getCoverage().staleFields` lists what has aged out — wire it to an admin page or just run it in CI as a warning.
+
+---
+
+## Research packet (2026-09-12)
+
+An agent attempted this curation pass and **could not complete it**. Venue domains are blocked by this
+environment's network egress proxy — `exoloisirs.com`, `313cablepark.lt` and `lithuania.travel` all refused. Search
+summaries were available, but a summary is not a page: recording a venue's URL as `sourceUrl` for a page nobody opened
+would falsify the one field this schema exists to protect. So **no observed fact was written**.
+
+What did land: `climateBand` is now derived for all seven venues from a documented geographic rule
+(`CLIMATE_RULE_NOTE`), marked `sourceKind: 'derived'`, and flagged to the user as inferred. Three observed fields
+remain per venue.
+
+### Leads — unverified, for a human to confirm
+
+Each of these came from a third-party listing, not the venue. Treat as a starting point, not evidence.
+
+| Venue | Lead | Still to confirm |
+|---|---|---|
+| **EXO 84** | Cable park on Lac des Grèzes Hautes, 5 pylons. Season ~April–October (2022 and 2023 tariff sheets showed 9 Apr–16 Oct and 8 Apr–15 Oct). Accessible from age 7. | Current-year dates; whether age 7 implies a beginner line |
+| **313 Cable Park** | 3 full-size Sesitec systems, 50 features. Beginner group session ~€20, "most complete first laps after one session". Season ~May–September. | Current-year dates; beginner provision |
+| **Lakecity 33** | Two cables (5-pylon, 760m; plus a 2-pylon). At Mios, between Bordeaux and Arcachon. | Season dates; beginner provision |
+| **Hypnotics** | **Not found under this name.** Searches around Perpignan surfaced TSJ Wakepark (Saint-Jean-Pla-de-Corts) and Téléski Nautique Port Barcarès instead. | Whether this venue still exists, or the label is stale |
+| **Paris Wakepark**, **Langenfeld**, **Ibiza Cable Park** | No usable leads gathered. | Everything |
+
+### Catalogue corrections — these affect routing, not just filtering
+
+Two venues appear to be mapped to the wrong airport in `destinationDirectory.ts`. Both need checking against the
+backend's `AirportResolutionService`, since `rideSpots.ts` copies its airport from there and the validator (R2)
+enforces that they agree — **fixing `rideSpots.ts` alone would break the build, and would be fixing the wrong file.**
+
+- **313 Cable Park → `VNO` (Vilnius).** The venue is at Užpelkiai, between Kretinga and Palanga, roughly 300 km from
+  Vilnius. Palanga (`PLQ`) is ~15 km away. If this is right, every transfer cost and door-to-trip figure for this
+  venue is badly wrong.
+- **EXO 84 → `MRS` (Marseille).** The venue is at Lamotte-du-Rhône, near Bollène/Orange — roughly 100 km from
+  Marseille. `MRS` may still be the correct routing choice on flight availability, but the transfer leg is long
+  enough to change the honest total materially.
+
+### Fastest path to finishing
+
+Per venue, ~5 minutes with the site open: confirm `surface`, `beginnerFriendly`, `openingSeason`; paste the exact page
+URL and today's date; leave anything unconfirmed as `unverified()`. Then
+`npm test -- --watchAll=false --testPathPattern=rideSpots`.
+
+The wiring beyond that is done and tested: `planSearch` already consumes all four fields, and
+`"planSearch — once a venue is genuinely curated"` in `tripPlanner.test.ts` proves that a fully-verified venue starts
+returning results with no code change.

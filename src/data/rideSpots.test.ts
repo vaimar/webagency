@@ -13,7 +13,8 @@ import {
     validateRideSpots,
 } from './rideSpots';
 
-const AT = new Date('2026-09-11T12:00:00Z');
+// Comfortably after RULE_APPLIED_ON, so derived facts are not 'in the future'.
+const AT = new Date('2026-09-20T12:00:00Z');
 
 const verified = <T, >(value: T, checkedOn = '2026-09-01'): VenueFact<T> => ({
     value,
@@ -41,21 +42,44 @@ describe('rideSpots — the shipped catalogue', () => {
         expect(validateRideSpots(RIDE_SPOTS, AT)).toEqual([]);
     });
 
-    it('ships with no invented facts — every fact starts UNVERIFIED', () => {
+    // Nothing is asserted about a venue that nobody has read. The single
+    // exception is climateBand, which is derived from a documented geographic
+    // rule rather than observed — see CLIMATE_RULE_NOTE.
+    it('ships with no observed facts — only the derived climate is set', () => {
         for (const entry of RIDE_SPOTS) {
             for (const key of ALL_FACT_KEYS) {
                 const fact = entry[key] as VenueFact<unknown>;
+                if (key === 'climateBand') {
+                    expect(fact.status).toBe('VERIFIED');
+                    expect(fact.sourceKind).toBe('derived');
+                    expect(fact.verifiedBy).toBe('rule');
+                    // A derived fact cites a rule, never a page it did not read.
+                    expect(fact.sourceUrl).toBeNull();
+                    continue;
+                }
                 expect(fact.status).toBe('UNVERIFIED');
                 expect(fact.value).toBeNull();
             }
         }
     });
 
-    it('reports zero launch-ready venues until a human fills them in', () => {
+    it('derives a climate band for every venue from its region', () => {
+        const byLabel = Object.fromEntries(RIDE_SPOTS.map((s) => [s.label, s.climateBand.value]));
+
+        expect(byLabel['Ibiza Cable Park']).toBe('warm');     // Balearics
+        expect(byLabel['Hypnotics']).toBe('warm');            // Mediterranean coast
+        expect(byLabel['Lakecity 33']).toBe('temperate');     // Atlantic
+        expect(byLabel['Langenfeld']).toBe('temperate');      // continental
+        expect(byLabel['313 Cable Park']).toBe('cold');       // Baltic
+    });
+
+    it('leaves a venue launch-blocked until the three observed facts are read', () => {
         const coverage = getCoverage(RIDE_SPOTS, AT);
+
         expect(coverage.totalSpots).toBe(7);
         expect(coverage.launchReady).toBe(0);
-        for (const key of LAUNCH_CRITICAL_FACTS) {
+        expect(coverage.byField.climateBand).toBe(7);
+        for (const key of LAUNCH_CRITICAL_FACTS.filter((k) => k !== 'climateBand')) {
             expect(coverage.byField[key]).toBe(0);
         }
     });

@@ -45,7 +45,8 @@ export type PlanWarningKind =
     | 'HIDDEN_FOR_MISSING_DATA'
     | 'DATE_SAMPLED'
     | 'FANOUT_TRUNCATED'
-    | 'SEASON_UNCHECKED';
+    | 'SEASON_UNCHECKED'
+    | 'INFERRED_FACT_USED';
 
 export interface PlanWarning {
     kind: PlanWarningKind;
@@ -367,6 +368,18 @@ export const planSearch = (intent: ResolvedIntent, context: PlanContext = {}): E
             },
             sampledDates,
         };
+    }
+
+    // Facts nobody read off the venue's own page still count, but the user is
+    // told which ones — a rule or a directory is weaker evidence than the venue.
+    const inferred = Array.from(new Set(
+        shortlist.included.flatMap((entry) => entry.inferredFacts),
+    ));
+    if (inferred.length > 0) {
+        warnings.push({
+            kind: 'INFERRED_FACT_USED',
+            message: `Ranked using ${inferred.join(', ')} that we inferred rather than read from the venue. Confirm before booking.`,
+        });
     }
 
     // Climate is a soft preference: it orders the shortlist, never trims it.

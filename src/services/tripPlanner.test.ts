@@ -1,4 +1,4 @@
-import { RideSpot, unverified } from '../data/rideSpots';
+import { deriveClimateBand, RideSpot, unverified } from '../data/rideSpots';
 import { normalizeTripIntent, ResolvedIntent } from './tripIntent';
 import { defaultWindow, FANOUT_WIDTH, planSearch, sampleDates } from './tripPlanner';
 
@@ -220,6 +220,83 @@ describe('planSearch — catalogue fan-out fails closed', () => {
 
         expect(plan.strategy).toBe('BLOCKED');
         expect(plan.blocked?.reason).toBe('NO_VERIFIED_CANDIDATES');
+    });
+});
+
+// Proves the wiring end to end: the day a curator verifies the three observed
+// facts, the hard filters start returning venues with no code change.
+describe('planSearch — once a venue is genuinely curated', () => {
+    const humanVerified = <T, >(value: T) => ({
+        value,
+        status: 'VERIFIED' as const,
+        sourceUrl: 'https://the-venue.example/park',
+        checkedOn: '2026-09-01',
+        sourceKind: 'venue' as const,
+        verifiedBy: 'human' as const,
+    });
+
+    const fullyCurated = (label: string, airport: string): RideSpot => spotOf(label, airport, {
+        surface: humanVerified('cable' as const),
+        beginnerFriendly: humanVerified(true),
+        skillFloor: humanVerified('none' as const),
+        openingSeason: humanVerified({ from: '04-01', to: '10-31' }),
+        climateBand: deriveClimateBand(airport, '2026-09-12'),
+    });
+
+    it('returns the venue for a surface + beginner + season query', () => {
+        const plan = planSearch(
+            datedIntentOf({ rideSurface: 'cable', skillLevel: 'none' }),
+            { now: NOW, spots: [fullyCurated('Ibiza Cable Park', 'IBZ')] },
+        );
+
+        expect(plan.strategy).toBe('SHORTLIST_FANOUT');
+        expect(plan.calls.map((c) => c.spotLabel)).toEqual(['Ibiza Cable Park']);
+        expect(plan.blocked).toBeNull();
+    });
+
+    it('still excludes it when the user travels out of season', () => {
+        const winter: ResolvedIntent = {
+            ...datedIntentOf({ rideSurface: 'cable' }),
+            dateWindow: { earliest: '2026-12-20', latest: '2026-12-23' },
+        };
+        const plan = planSearch(winter, { now: NOW, spots: [fullyCurated('Ibiza Cable Park', 'IBZ')] });
+
+        expect(plan.strategy).toBe('BLOCKED');
+        expect(plan.blocked?.reason).toBe('NO_CANDIDATES_MATCH');
+    });
+
+    it('ranks a warm venue above a cold one on a warmth preference', () => {
+        const plan = planSearch(
+            datedIntentOf({ rideSurface: 'cable', climate: 'warm' }),
+            {
+                now: NOW,
+                spots: [fullyCurated('313 Cable Park', 'VNO'), fullyCurated('Ibiza Cable Park', 'IBZ')],
+            },
+        );
+
+        expect(plan.calls).toHaveLength(2);
+        expect(plan.calls[0].spotLabel).toBe('Ibiza Cable Park');
+    });
+
+    // Climate is rule-derived, so the user is told it was inferred.
+    it('says which facts it inferred rather than read from the venue', () => {
+        const plan = planSearch(
+            datedIntentOf({ rideSurface: 'cable', climate: 'warm' }),
+            { now: NOW, spots: [fullyCurated('Ibiza Cable Park', 'IBZ')] },
+        );
+
+        const inferred = plan.warnings.find((w) => w.kind === 'INFERRED_FACT_USED');
+        expect(inferred?.message).toContain('climateBand');
+        expect(inferred?.message).toMatch(/confirm before booking/i);
+    });
+
+    it('raises no inferred warning when every fact used came from the venue', () => {
+        const plan = planSearch(
+            datedIntentOf({ rideSurface: 'cable', skillLevel: 'none' }),
+            { now: NOW, spots: [fullyCurated('Ibiza Cable Park', 'IBZ')] },
+        );
+
+        expect(plan.warnings.map((w) => w.kind)).not.toContain('INFERRED_FACT_USED');
     });
 });
 
