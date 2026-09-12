@@ -65,7 +65,7 @@ describe('useRideFinder', () => {
 
         expect(result.current.state.status).toBe('results');
         if (result.current.state.status === 'results') {
-            expect(result.current.state.result.options.length).toBeGreaterThan(0);
+            expect(result.current.state.result!.options.length).toBeGreaterThan(0);
             expect(result.current.state.quality).toBe('full');
         }
     });

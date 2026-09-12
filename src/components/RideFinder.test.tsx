@@ -44,18 +44,20 @@ const fetcher: ExploreFetcher = async () => payload;
 
 const profileContext = { homeAddress: 'Dublin' };
 
-describe('RideFinder', () => {
-    it('shows the search box and real catalogue examples when idle', () => {
-        render(<RideFinder fetcher={fetcher} spots={SPOTS} now={NOW} profileContext={profileContext} />);
+// Search mode is kept working on purpose: old and new cards coexist behind
+// the same flag while the route flow beds in.
+describe('RideFinder — search mode (compatibility)', () => {
+    it('shows the box and real catalogue examples when idle', () => {
+        render(<RideFinder mode="search" fetcher={fetcher} spots={SPOTS} now={NOW} profileContext={profileContext} />);
 
         expect(screen.getByPlaceholderText(/where do you want to ride/i)).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /cable park only/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /cable parks only/i })).toBeInTheDocument();
     });
 
     it('runs a search and renders a backed option with its status badge', async () => {
-        render(<RideFinder fetcher={fetcher} spots={SPOTS} now={NOW} profileContext={profileContext} />);
+        render(<RideFinder mode="search" fetcher={fetcher} spots={SPOTS} now={NOW} profileContext={profileContext} />);
 
-        await userEvent.click(screen.getByRole('button', { name: /find trips/i }));
+        await userEvent.click(screen.getByRole('button', { name: /build my route/i }));
 
         await waitFor(() => expect(screen.getByText('Ibiza')).toBeInTheDocument());
         expect(screen.getByText(/312/)).toBeInTheDocument();
@@ -64,9 +66,9 @@ describe('RideFinder', () => {
     });
 
     it('marks assumed chips so the user can see what we filled in', async () => {
-        render(<RideFinder fetcher={fetcher} spots={SPOTS} now={NOW} profileContext={profileContext} />);
+        render(<RideFinder mode="search" fetcher={fetcher} spots={SPOTS} now={NOW} profileContext={profileContext} />);
 
-        await userEvent.click(screen.getByRole('button', { name: /find trips/i }));
+        await userEvent.click(screen.getByRole('button', { name: /build my route/i }));
 
         await waitFor(() => expect(screen.getByText('Ibiza')).toBeInTheDocument());
         const originChip = screen.getByRole('button', { name: /From DUB/i });
@@ -74,9 +76,9 @@ describe('RideFinder', () => {
     });
 
     it('asks for an origin rather than guessing when there is no profile', async () => {
-        render(<RideFinder fetcher={fetcher} spots={SPOTS} now={NOW} />);
+        render(<RideFinder mode="search" fetcher={fetcher} spots={SPOTS} now={NOW} />);
 
-        await userEvent.click(screen.getByRole('button', { name: /find trips/i }));
+        await userEvent.click(screen.getByRole('button', { name: /build my route/i }));
 
         await waitFor(() => expect(screen.getByText(/where are you flying from/i)).toBeInTheDocument());
         expect(screen.getByRole('button', { name: 'Dublin' })).toBeInTheDocument();
@@ -84,18 +86,18 @@ describe('RideFinder', () => {
 
     it('offers the computed relaxation instead of an empty page', async () => {
         const noRoute: ExploreFetcher = async () => ({ routeAvailable: false });
-        render(<RideFinder fetcher={noRoute} spots={SPOTS} now={NOW} profileContext={profileContext} />);
+        render(<RideFinder mode="search" fetcher={noRoute} spots={SPOTS} now={NOW} profileContext={profileContext} />);
 
-        await userEvent.click(screen.getByRole('button', { name: /find trips/i }));
+        await userEvent.click(screen.getByRole('button', { name: /build my route/i }));
 
-        await waitFor(() => expect(screen.getByText(/nothing we can back/i)).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByText(/no route we can build with real data/i)).toBeInTheDocument());
     });
 
     it('surfaces a degraded backend rather than showing prices as solid', async () => {
         const degraded: ExploreFetcher = async () => ({ ...payload, orchestrationStatus: 'DEGRADED' });
-        render(<RideFinder fetcher={degraded} spots={SPOTS} now={NOW} profileContext={profileContext} />);
+        render(<RideFinder mode="search" fetcher={degraded} spots={SPOTS} now={NOW} profileContext={profileContext} />);
 
-        await userEvent.click(screen.getByRole('button', { name: /find trips/i }));
+        await userEvent.click(screen.getByRole('button', { name: /build my route/i }));
 
         await waitFor(() => expect(screen.getByText(/backend was degraded/i)).toBeInTheDocument());
     });
@@ -103,9 +105,9 @@ describe('RideFinder', () => {
     // Regression: this chip used to clear weightProfile to null and crash,
     // because every chip was cleared the same way. Ranking always has a value.
     it('cycles the ranking chip instead of clearing it', async () => {
-        render(<RideFinder fetcher={fetcher} spots={SPOTS} now={NOW} profileContext={profileContext} />);
+        render(<RideFinder mode="search" fetcher={fetcher} spots={SPOTS} now={NOW} profileContext={profileContext} />);
 
-        await userEvent.click(screen.getByRole('button', { name: /find trips/i }));
+        await userEvent.click(screen.getByRole('button', { name: /build my route/i }));
         await waitFor(() => expect(screen.getByText('Ibiza')).toBeInTheDocument());
 
         expect(screen.getByRole('button', { name: /Ranked: balanced/i })).toBeInTheDocument();
@@ -120,9 +122,9 @@ describe('RideFinder', () => {
     });
 
     it('always states its confidence', async () => {
-        render(<RideFinder fetcher={fetcher} spots={SPOTS} now={NOW} profileContext={profileContext} />);
+        render(<RideFinder mode="search" fetcher={fetcher} spots={SPOTS} now={NOW} profileContext={profileContext} />);
 
-        await userEvent.click(screen.getByRole('button', { name: /find trips/i }));
+        await userEvent.click(screen.getByRole('button', { name: /build my route/i }));
 
         await waitFor(() => expect(screen.getByText(/confidence:/i)).toBeInTheDocument());
     });

@@ -34,7 +34,8 @@ const CatalogueBanner: React.FC = () => {
                 vouch for rather than guessing.
             </p>
             <p style={{ marginTop: 6, fontSize: '.85em', opacity: .8 }}>
-                Flights, prices and transfers are unaffected — those come from the backend.
+                Driving distances, board rules and session prices still work — a spot only
+                drops out of the filter it cannot answer.
             </p>
         </div>
     );
@@ -47,11 +48,11 @@ const RideFinderPage: React.FC = () => {
         <div className="stack-xl">
             <section className="card" style={{ padding: 24 }}>
                 <p className="eyebrow">Ride Finder · preview</p>
-                <h1 style={{ marginTop: 4 }}>Describe the trip. We search what we can back.</h1>
+                <h1 style={{ marginTop: 4 }}>Say where you want to ride. We build the route.</h1>
                 <p style={{ color: 'var(--text-secondary, #475569)', maxWidth: '62ch', marginTop: 8 }}>
-                    Every option below is a real backend result. Nothing is written by a model —
-                    prices, routes and transfers come straight from the trip search, and a venue
-                    we cannot verify is hidden rather than guessed at.
+                    Spots chained into the shortest order, costed leg by leg, with your board
+                    accounted for on every one. Nothing is written by a model, and a spot we
+                    cannot place or verify is left out and named rather than guessed at.
                 </p>
             </section>
 
@@ -59,9 +60,12 @@ const RideFinderPage: React.FC = () => {
 
             <section className="card" style={{ padding: 24 }}>
                 <RideFinder
+                    mode="route"
                     profileContext={{ profile }}
                     spots={RIDE_SPOTS}
                     firstMileMode="public_transport"
+                    nightlyEur={74}
+                    mealsEurPerDay={35}
                 />
             </section>
         </div>

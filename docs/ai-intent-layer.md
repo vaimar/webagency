@@ -8,7 +8,15 @@
 > | §01b UX states | **Built** — `useRideFinder`, `RideFinder`, mounted at `/ride-finder` behind `REACT_APP_RIDE_FINDER` |
 > | §6 venue dataset | **Partly** — `rideSpots.ts`, 7 spots, surface 4/7, season 1/7, beginner 0/7 |
 > | §3 fact ledger, §4 narrative validation | **Deleted, recoverable.** Built at `dda8c57`, removed in the cleanup after the product direction moved from search to packages and routes. Nothing imported it. Restore from git if an AI narration layer is ever added. |
-> | §7 roadmap | **Superseded.** The product is now packages and multi-stop routes, not a search engine — see `weekendBudget.ts` and `wakeRoute.ts`. |
+> | §7 roadmap | **Superseded.** The product is packages and multi-stop routes, not a search engine. |
+>
+> **Active route path (2026-09-12):** `/ride-finder` runs in route mode behind
+> `REACT_APP_RIDE_FINDER`. Chain: `tripIntent` → `tripPlanner` (spot selection)
+> → `wakeRoute` (ordering) → `boardRules` (carriage) → `weekendBudget` (costing)
+> → `routeCard` (contract + trust) → `useRideFinder` → `RideFinder`.
+> **No network and no model on this path** — ordering and costing are local
+> arithmetic. Search mode is retained behind the same hook as a compatibility
+> layer so old and new cards can coexist.
 >
 > The anti-hallucination *principles* below still hold and are enforced in
 > `rideSpots.ts` (provenance per fact) and `boardRules.ts` (unverified warns

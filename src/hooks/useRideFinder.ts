@@ -14,7 +14,7 @@
 // let a correction to one field silently move another.
 
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { RideSpot } from '../data/rideSpots';
+import { RIDE_SPOTS as RIDE_SPOTS_FALLBACK, RideSpot } from '../data/rideSpots';
 import {
     assessMateriality,
     FollowUp,
@@ -26,6 +26,9 @@ import {
 } from '../services/tripIntent';
 import { ExecutionPlan, planSearch } from '../services/tripPlanner';
 import { executePlan, ExploreFetcher, SearchResult } from '../services/tripSearch';
+import { buildRouteCard, RouteCard } from '../services/routeCard';
+import { BoardSpec, TYPICAL_BOARD_CM } from '../data/boardRules';
+import { optimiseRoute, RouteStop } from '../services/wakeRoute';
 
 export type SearchProgress = Record<string, 'pending' | 'done' | 'failed'>;
 
@@ -40,7 +43,10 @@ export type RideFinderState =
         status: 'results';
         intent: ResolvedIntent;
         plan: ExecutionPlan;
-        result: SearchResult;
+        /** Search output. Present in 'search' mode only. */
+        result: SearchResult | null;
+        /** Route output. Present in 'route' mode only. */
+        route: RouteCard | null;
         quality: ResultQuality;
         warnings: IntentWarning[];
     }
@@ -50,9 +56,23 @@ export type RideFinderState =
 /** Turns raw user text into a TripIntent. Absent until the parse model lands. */
 export type IntentParser = (text: string) => Promise<unknown>;
 
+/**
+ * Which result shape to produce. Both run through the same state machine and
+ * the same deterministic planner entrypoint; only the shaping differs, so old
+ * and new cards can coexist while the route flow beds in.
+ */
+export type OutputMode = 'search' | 'route';
+
 export interface UseRideFinderOptions {
+    mode?: OutputMode;
     parser?: IntentParser;
     fetcher?: ExploreFetcher;
+    /** The rider's board. Decides carriage on every leg. */
+    board?: BoardSpec;
+    /** Where the trip starts and returns to. */
+    home?: { label: string; point: { lat: number; lon: number } };
+    nightlyEur?: number | null;
+    mealsEurPerDay?: number | null;
     profileContext?: ProfileContext;
     spots?: RideSpot[];
     now?: Date;
@@ -74,7 +94,10 @@ export const useRideFinder = (options: UseRideFinderOptions = {}) => {
     /** Guards against a slow earlier search overwriting a newer one. */
     const runId = useRef(0);
 
-    const { parser, fetcher, profileContext, spots, now, firstMileMode } = options;
+    const {
+        mode = 'search', parser, fetcher, profileContext, spots, now, firstMileMode,
+        board, home, nightlyEur, mealsEurPerDay,
+    } = options;
 
     /**
      * Plans and executes. Every entry point that is not initial parsing lands
@@ -105,6 +128,56 @@ export const useRideFinder = (options: UseRideFinderOptions = {}) => {
             progress[call.spotLabel] = 'pending';
         }
         setState({ status: 'searching', intent, plan, progress: { ...progress } });
+
+        // ── route mode: no network, no model. The planner already chose the
+        //    spots; ordering and costing are local arithmetic. ──
+        if (mode === 'route') {
+            const origin = home ?? { label: intent.origin ?? 'Home', point: { lat: 45.7640, lon: 4.8357 } };
+            const chosen = (spots ?? RIDE_SPOTS_FALLBACK)
+                .filter((spot) => plan.calls.some((c) => c.spotLabel === spot.label));
+
+            const placed = chosen.filter((spot) => spot.point);
+            const excluded = chosen
+                .filter((spot) => !spot.point)
+                .map((spot) => ({ spot: spot.label, reason: 'no coordinates yet, so it cannot be routed' }));
+
+            if (placed.length === 0) {
+                setState({ status: 'no_backing', intent, plan, warnings: intentWarnings });
+                return;
+            }
+
+            const routeStops: RouteStop[] = placed.map((spot) => ({
+                label: spot.label,
+                point: spot.point!,
+                nights: intent.nights ?? 1,
+                sessionEur: (spot.sessionPrice.value as { dayPassEur: number | null } | null)?.dayPassEur ?? null,
+            }));
+
+            const routePlan = optimiseRoute(origin, routeStops, { rates: undefined });
+            const route = buildRouteCard({
+                id: `route:${routeStops.map((s) => s.label).join('+')}`,
+                origin,
+                plan: routePlan,
+                spots: placed,
+                board: board ?? { lengthCm: TYPICAL_BOARD_CM.common, bagged: true },
+                partySize: intent.partySize ?? 1,
+                nightlyEur,
+                mealsEurPerDay,
+                excluded,
+                now,
+            });
+
+            setState({
+                status: 'results',
+                intent,
+                plan,
+                result: null,
+                route,
+                quality: route.degraded ? 'degraded' : 'full',
+                warnings: intentWarnings,
+            });
+            return;
+        }
 
         try {
             const result = await executePlan(plan, {
@@ -137,6 +210,7 @@ export const useRideFinder = (options: UseRideFinderOptions = {}) => {
                 intent,
                 plan,
                 result,
+                route: null,
                 quality: deriveQuality(result),
                 warnings: intentWarnings,
             });
@@ -150,7 +224,7 @@ export const useRideFinder = (options: UseRideFinderOptions = {}) => {
                 intent,
             });
         }
-    }, [fetcher, firstMileMode, now, spots]);
+    }, [board, fetcher, firstMileMode, home, mealsEurPerDay, mode, nightlyEur, now, spots]);
 
     /** Entry point from the text box. The only path that touches the parser. */
     const submitText = useCallback(async (text: string) => {
