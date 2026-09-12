@@ -46,10 +46,18 @@ const CURATED_DESTINATIONS: DestinationHint[] = [
     // Curated backend-side since city-destinations.json gained Ibiza (city +
     // IBZ + coords + water-sports anchor venue); coords kept as a fallback.
     { label: 'Ibiza', keywords: ['ibiza', 'eivissa'], arrivalAirport: 'IBZ', curatedByBackend: true, cityLat: 38.9067, cityLon: 1.4206 },
-    { label: '313 Cable Park', keywords: ['313'], arrivalAirport: 'VNO', curatedByBackend: true },
+    // Verified 2026-09-12: the park is at Mokyklos g. 82, Uzpelkiai — a 10-15
+    // minute drive from Palanga, and ~300 km from Vilnius. The backend still
+    // resolves this label to VNO, so the airport is sent explicitly to override
+    // it; that costs backend-side activity POIs but keeps stays via the
+    // city-coordinate hotel fallback below. The backend catalogue should be
+    // corrected too. Sources: park4night.com/it/place/138754, kupi.com.
+    { label: '313 Cable Park', keywords: ['313'], arrivalAirport: 'PLQ', curatedByBackend: false, cityLat: 55.9175, cityLon: 21.0686 },
     { label: 'Paris Wakepark', keywords: ['paris wakepark'], arrivalAirport: 'ORY', curatedByBackend: true },
     { label: 'Lakecity 33', keywords: ['lakecity'], arrivalAirport: 'BOD', curatedByBackend: true },
-    { label: 'Hypnotics', keywords: ['hypnotics'], arrivalAirport: 'PGF', curatedByBackend: true },
+    // Hypnotics removed 2026-09-12: reported to be in Turkey, not near
+    // Perpignan. Suggesting a French airport for it would price the wrong
+    // trip entirely. The backend catalogue still resolves it to PGF.
     { label: 'Langenfeld', keywords: ['langenfeld'], arrivalAirport: 'DUS', curatedByBackend: true },
 ];
 

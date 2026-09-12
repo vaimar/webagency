@@ -96,6 +96,16 @@ Each of these came from a third-party listing, not the venue. Treat as a startin
 | **Hypnotics** | **Not found under this name.** Searches around Perpignan surfaced TSJ Wakepark (Saint-Jean-Pla-de-Corts) and Téléski Nautique Port Barcarès instead. | Whether this venue still exists, or the label is stale |
 | **Paris Wakepark**, **Langenfeld**, **Ibiza Cable Park** | No usable leads gathered. | Everything |
 
+### Answered 2026-09-12 — all three resolved by the product owner
+
+| Question | Answer | Applied |
+|---|---|---|
+| Which airport for 313 Cable Park? | **Palanga (PLQ)** — the park is at Mokyklos g. 82, Užpelkiai, a 10–15 min drive from Palanga centre. Sources: [park4night](https://park4night.com/it/place/138754), [kupi.com](https://www.kupi.com/en/explore/lithuania/palanga/313-cable-park) | `destinationDirectory.ts` now sends `PLQ` explicitly (`curatedByBackend: false`) with Palanga city coordinates so stays still resolve via the hotel fallback. **The backend still resolves this label to VNO and needs the same correction.** |
+| Is MRS right for EXO 84? | **Moot — the park has stopped operating.** | `operating: false` recorded against the venue (`sourceKind: 'user_report'`). It is excluded from every shortlist, and its one-click chip is gone from `/explore`. The row is kept rather than deleted so nobody re-adds it. |
+| Does Hypnotics near Perpignan exist? | **No — it is in Turkey.** | Removed from `rideSpots.ts`, `destinationDirectory.ts` and the preset chips. Its `PGF` mapping made both the airport and the climate derived from it wrong by a country. **The backend still resolves it to PGF.** Re-add only with a confirmed location. |
+
+Catalogue is now six venues, one of which is closed. Five remain curatable.
+
 ### Catalogue corrections — these affect routing, not just filtering
 
 Two venues appear to be mapped to the wrong airport in `destinationDirectory.ts`. Both need checking against the

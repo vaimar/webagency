@@ -23,6 +23,7 @@ const SPOTS: RideSpot[] = [{
     cableCount: unverified<number>(),
     skillFloor: unverified(),
     sessionPrice: unverified(),
+    operating: unverified<boolean>(),
 }];
 
 const payload: TripExplorationResponse = {

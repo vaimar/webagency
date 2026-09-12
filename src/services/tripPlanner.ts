@@ -354,14 +354,17 @@ export const planSearch = (intent: ResolvedIntent, context: PlanContext = {}): E
     }
 
     if (shortlist.included.length === 0) {
-        const allMissing = shortlist.excluded.every((entry) => entry.dueToMissingData);
+        // If ANY venue was hidden for want of data, "nothing matches" is the
+        // wrong thing to say — it might match perfectly well once verified.
+        // Only a shortlist emptied entirely by real mismatches is a real miss.
+        const anyMissing = shortlist.excluded.some((entry) => entry.dueToMissingData);
         return {
             strategy: 'BLOCKED',
             calls: [],
             warnings,
             blocked: {
-                reason: allMissing ? 'NO_VERIFIED_CANDIDATES' : 'NO_CANDIDATES_MATCH',
-                message: allMissing
+                reason: anyMissing ? 'NO_VERIFIED_CANDIDATES' : 'NO_CANDIDATES_MATCH',
+                message: anyMissing
                     ? 'No venue has verified facts for that filter yet.'
                     : 'No venue in the catalogue matches those constraints.',
                 relaxation: findRelaxation(intent, context, openOn),

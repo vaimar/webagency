@@ -34,6 +34,7 @@ const spot = (label: string, overrides: Partial<RideSpot> = {}): RideSpot => ({
     cableCount: unverified(),
     skillFloor: unverified(),
     sessionPrice: unverified(),
+    operating: unverified<boolean>(),
     ...overrides,
 });
 
@@ -49,6 +50,12 @@ describe('rideSpots — the shipped catalogue', () => {
         for (const entry of RIDE_SPOTS) {
             for (const key of ALL_FACT_KEYS) {
                 const fact = entry[key] as VenueFact<unknown>;
+                // EXO 84 carries a reported closure; everything else is untouched.
+                if (key === 'operating' && entry.label === 'EXO 84') {
+                    expect(fact.value).toBe(false);
+                    expect(fact.sourceKind).toBe('user_report');
+                    continue;
+                }
                 if (key === 'climateBand') {
                     expect(fact.status).toBe('VERIFIED');
                     expect(fact.sourceKind).toBe('derived');
@@ -67,18 +74,27 @@ describe('rideSpots — the shipped catalogue', () => {
         const byLabel = Object.fromEntries(RIDE_SPOTS.map((s) => [s.label, s.climateBand.value]));
 
         expect(byLabel['Ibiza Cable Park']).toBe('warm');     // Balearics
-        expect(byLabel['Hypnotics']).toBe('warm');            // Mediterranean coast
         expect(byLabel['Lakecity 33']).toBe('temperate');     // Atlantic
         expect(byLabel['Langenfeld']).toBe('temperate');      // continental
-        expect(byLabel['313 Cable Park']).toBe('cold');       // Baltic
+        expect(byLabel['313 Cable Park']).toBe('cold');       // Baltic, via Palanga
+    });
+
+    it('routes 313 Cable Park to Palanga, not Vilnius', () => {
+        const spot313 = RIDE_SPOTS.find((s) => s.label === '313 Cable Park');
+        expect(spot313?.arrivalAirport).toBe('PLQ');
+    });
+
+    it('no longer lists a venue we cannot place', () => {
+        // Hypnotics was mapped to Perpignan but is in Turkey.
+        expect(RIDE_SPOTS.map((s) => s.label)).not.toContain('Hypnotics');
     });
 
     it('leaves a venue launch-blocked until the three observed facts are read', () => {
         const coverage = getCoverage(RIDE_SPOTS, AT);
 
-        expect(coverage.totalSpots).toBe(7);
+        expect(coverage.totalSpots).toBe(6);
         expect(coverage.launchReady).toBe(0);
-        expect(coverage.byField.climateBand).toBe(7);
+        expect(coverage.byField.climateBand).toBe(6);
         for (const key of LAUNCH_CRITICAL_FACTS.filter((k) => k !== 'climateBand')) {
             expect(coverage.byField[key]).toBe(0);
         }
@@ -255,6 +271,36 @@ describe('shortlistRideSpots — hard filters fail closed, soft ones fail open',
         const result = shortlistRideSpots({ surface: 'cable', beginnerOnly: true }, RIDE_SPOTS, AT);
 
         expect(result.included).toEqual([]);
-        expect(result.hiddenForMissingData).toBe(RIDE_SPOTS.length);
+        // Every venue is hidden, but the closed one is hidden for a real
+        // reason rather than for want of data.
+        expect(result.hiddenForMissingData).toBe(RIDE_SPOTS.length - 1);
+        expect(result.excluded.some((e) => e.reason === 'NOT_OPERATING')).toBe(true);
+    });
+
+    it('excludes a venue known to have closed, whatever else matches', () => {
+        const closed = spot('Ibiza Cable Park', {
+            surface: verified('cable'),
+            openingSeason: verified('year_round'),
+            operating: {
+                value: false, status: 'VERIFIED', sourceUrl: null, checkedOn: '2026-09-12',
+                sourceKind: 'user_report', verifiedBy: 'human', note: 'reported closed',
+            },
+        });
+        const result = shortlistRideSpots({ surface: 'cable' }, [closed], AT);
+
+        expect(result.included).toEqual([]);
+        expect(result.excluded[0].reason).toBe('NOT_OPERATING');
+        expect(result.excluded[0].dueToMissingData).toBe(false);
+    });
+
+    // Not knowing a venue closed is not evidence that it did.
+    it('keeps a venue whose operating status nobody has checked', () => {
+        const unchecked = spot('Ibiza Cable Park', {
+            surface: verified('cable'),
+            openingSeason: verified('year_round'),
+        });
+        const result = shortlistRideSpots({ surface: 'cable' }, [unchecked], AT);
+
+        expect(result.included.map((e) => e.spot.label)).toEqual(['Ibiza Cable Park']);
     });
 });

@@ -67,7 +67,7 @@ describe('RideFinderPage', () => {
     it('shows the catalogue readiness blocker instead of looking broken', () => {
         renderPage();
 
-        expect(screen.getByText(/0 of 7 venues have verified facts/i)).toBeInTheDocument();
+        expect(screen.getByText(/0 of 6 venues have verified facts/i)).toBeInTheDocument();
         expect(screen.getByText(/will return nothing until a curator/i)).toBeInTheDocument();
         expect(screen.getByText(/flights, prices and transfers are unaffected/i)).toBeInTheDocument();
     });

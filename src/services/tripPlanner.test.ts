@@ -49,6 +49,7 @@ const spotOf = (label: string, airport: string, overrides: Partial<RideSpot> = {
     cableCount: unverified(),
     skillFloor: unverified(),
     sessionPrice: unverified(),
+    operating: unverified<boolean>(),
     ...overrides,
 });
 
@@ -205,7 +206,7 @@ describe('planSearch — catalogue fan-out fails closed', () => {
     });
 
     it('lets climate order the shortlist without trimming it', () => {
-        const cold = curated('313 Cable Park', 'VNO', 'cable', 'cold');
+        const cold = curated('313 Cable Park', 'PLQ', 'cable', 'cold');
         const plan = planSearch(
             intentOf({ rideSurface: 'cable', climate: 'warm' }),
             { now: NOW, spots: [cold, ibiza] },
@@ -215,7 +216,7 @@ describe('planSearch — catalogue fan-out fails closed', () => {
         expect(plan.calls[0].spotLabel).toBe('Ibiza');
     });
 
-    it('treats the shipped all-unverified catalogue as blocked, not empty', () => {
+    it('treats the shipped catalogue as blocked, not empty', () => {
         const plan = planSearch(intentOf({ rideSurface: 'cable' }), { now: NOW });
 
         expect(plan.strategy).toBe('BLOCKED');
@@ -270,7 +271,7 @@ describe('planSearch — once a venue is genuinely curated', () => {
             datedIntentOf({ rideSurface: 'cable', climate: 'warm' }),
             {
                 now: NOW,
-                spots: [fullyCurated('313 Cable Park', 'VNO'), fullyCurated('Ibiza Cable Park', 'IBZ')],
+                spots: [fullyCurated('313 Cable Park', 'PLQ'), fullyCurated('Ibiza Cable Park', 'IBZ')],
             },
         );
 

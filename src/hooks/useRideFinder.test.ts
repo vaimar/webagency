@@ -22,6 +22,7 @@ const curated = (label: string, airport: string, climate: 'warm' | 'cold' = 'war
     cableCount: unverified(),
     skillFloor: unverified(),
     sessionPrice: unverified(),
+    operating: unverified<boolean>(),
 });
 
 const SPOTS = [curated('Ibiza', 'IBZ'), curated('EXO 84', 'MRS', 'cold')];

@@ -39,8 +39,10 @@ export type ResolvedFactStatus = StoredFactStatus | 'STALE';
  *               go stale and are often a season behind.
  *  derived      computed from a documented rule rather than observed (see
  *               CLIMATE_RULE). Carries no URL, because there is no page to read.
+ *  user_report  reported directly by someone who knows the venue. No URL either,
+ *               so it must say who and when in `note`.
  */
-export type FactSourceKind = 'venue' | 'third_party' | 'derived';
+export type FactSourceKind = 'venue' | 'third_party' | 'derived' | 'user_report';
 
 /** Who established it. 'rule' means no human or agent judgement was involved. */
 export type FactVerifier = 'human' | 'agent' | 'rule';
@@ -122,6 +124,14 @@ export interface RideSpot {
     climateBand: VenueFact<ClimateBand>;
     openingSeason: VenueFact<OpeningSeason>;
 
+    /**
+     * Whether the venue is still trading. Unlike every other fact this one
+     * fails OPEN: not knowing a venue closed is not evidence that it did, so
+     * only an explicit verified `false` removes it. A closed venue is excluded
+     * outright — no filter, no ranking, no card.
+     */
+    operating: VenueFact<boolean>;
+
     // ── nice-to-have: improve ranking and copy, block nothing ──
     cableCount: VenueFact<number>;
     skillFloor: VenueFact<SkillFloor>;
@@ -130,14 +140,14 @@ export interface RideSpot {
 
 export type RideSpotFactKey =
     | 'surface' | 'beginnerFriendly' | 'climateBand' | 'openingSeason'
-    | 'cableCount' | 'skillFloor' | 'sessionPrice';
+    | 'cableCount' | 'skillFloor' | 'sessionPrice' | 'operating';
 
 export const LAUNCH_CRITICAL_FACTS: RideSpotFactKey[] = [
     'surface', 'beginnerFriendly', 'climateBand', 'openingSeason',
 ];
 
 export const ALL_FACT_KEYS: RideSpotFactKey[] = [
-    ...LAUNCH_CRITICAL_FACTS, 'cableCount', 'skillFloor', 'sessionPrice',
+    ...LAUNCH_CRITICAL_FACTS, 'cableCount', 'skillFloor', 'sessionPrice', 'operating',
 ];
 
 /**
@@ -152,6 +162,7 @@ export const FACT_TTL_DAYS: Record<RideSpotFactKey, number> = {
     climateBand: Number.POSITIVE_INFINITY,
     openingSeason: 180,
     sessionPrice: 90,
+    operating: 365,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -185,12 +196,12 @@ export const CLIMATE_RULE_NOTE = 'derived from region: Mediterranean <44°N = wa
 
 const CLIMATE_BY_AIRPORT: Record<string, ClimateBand> = {
     IBZ: 'warm',        // Ibiza, 38.9°N, Balearics
-    PGF: 'warm',        // Perpignan, 42.7°N, Mediterranean coast
     MRS: 'warm',        // Marseille, 43.4°N, Mediterranean coast
     BOD: 'temperate',   // Bordeaux, 44.8°N, Atlantic
     ORY: 'temperate',   // Paris Orly, 48.7°N, continental
     DUS: 'temperate',   // Dusseldorf, 51.3°N, continental
     VNO: 'cold',        // Vilnius, 54.7°N, Baltic
+    PLQ: 'cold',        // Palanga, 55.9°N, Baltic coast
 };
 
 /** Builds the derived climate fact, or leaves it unverified for an unknown airport. */
@@ -221,6 +232,7 @@ const blankFacts = (): Omit<RideSpot, 'label' | 'arrivalAirport' | 'activity'> =
     cableCount: unverified(),
     skillFloor: unverified(),
     sessionPrice: unverified('hourly and day-pass, in EUR'),
+    operating: unverified('assumed trading unless we learn otherwise'),
 });
 
 const spot = (label: string, arrivalAirport: string): RideSpot => ({
@@ -232,10 +244,27 @@ const spot = (label: string, arrivalAirport: string): RideSpot => ({
 });
 
 export const RIDE_SPOTS: RideSpot[] = [
-    spot('EXO 84', 'MRS'),
+    {
+        // Ceased trading. Kept rather than deleted so nobody re-adds it, and so
+        // the catalogue records why it disappeared.
+        ...spot('EXO 84', 'MRS'),
+        operating: {
+            value: false,
+            status: 'VERIFIED',
+            sourceUrl: null,
+            checkedOn: '2026-09-12',
+            sourceKind: 'user_report',
+            verifiedBy: 'human',
+            note: 'Reported by the product owner, 2026-09-12: the park has stopped operating.',
+        },
+    },
+    // Hypnotics removed 2026-09-12: reported to be in Turkey, not near
+    // Perpignan. The catalogue mapped it to PGF, so its airport — and the
+    // climate derived from that airport — were wrong by a country. Re-add it
+    // only with a confirmed location. The backend still resolves the label to
+    // PGF and needs the same correction.
     spot('Ibiza Cable Park', 'IBZ'),
-    spot('313 Cable Park', 'VNO'),
-    spot('Hypnotics', 'PGF'),
+    spot('313 Cable Park', 'PLQ'),
     spot('Paris Wakepark', 'ORY'),
     spot('Lakecity 33', 'BOD'),
     spot('Langenfeld', 'DUS'),
@@ -321,6 +350,7 @@ export interface ShortlistFilters {
 }
 
 export type ExclusionReason =
+    | 'NOT_OPERATING'
     | 'ACTIVITY_MISMATCH'
     | 'SURFACE_MISMATCH'
     | 'SURFACE_UNVERIFIED'
@@ -367,6 +397,13 @@ export const shortlistRideSpots = (
     };
 
     for (const spot of spots) {
+        // Fails open: only a confirmed closure removes a venue.
+        const operating = resolveFact(spot.operating, 'operating', now);
+        if (isUsableForHardFilter(operating.status) && operating.value === false) {
+            drop(spot, 'NOT_OPERATING', false, 'operating');
+            continue;
+        }
+
         if (filters.activity && spot.activity !== filters.activity) {
             drop(spot, 'ACTIVITY_MISMATCH', false);
             continue;
@@ -469,7 +506,8 @@ export const getCoverage = (spots: RideSpot[] = RIDE_SPOTS, now: Date = new Date
     let launchReady = 0;
 
     for (const spot of spots) {
-        let complete = true;
+        const stillTrading = resolveFact(spot.operating, 'operating', now);
+        let complete = stillTrading.value !== false;
 
         for (const key of ALL_FACT_KEYS) {
             const resolved = resolveFact(spot[key] as VenueFact<unknown>, key, now);
@@ -543,15 +581,17 @@ export const validateRideSpots = (
                 if (fact.value === null || fact.value === undefined) {
                     add(label, factKey, 'R3-verified-has-value', 'VERIFIED but value is null');
                 }
-                // R4 — a fact read off a page must name the page. A derived
-                // fact has no page, so it must say so instead.
+                // R4 — a fact read off a page must name the page. A fact with
+                // no page behind it (a rule, or somebody telling us) must say
+                // where it came from in `note` instead of citing nothing.
                 const kind = fact.sourceKind ?? 'venue';
-                if (kind === 'derived') {
+                if (kind === 'derived' || kind === 'user_report') {
                     if (fact.sourceUrl !== null) {
-                        add(label, factKey, 'R4-derived-no-url', 'derived facts carry no sourceUrl');
+                        add(label, factKey, 'R4-no-url-expected', `${kind} facts carry no sourceUrl`);
                     }
                     if (!fact.note) {
-                        add(label, factKey, 'R4-derived-note', 'derived facts must state the rule in `note`');
+                        add(label, factKey, 'R4-note-required',
+                            `${kind} facts must record their basis in \`note\``);
                     }
                 } else if (!fact.sourceUrl || !fact.sourceUrl.startsWith('https://')) {
                     add(label, factKey, 'R4-source-url', 'VERIFIED needs an https sourceUrl');
