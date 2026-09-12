@@ -6,7 +6,7 @@
 
 import React, { FormEvent, useState } from 'react';
 import { RideFinderState, useRideFinder, UseRideFinderOptions } from '../hooks/useRideFinder';
-import { ResolvedIntent, TripIntent } from '../services/tripIntent';
+import { ResolvedIntent, TripIntent, WeightProfile, WEIGHT_PROFILES } from '../services/tripIntent';
 import { TripOption } from '../services/tripSearch';
 import { formatCurrency, formatKm } from '../services/tripExploreSelectors';
 import './RideFinder.css';
@@ -32,8 +32,8 @@ const chipLabel = (intent: ResolvedIntent): Array<{ field: keyof TripIntent; tex
     return chips;
 };
 
-const ChipRow: React.FC<{ intent: ResolvedIntent; onClear: (field: keyof TripIntent) => void }> = ({
-    intent, onClear,
+const ChipRow: React.FC<{ intent: ResolvedIntent; onChip: (field: keyof TripIntent) => void }> = ({
+    intent, onChip,
 }) => (
     <div className="ride-finder__chips">
         {chipLabel(intent).map((chip) => {
@@ -50,12 +50,14 @@ const ChipRow: React.FC<{ intent: ResolvedIntent; onClear: (field: keyof TripInt
                         assumed && !isRank ? 'ride-finder__chip--assumed' : '',
                         isRank ? 'ride-finder__chip--rank' : '',
                     ].filter(Boolean).join(' ')}
-                    onClick={() => onClear(chip.field)}
-                    title={assumed ? 'We assumed this — click to clear' : 'Click to clear'}
+                    onClick={() => onChip(chip.field)}
+                    title={isRank
+                        ? 'Click to change how options are ranked'
+                        : assumed ? 'We assumed this — click to clear' : 'Click to clear'}
                 >
                     {chip.text}
                     {assumed && !isRank ? ' · assumed' : ''}
-                    <span className="ride-finder__chip-edit" aria-hidden="true">✕</span>
+                    <span className="ride-finder__chip-edit" aria-hidden="true">{isRank ? '⇄' : '✕'}</span>
                 </button>
             );
         })}
@@ -87,10 +89,10 @@ const OptionCard: React.FC<{ option: TripOption }> = ({ option }) => (
 
 const Body: React.FC<{
     state: RideFinderState;
-    onClear: (field: keyof TripIntent) => void;
+    onChip: (field: keyof TripIntent) => void;
     onAnswer: (value: unknown) => void;
     onRelax: () => void;
-}> = ({ state, onClear, onAnswer, onRelax }) => {
+}> = ({ state, onChip, onAnswer, onRelax }) => {
     switch (state.status) {
         case 'idle':
             return null;
@@ -121,7 +123,7 @@ const Body: React.FC<{
         case 'searching':
             return (
                 <>
-                    <ChipRow intent={state.intent} onClear={onClear} />
+                    <ChipRow intent={state.intent} onChip={onChip} />
                     <div className="ride-finder__progress">
                         {Object.entries(state.progress).map(([label, status]) => (
                             <span key={label} className={`ride-finder__progress-item ride-finder__progress-item--${status}`}>
@@ -136,7 +138,7 @@ const Body: React.FC<{
             const relaxation = state.plan.blocked?.relaxation;
             return (
                 <>
-                    <ChipRow intent={state.intent} onClear={onClear} />
+                    <ChipRow intent={state.intent} onChip={onChip} />
                     <div className="ride-finder__notice ride-finder__notice--warn">
                         <p><strong>{state.plan.blocked?.message ?? 'Nothing we can back with real data.'}</strong></p>
                         {relaxation ? (
@@ -159,7 +161,7 @@ const Body: React.FC<{
         case 'results':
             return (
                 <>
-                    <ChipRow intent={state.intent} onClear={onClear} />
+                    <ChipRow intent={state.intent} onChip={onChip} />
                     {state.quality !== 'full' ? (
                         <p className={`ride-finder__notice ride-finder__notice--${state.quality === 'degraded' ? 'critical' : 'warn'}`}>
                             {state.quality === 'degraded'
@@ -206,9 +208,38 @@ const Body: React.FC<{
     }
 };
 
+/**
+ * Clearing a chip is not one operation. weightProfile always has a value, so
+ * its chip cycles; budget and destinationHints clear to their empty shapes;
+ * everything else is nullable and clears to null.
+ */
+const nextWeightProfile = (current: WeightProfile): WeightProfile => {
+    const index = WEIGHT_PROFILES.indexOf(current);
+    return WEIGHT_PROFILES[(index + 1) % WEIGHT_PROFILES.length];
+};
+
 export const RideFinder: React.FC<UseRideFinderOptions> = (options) => {
-    const { state, submitText, updateChip, answerFollowUp, applyRelaxation } = useRideFinder(options);
+    const { state, intent, submitText, updateChip, answerFollowUp, applyRelaxation } = useRideFinder(options);
     const [text, setText] = useState('');
+
+    const handleChip = (field: keyof TripIntent) => {
+        if (!intent) return;
+
+        if (field === 'weightProfile') {
+            updateChip('weightProfile', nextWeightProfile(intent.weightProfile));
+            return;
+        }
+        if (field === 'budget') {
+            updateChip('budget', { totalEur: null, band: null, perPerson: false });
+            return;
+        }
+        if (field === 'destinationHints') {
+            updateChip('destinationHints', []);
+            return;
+        }
+        // Every remaining field on TripIntent is nullable.
+        updateChip(field as 'origin', null);
+    };
 
     const busy = state.status === 'parsing' || state.status === 'searching';
 
@@ -254,7 +285,7 @@ export const RideFinder: React.FC<UseRideFinderOptions> = (options) => {
 
             <Body
                 state={state}
-                onClear={(field) => updateChip(field, null as never)}
+                onChip={handleChip}
                 onAnswer={answerFollowUp}
                 onRelax={applyRelaxation}
             />

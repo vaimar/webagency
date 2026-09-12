@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { GlobalToast, useProfile } from './ProfileContext';
+import { isRideFinderEnabled } from './services/featureFlags';
 
 // Every link resolves to a real destination — app routes for the functional
 // ones, mailto for contact. No dead placeholder spans.
@@ -55,6 +56,10 @@ const navItems = [
 	{ to: '/',            label: 'Home',         icon: faHome,     end: true  },
 	{ to: '/explore',     label: 'Door-to-trip', icon: faRoute,    end: false },
 	{ to: '/island-hop',  label: 'Island Hop',   icon: faShip,     end: false },
+	// Only linked when the flag is on; the route itself redirects when off.
+	...(isRideFinderEnabled()
+		? [{ to: '/ride-finder', label: 'Ride Finder', icon: faCompass, end: false }]
+		: []),
 ];
 
 const toastMeta = (toast: GlobalToast) => {

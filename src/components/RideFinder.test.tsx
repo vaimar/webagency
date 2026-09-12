@@ -99,6 +99,25 @@ describe('RideFinder', () => {
         await waitFor(() => expect(screen.getByText(/backend was degraded/i)).toBeInTheDocument());
     });
 
+    // Regression: this chip used to clear weightProfile to null and crash,
+    // because every chip was cleared the same way. Ranking always has a value.
+    it('cycles the ranking chip instead of clearing it', async () => {
+        render(<RideFinder fetcher={fetcher} spots={SPOTS} now={NOW} profileContext={profileContext} />);
+
+        await userEvent.click(screen.getByRole('button', { name: /find trips/i }));
+        await waitFor(() => expect(screen.getByText('Ibiza')).toBeInTheDocument());
+
+        expect(screen.getByRole('button', { name: /Ranked: balanced/i })).toBeInTheDocument();
+
+        await userEvent.click(screen.getByRole('button', { name: /Ranked:/i }));
+        await waitFor(() => expect(screen.getByRole('button', { name: /Ranked: cheapest honest/i })).toBeInTheDocument());
+
+        // The chip label updates immediately, but the edit re-runs the
+        // fan-out — wait for that to land before asserting on the results.
+        await waitFor(() => expect(screen.getByText('Ibiza')).toBeInTheDocument());
+        expect(screen.getByText(/confidence:/i)).toBeInTheDocument();
+    });
+
     it('always states its confidence', async () => {
         render(<RideFinder fetcher={fetcher} spots={SPOTS} now={NOW} profileContext={profileContext} />);
 

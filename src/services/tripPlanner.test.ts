@@ -9,6 +9,16 @@ const intentOf = (overrides: Partial<ResolvedIntent> = {}): ResolvedIntent => ({
     ...overrides,
 });
 
+/** Dates the user chose — the only case the season gate applies to. */
+const datedIntentOf = (overrides: Partial<ResolvedIntent> = {}): ResolvedIntent => {
+    const base = intentOf(overrides);
+    return {
+        ...base,
+        dateWindow: base.dateWindow ?? { earliest: '2026-09-18', latest: '2026-09-21' },
+        sources: { ...base.sources, dateWindow: 'user' },
+    };
+};
+
 const verified = <T, >(value: T) => ({
     value,
     status: 'VERIFIED' as const,
@@ -149,9 +159,9 @@ describe('planSearch — catalogue fan-out fails closed', () => {
 
     // An unverified season must gate just as hard as an unverified surface —
     // sending someone to a closed park is the failure this prevents.
-    it('excludes a venue whose season is unverified, even when the surface matches', () => {
+    it('excludes a venue whose season is unverified when the user chose the dates', () => {
         const seasonUnknown = spotOf('Hypnotics', 'PGF', { surface: verified('cable') });
-        const plan = planSearch(intentOf({ rideSurface: 'cable' }), { now: NOW, spots: [seasonUnknown] });
+        const plan = planSearch(datedIntentOf({ rideSurface: 'cable' }), { now: NOW, spots: [seasonUnknown] });
 
         expect(plan.strategy).toBe('BLOCKED');
         expect(plan.blocked?.reason).toBe('NO_VERIFIED_CANDIDATES');
@@ -162,10 +172,24 @@ describe('planSearch — catalogue fan-out fails closed', () => {
 
         expect(plan.strategy).toBe('BLOCKED');
         expect(plan.blocked?.reason).toBe('NO_VERIFIED_CANDIDATES');
-        // No single drop helps while everything is unverified, so the last
-        // resort is offered instead of a dead end.
+        expect(plan.blocked?.relaxation?.dropFilter).toBe('rideSurface');
+        expect(plan.blocked?.relaxation?.wouldYield).toBe(1);
+    });
+
+    // With user-chosen dates the season gate is live again, so no single drop
+    // is enough and the last resort is what keeps the user from a dead end.
+    it('falls back to dropping every unverifiable filter when no single drop helps', () => {
+        const plan = planSearch(datedIntentOf({ rideSurface: 'cable' }), { now: NOW, spots: [unknown] });
+
+        expect(plan.strategy).toBe('BLOCKED');
         expect(plan.blocked?.relaxation?.dropFilter).toBe('allVenueFacts');
         expect(plan.blocked?.relaxation?.wouldYield).toBe(1);
+    });
+
+    it('says when it skipped the season check rather than staying silent', () => {
+        const plan = planSearch(intentOf({}), { now: NOW, spots: [ibiza] });
+
+        expect(plan.warnings.map((w) => w.kind)).toContain('SEASON_UNCHECKED');
     });
 
     it('reports no relaxation when dropping a filter would not help', () => {

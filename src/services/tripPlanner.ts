@@ -44,7 +44,8 @@ export type PlanWarningKind =
     | 'ASSUMPTION_APPLIED'
     | 'HIDDEN_FOR_MISSING_DATA'
     | 'DATE_SAMPLED'
-    | 'FANOUT_TRUNCATED';
+    | 'FANOUT_TRUNCATED'
+    | 'SEASON_UNCHECKED';
 
 export interface PlanWarning {
     kind: PlanWarningKind;
@@ -327,7 +328,21 @@ export const planSearch = (intent: ResolvedIntent, context: PlanContext = {}): E
     }
 
     // ── No destination: filter the catalogue, fail closed on missing facts ──
-    const openOn = sampledDates[0];
+    //
+    // The season gate applies only to dates the USER chose. Failing closed is
+    // right for a constraint they asked for; applying it to a date we assumed
+    // ourselves would block every search on our own guess — and with no
+    // verified seasons in the catalogue, that means the product shows nothing
+    // at all. Skipping it is reported, never silent.
+    const userChoseDates = intent.sources.dateWindow === 'user';
+    const openOn = userChoseDates ? sampledDates[0] : undefined;
+    if (!userChoseDates) {
+        warnings.push({
+            kind: 'SEASON_UNCHECKED',
+            message: 'Opening seasons are not verified, so we did not filter by season for the dates we assumed. Check the venue before booking.',
+        });
+    }
+
     const shortlist = shortlistRideSpots(buildFilters(intent, openOn), spots, now);
 
     if (shortlist.hiddenForMissingData > 0) {
