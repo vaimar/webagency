@@ -10,18 +10,10 @@
 // Anything after the name is optional. Leave a field empty and it stays
 // unknown; nothing is invented to fill a gap.
 
-import { ClimateBand, RideSpot, RideSurface, unverified, VenueFact } from './rideSpots';
+import { Amenity, ClimateBand, FactSourceKind, KNOWN_AMENITIES, RideSpot, RideSurface, unverified, VenueFact } from './rideSpots';
 
-export type Amenity =
-    | 'restaurant' | 'bar' | 'shop' | 'rental' | 'school'
-    | 'camping' | 'accommodation' | 'showers' | 'parking'
-    | 'beginner-line' | 'kicker' | 'rails' | 'sauna';
-
-export const KNOWN_AMENITIES: Amenity[] = [
-    'restaurant', 'bar', 'shop', 'rental', 'school',
-    'camping', 'accommodation', 'showers', 'parking',
-    'beginner-line', 'kicker', 'rails', 'sauna',
-];
+export type { Amenity };
+export { KNOWN_AMENITIES };
 
 export interface SpotEntry {
     name: string;
@@ -112,14 +104,21 @@ export const parseSpotLine = (line: string): SpotEntry | null => {
 // Becoming a catalogue row
 // ─────────────────────────────────────────────────────────────────────────────
 
-const reported = <T, >(value: T, on: string): VenueFact<T> => ({
+/**
+ * Records a dictated value. `kind` matters: someone who has been to the spot
+ * is stronger evidence than a directory listing, and laundering the second
+ * into the first is exactly the failure this whole model exists to prevent.
+ */
+const reported = <T, >(
+    value: T, on: string, kind: FactSourceKind, sourceUrl: string | null, note: string,
+): VenueFact<T> => ({
     value,
     status: 'VERIFIED',
-    sourceUrl: null,
+    sourceUrl: kind === 'third_party' ? sourceUrl : null,
     checkedOn: on,
-    sourceKind: 'user_report',
-    verifiedBy: 'human',
-    note: 'Reported by someone who has been to the spot.',
+    sourceKind: kind,
+    verifiedBy: kind === 'user_report' ? 'human' : 'agent',
+    note,
 });
 
 export interface ToRideSpotOptions {
@@ -127,36 +126,48 @@ export interface ToRideSpotOptions {
     reportedOn: string;
     climateBand?: ClimateBand;
     activity?: RideSpot['activity'];
+    /** Default 'user_report' — somebody who was there. */
+    sourceKind?: FactSourceKind;
+    /** Required when sourceKind is 'third_party'. */
+    sourceUrl?: string | null;
+    point?: { lat: number; lon: number };
 }
 
 /** Turns a dictated entry into a catalogue row, reported rather than researched. */
-export const toRideSpot = (entry: SpotEntry, options: ToRideSpotOptions): RideSpot => ({
-    label: entry.name,
-    arrivalAirport: options.arrivalAirport,
-    activity: options.activity ?? 'wakeboard',
-    locality: [entry.locality, entry.country].filter(Boolean).join(', ') || undefined,
+export const toRideSpot = (entry: SpotEntry, options: ToRideSpotOptions): RideSpot => {
+    const kind = options.sourceKind ?? 'user_report';
+    const url = options.sourceUrl ?? null;
+    const note = kind === 'user_report'
+        ? 'Reported by someone who has been to the spot.'
+        : 'From a third-party listing — a lead, not the venue itself.';
+    const say = <T, >(value: T) => reported(value, options.reportedOn, kind, url, note);
 
-    surface: entry.surface
-        ? reported(entry.surface, options.reportedOn)
-        : unverified<RideSurface>('not stated'),
-    openingSeason: entry.season
-        ? reported(entry.season, options.reportedOn)
-        : unverified('not stated'),
-    // A school or a beginner line is what makes a spot beginner-friendly.
-    beginnerFriendly: (entry.amenities.includes('school') || entry.amenities.includes('beginner-line'))
-        ? reported(true, options.reportedOn)
-        : unverified<boolean>('no school or beginner line mentioned'),
-    climateBand: options.climateBand
-        ? reported(options.climateBand, options.reportedOn)
-        : unverified<ClimateBand>('not stated'),
-    sessionPrice: typeof entry.sessionEur === 'number'
-        ? reported({ hourlyEur: null, dayPassEur: entry.sessionEur }, options.reportedOn)
-        : unverified('not stated'),
+    return {
+        label: entry.name,
+        arrivalAirport: options.arrivalAirport,
+        activity: options.activity ?? 'wakeboard',
+        locality: [entry.locality, entry.country].filter(Boolean).join(', ') || undefined,
+        point: options.point ?? (entry.lat !== undefined && entry.lon !== undefined
+            ? { lat: entry.lat, lon: entry.lon } : undefined),
+        amenities: entry.amenities.length > 0 ? entry.amenities : undefined,
+        videos: entry.videos.length > 0 ? entry.videos : undefined,
 
-    cableCount: unverified<number>(),
-    skillFloor: unverified(),
-    operating: reported(true, options.reportedOn),
-});
+        surface: entry.surface ? say(entry.surface) : unverified<RideSurface>('not stated'),
+        openingSeason: entry.season ? say(entry.season) : unverified('not stated'),
+        // A school or a beginner line is what makes a spot beginner-friendly.
+        beginnerFriendly: (entry.amenities.includes('school') || entry.amenities.includes('beginner-line'))
+            ? say(true)
+            : unverified<boolean>('no school or beginner line mentioned'),
+        climateBand: options.climateBand ? say(options.climateBand) : unverified<ClimateBand>('not stated'),
+        sessionPrice: typeof entry.sessionEur === 'number'
+            ? say({ hourlyEur: null, dayPassEur: entry.sessionEur })
+            : unverified('not stated'),
+
+        cableCount: unverified<number>(),
+        skillFloor: unverified(),
+        operating: say(true),
+    };
+};
 
 /** What a dictated line still leaves open — shown back so gaps are obvious. */
 export const missingFrom = (entry: SpotEntry): string[] => {

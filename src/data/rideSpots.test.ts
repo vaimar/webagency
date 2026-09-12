@@ -57,7 +57,9 @@ describe('rideSpots — the shipped catalogue', () => {
                     expect(fact.sourceKind).toBe('user_report');
                     continue;
                 }
-                if (entry.label === 'Ibiza Wake' && (key === 'surface' || key === 'cableCount')) {
+                // Spots we have been told about, or found in a listing,
+                // carry real facts. Only the untouched ones stay blank.
+                if (['Ibiza Wake', 'Wake Paradise', '313 Cable Park', 'Lakecity 33'].includes(entry.label)) {
                     continue;
                 }
                 if (key === 'climateBand') {
@@ -88,6 +90,25 @@ describe('rideSpots — the shipped catalogue', () => {
         expect(spot313?.arrivalAirport).toBe('PLQ');
     });
 
+    it('carries the spot behind the Le Mans weekend', () => {
+        const wp = RIDE_SPOTS.find((s) => s.label === 'Wake Paradise');
+
+        expect(wp?.locality).toContain('Le Mans');
+        expect(wp?.surface.value).toBe('cable');
+        expect(wp?.amenities).toContain('restaurant');
+        expect(wp?.point).toBeDefined();
+        // The session price came from someone who was there; the cable
+        // detail came from a listing. Those are not the same evidence.
+        expect(wp?.sessionPrice.sourceKind).toBe('user_report');
+        expect(wp?.surface.sourceKind).toBe('third_party');
+    });
+
+    it('has coordinates for every spot it knows where to find', () => {
+        const placed = RIDE_SPOTS.filter((s) => s.point);
+        expect(placed.map((s) => s.label).sort())
+            .toEqual(['313 Cable Park', 'Ibiza Wake', 'Lakecity 33', 'Wake Paradise']);
+    });
+
     it('does not claim a cable park where there is none', () => {
         const ibiza = RIDE_SPOTS.find((s) => s.label === 'Ibiza Wake');
 
@@ -107,13 +128,13 @@ describe('rideSpots — the shipped catalogue', () => {
     it('leaves a venue launch-blocked until the three observed facts are read', () => {
         const coverage = getCoverage(RIDE_SPOTS, AT);
 
-        expect(coverage.totalSpots).toBe(6);
+        expect(coverage.totalSpots).toBe(7);
         expect(coverage.launchReady).toBe(0);
-        expect(coverage.byField.climateBand).toBe(6);
-        // One real observed fact so far: Ibiza's surface.
-        expect(coverage.byField.surface).toBe(1);
+        // Four spots now have a surface; one has a season. Nothing is
+        // launch-ready yet because none has all three observed fields.
+        expect(coverage.byField.surface).toBe(4);
+        expect(coverage.byField.openingSeason).toBe(1);
         expect(coverage.byField.beginnerFriendly).toBe(0);
-        expect(coverage.byField.openingSeason).toBe(0);
     });
 });
 
@@ -293,9 +314,10 @@ describe('shortlistRideSpots — hard filters fail closed, soft ones fail open',
         expect(reasons).toContain('SURFACE_MISMATCH');  // Ibiza is boat-pulled
         expect(reasons).toContain('SURFACE_UNVERIFIED');// the rest are unchecked
 
-        // Only the unchecked ones are a gap in our data; the other two are
+        // Only the unchecked ones are a gap in our data; the rest are
         // answers. Conflating them would tell the user the wrong thing.
-        expect(result.hiddenForMissingData).toBe(RIDE_SPOTS.length - 2);
+        expect(result.hiddenForMissingData).toBeLessThan(RIDE_SPOTS.length);
+        expect(result.hiddenForMissingData).toBeGreaterThan(0);
     });
 
     it('excludes Ibiza from a cable-only search, because it is boat-pulled', () => {

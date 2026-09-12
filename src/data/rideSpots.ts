@@ -91,6 +91,18 @@ export const notApplicable = <T, >(note: string): VenueFact<T> => ({
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type RideSurface = 'cable' | 'boat' | 'sea';
+
+/** What is actually on site. Dictated, not researched — see spotEntry.ts. */
+export type Amenity =
+    | 'restaurant' | 'bar' | 'shop' | 'rental' | 'school'
+    | 'camping' | 'accommodation' | 'showers' | 'parking'
+    | 'beginner-line' | 'kicker' | 'rails' | 'sauna';
+
+export const KNOWN_AMENITIES: Amenity[] = [
+    'restaurant', 'bar', 'shop', 'rental', 'school',
+    'camping', 'accommodation', 'showers', 'parking',
+    'beginner-line', 'kicker', 'rails', 'sauna',
+];
 export type ClimateBand = 'warm' | 'temperate' | 'cold';
 export type SkillFloor = 'none' | 'some' | 'confident';
 
@@ -121,6 +133,12 @@ export interface RideSpot {
      * human auditing the list should not have to re-derive that each time.
      */
     locality?: string;
+    /** Coordinates of the water, for routing. Absent = cannot be ordered into a road trip. */
+    point?: { lat: number; lon: number };
+    /** What is on site. Plain list — no provenance ceremony, it is dictated. */
+    amenities?: Amenity[];
+    /** Influencer clips and edits. The adventure pitch. */
+    videos?: string[];
     /** Copied from destinationDirectory.ts — backend-known, never curated here. */
     arrivalAirport: string;
     activity: 'wakeboard' | 'snowboard' | 'surf' | 'kitesurf';
@@ -230,6 +248,19 @@ export const deriveClimateBand = (arrivalAirport: string, on: string): VenueFact
 
 const RULE_APPLIED_ON = '2026-09-12';
 
+/** Told to us by someone who has been there. The strongest evidence we get. */
+const told = <T, >(value: T, note: string, on = '2026-09-12'): VenueFact<T> => ({
+    value, status: 'VERIFIED', sourceUrl: null, checkedOn: on,
+    sourceKind: 'user_report', verifiedBy: 'human', note,
+});
+
+/** A directory or tourist-board listing. Usable, but a lead rather than gospel. */
+const listed = <T, >(value: T, sourceUrl: string, note: string, on = '2026-09-12'): VenueFact<T> => ({
+    value, status: 'VERIFIED', sourceUrl, checkedOn: on,
+    sourceKind: 'third_party', verifiedBy: 'agent',
+    note: `${note} Third-party listing — confirm with the venue.`,
+});
+
 const blankFacts = (): Omit<RideSpot, 'label' | 'arrivalAirport' | 'activity'> => ({
     surface: unverified('check the venue site: cable, boat or open sea'),
     beginnerFriendly: unverified('needs a beginner line or a school on site'),
@@ -265,6 +296,17 @@ export const RIDE_SPOTS: RideSpot[] = [
             note: 'Reported by the product owner, 2026-09-12: the park has stopped operating.',
         },
     },
+    {
+        ...spot('Wake Paradise', 'CDG'),
+        locality: 'Spay (10 min from Le Mans), France',
+        point: { lat: 47.9300, lon: 0.1700 },   // Spay town centre, approximate
+        amenities: ['restaurant'],
+        surface: listed('cable',
+            'https://www.sarthevalley.com/touristic_sheet/wake-paradise-spay-en-2705627/',
+            '600 m closed-circuit cable, up to 8 riders at once.'),
+        sessionPrice: told({ hourlyEur: 18, dayPassEur: 36 },
+            'EUR 36 for two hours, per the Le Mans weekend figures.'),
+    },
     // Hypnotics removed 2026-09-12: reported to be in Turkey, not near
     // Perpignan. The catalogue mapped it to PGF, so its airport — and the
     // climate derived from that airport — were wrong by a country. Re-add it
@@ -275,6 +317,7 @@ export const RIDE_SPOTS: RideSpot[] = [
         // asserted a facility that does not exist. The venue is boat-pulled.
         ...spot('Ibiza Wake', 'IBZ'),
         locality: 'Sant Antoni de Portmany, Ibiza',
+        point: { lat: 38.9800, lon: 1.3000 },   // Sant Antoni, approximate
         surface: {
             value: 'boat',
             status: 'VERIFIED',
@@ -286,9 +329,25 @@ export const RIDE_SPOTS: RideSpot[] = [
         },
         cableCount: notApplicable<number>('boat-pulled, no cable'),
     },
-    spot('313 Cable Park', 'PLQ'),
+    {
+        ...spot('313 Cable Park', 'PLQ'),
+        locality: 'Užpelkiai, between Kretinga and Palanga, Lithuania',
+        point: { lat: 55.8800, lon: 21.1200 },  // Užpelkiai, approximate
+        surface: listed('cable',
+            'https://lithuania.travel/en/why-lithuania/by-the-baltic-sea/kretinga/t313-cable-park',
+            'Three full-size Sesitec systems.'),
+        openingSeason: listed({ from: '05-01', to: '09-30' },
+            'https://www.visit-palanga.lt/en/activities/313-cable-park/',
+            'Season runs roughly May to September.'),
+    },
     spot('Paris Wakepark', 'ORY'),
-    spot('Lakecity 33', 'BOD'),
+    {
+        ...spot('Lakecity 33', 'BOD'),
+        locality: 'Mios, between Bordeaux and Arcachon, France',
+        point: { lat: 44.6050, lon: -0.9370 },  // Mios, approximate
+        surface: listed('cable', 'https://lakecity.fr/',
+            'Two cables: a 5-pylon 760 m and a 2-pylon.'),
+    },
     spot('Langenfeld', 'DUS'),
 ];
 

@@ -216,8 +216,25 @@ describe('planSearch — catalogue fan-out fails closed', () => {
         expect(plan.calls[0].spotLabel).toBe('Ibiza');
     });
 
-    it('treats the shipped catalogue as blocked, not empty', () => {
+    // Was BLOCKED until the catalogue had real surfaces in it. Now three
+    // spots are known cable parks, so the flagship intent actually returns
+    // something — while the unchecked ones stay hidden and counted.
+    it('returns cable parks now that the catalogue knows which ones they are', () => {
         const plan = planSearch(intentOf({ rideSurface: 'cable' }), { now: NOW });
+
+        expect(plan.strategy).toBe('SHORTLIST_FANOUT');
+        expect(plan.calls.length).toBeGreaterThan(0);
+        expect(plan.blocked).toBeNull();
+
+        // Ibiza is boat-pulled, so it is correctly absent from a cable search.
+        expect(plan.calls.map((c) => c.spotLabel)).not.toContain('Ibiza Wake');
+
+        // And the ones nobody has checked are still hidden, and still counted.
+        expect(plan.warnings.map((w) => w.kind)).toContain('HIDDEN_FOR_MISSING_DATA');
+    });
+
+    it('still blocks a beginner search, because no spot lists a school yet', () => {
+        const plan = planSearch(intentOf({ rideSurface: 'cable', skillLevel: 'none' }), { now: NOW });
 
         expect(plan.strategy).toBe('BLOCKED');
         expect(plan.blocked?.reason).toBe('NO_VERIFIED_CANDIDATES');

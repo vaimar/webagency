@@ -65,6 +65,11 @@ const CURATED_DESTINATIONS: DestinationHint[] = [
 // arrivalAirport explicitly and uses the city-centre coordinates for the
 // direct hotel-search fallback.
 const HINTED_DESTINATIONS: DestinationHint[] = [
+    // Wake Paradise sits at Spay, 10 min from Le Mans. Le Mans has no
+    // commercial airport: fly to Paris and take the TGV (about an hour), or
+    // drive. CDG is the arrival the backend should price; the city
+    // coordinates below are Le Mans, for the stay search.
+    { label: 'Wake Paradise', keywords: ['wake paradise', 'spay', 'le mans'], arrivalAirport: 'CDG', curatedByBackend: false, cityLat: 48.0061, cityLon: 0.1996 },
     { label: 'Geneva', keywords: ['geneva', 'genève', 'geneve'], arrivalAirport: 'GVA', curatedByBackend: false, cityLat: 46.2044, cityLon: 6.1432 },
     { label: 'Prague', keywords: ['prague', 'praha'], arrivalAirport: 'PRG', curatedByBackend: false, cityLat: 50.0755, cityLon: 14.4378 },
     { label: 'Palma de Mallorca', keywords: ['palma', 'mallorca'], arrivalAirport: 'PMI', curatedByBackend: false, cityLat: 39.5696, cityLon: 2.6502 },
