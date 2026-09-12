@@ -50,10 +50,14 @@ describe('rideSpots — the shipped catalogue', () => {
         for (const entry of RIDE_SPOTS) {
             for (const key of ALL_FACT_KEYS) {
                 const fact = entry[key] as VenueFact<unknown>;
-                // EXO 84 carries a reported closure; everything else is untouched.
+                // Two facts are reported rather than read: EXO 84's closure
+                // and Ibiza's surface. Everything else is untouched.
                 if (key === 'operating' && entry.label === 'EXO 84') {
                     expect(fact.value).toBe(false);
                     expect(fact.sourceKind).toBe('user_report');
+                    continue;
+                }
+                if (entry.label === 'Ibiza Wake' && (key === 'surface' || key === 'cableCount')) {
                     continue;
                 }
                 if (key === 'climateBand') {
@@ -73,7 +77,7 @@ describe('rideSpots — the shipped catalogue', () => {
     it('derives a climate band for every venue from its region', () => {
         const byLabel = Object.fromEntries(RIDE_SPOTS.map((s) => [s.label, s.climateBand.value]));
 
-        expect(byLabel['Ibiza Cable Park']).toBe('warm');     // Balearics
+        expect(byLabel['Ibiza Wake']).toBe('warm');           // Balearics
         expect(byLabel['Lakecity 33']).toBe('temperate');     // Atlantic
         expect(byLabel['Langenfeld']).toBe('temperate');      // continental
         expect(byLabel['313 Cable Park']).toBe('cold');       // Baltic, via Palanga
@@ -82,6 +86,17 @@ describe('rideSpots — the shipped catalogue', () => {
     it('routes 313 Cable Park to Palanga, not Vilnius', () => {
         const spot313 = RIDE_SPOTS.find((s) => s.label === '313 Cable Park');
         expect(spot313?.arrivalAirport).toBe('PLQ');
+    });
+
+    it('does not claim a cable park where there is none', () => {
+        const ibiza = RIDE_SPOTS.find((s) => s.label === 'Ibiza Wake');
+
+        expect(ibiza).toBeDefined();
+        expect(ibiza?.surface.value).toBe('boat');
+        expect(ibiza?.cableCount.status).toBe('NOT_APPLICABLE');
+        expect(ibiza?.locality).toContain('Sant Antoni');
+        // The old label asserted a facility that does not exist on the island.
+        expect(RIDE_SPOTS.map((s) => s.label)).not.toContain('Ibiza Cable Park');
     });
 
     it('no longer lists a venue we cannot place', () => {
@@ -95,9 +110,10 @@ describe('rideSpots — the shipped catalogue', () => {
         expect(coverage.totalSpots).toBe(6);
         expect(coverage.launchReady).toBe(0);
         expect(coverage.byField.climateBand).toBe(6);
-        for (const key of LAUNCH_CRITICAL_FACTS.filter((k) => k !== 'climateBand')) {
-            expect(coverage.byField[key]).toBe(0);
-        }
+        // One real observed fact so far: Ibiza's surface.
+        expect(coverage.byField.surface).toBe(1);
+        expect(coverage.byField.beginnerFriendly).toBe(0);
+        expect(coverage.byField.openingSeason).toBe(0);
     });
 });
 
@@ -267,14 +283,32 @@ describe('shortlistRideSpots — hard filters fail closed, soft ones fail open',
         expect(result.included[0].staleFacts).toEqual(['openingSeason']);
     });
 
-    it('returns nothing but reports why when the catalogue is entirely unverified', () => {
+    it('reports three different reasons for hiding a venue, not one', () => {
         const result = shortlistRideSpots({ surface: 'cable', beginnerOnly: true }, RIDE_SPOTS, AT);
 
         expect(result.included).toEqual([]);
-        // Every venue is hidden, but the closed one is hidden for a real
-        // reason rather than for want of data.
-        expect(result.hiddenForMissingData).toBe(RIDE_SPOTS.length - 1);
-        expect(result.excluded.some((e) => e.reason === 'NOT_OPERATING')).toBe(true);
+
+        const reasons = result.excluded.map((e) => e.reason);
+        expect(reasons).toContain('NOT_OPERATING');     // EXO 84 has closed
+        expect(reasons).toContain('SURFACE_MISMATCH');  // Ibiza is boat-pulled
+        expect(reasons).toContain('SURFACE_UNVERIFIED');// the rest are unchecked
+
+        // Only the unchecked ones are a gap in our data; the other two are
+        // answers. Conflating them would tell the user the wrong thing.
+        expect(result.hiddenForMissingData).toBe(RIDE_SPOTS.length - 2);
+    });
+
+    it('excludes Ibiza from a cable-only search, because it is boat-pulled', () => {
+        const ibiza = RIDE_SPOTS.filter((s) => s.label === 'Ibiza Wake');
+
+        const cableOnly = shortlistRideSpots({ surface: 'cable' }, ibiza, AT);
+        expect(cableOnly.included).toEqual([]);
+        expect(cableOnly.excluded[0].reason).toBe('SURFACE_MISMATCH');
+        // A real mismatch, not a gap in our data.
+        expect(cableOnly.excluded[0].dueToMissingData).toBe(false);
+
+        const boatOk = shortlistRideSpots({ surface: 'boat' }, ibiza, AT);
+        expect(boatOk.included.map((e) => e.spot.label)).toEqual(['Ibiza Wake']);
     });
 
     it('excludes a venue known to have closed, whatever else matches', () => {

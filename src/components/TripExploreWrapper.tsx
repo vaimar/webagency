@@ -27,7 +27,7 @@ interface RideSpotPreset {
 // day (it is in Turkey, not Perpignan). A one-click chip to a venue we cannot
 // route correctly is worse than no chip at all.
 const RIDE_SPOT_PRESETS: RideSpotPreset[] = [
-    { label: 'Ibiza Cable Park', destination: 'Ibiza Cable Park', activity: 'wakeboard', emoji: '🌊' },
+    { label: 'Ibiza Wake', destination: 'Ibiza Wake', activity: 'wakeboard', emoji: '🌊' },
     { label: '313 Cable Park', destination: '313 Cable Park', activity: 'wakeboard', emoji: '🌊' },
     { label: 'Paris Wakepark', destination: 'Paris Wakepark', activity: 'wakeboard', emoji: '🌊' },
     { label: 'Les Houches', destination: 'Les Houches', activity: 'snowboard', emoji: '🏂' },

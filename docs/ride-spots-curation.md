@@ -104,7 +104,22 @@ Each of these came from a third-party listing, not the venue. Treat as a startin
 | Is MRS right for EXO 84? | **Moot — the park has stopped operating.** | `operating: false` recorded against the venue (`sourceKind: 'user_report'`). It is excluded from every shortlist, and its one-click chip is gone from `/explore`. The row is kept rather than deleted so nobody re-adds it. |
 | Does Hypnotics near Perpignan exist? | **No — it is in Turkey.** | Removed from `rideSpots.ts`, `destinationDirectory.ts` and the preset chips. Its `PGF` mapping made both the airport and the climate derived from it wrong by a country. **The backend still resolves it to PGF.** Re-add only with a confirmed location. |
 
-Catalogue is now six venues, one of which is closed. Five remain curatable.
+### Also corrected 2026-09-12
+
+| Finding | Answer | Applied |
+|---|---|---|
+| "Ibiza Cable Park" | **There is no cable park on Ibiza.** The venue is boat-pulled riding at Sant Antoni — "Ibiza Wake". | Renamed to `Ibiza Wake`; `surface` recorded as `boat` (`user_report`), `cableCount` marked `NOT_APPLICABLE`, locality recorded. The old label asserted a facility that does not exist. |
+
+Consequence worth knowing: **a "cable park only" search now excludes Ibiza**, correctly and for a real reason
+(`SURFACE_MISMATCH`), not for want of data. That is the filter doing its job on the first venue that has a verified
+surface.
+
+`RideSpot` gains an optional `locality` — descriptive only, never used for routing. Three of this catalogue's original
+seven entries turned out to be somewhere other than their label implied, so the next audit should not have to
+re-derive that.
+
+Catalogue is now six venues: one closed (EXO 84), one boat-pulled with a verified surface (Ibiza Wake), and four
+still entirely unchecked.
 
 ### Catalogue corrections — these affect routing, not just filtering
 

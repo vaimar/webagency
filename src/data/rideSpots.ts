@@ -114,6 +114,13 @@ export interface SessionPrice {
 export interface RideSpot {
     /** MUST resolve through resolveDestinationHint() to `arrivalAirport`. */
     label: string;
+    /**
+     * Where the venue actually is, in words. Descriptive only — never used for
+     * routing. It exists because three of this catalogue's original seven
+     * entries turned out to be somewhere other than their label implied, and a
+     * human auditing the list should not have to re-derive that each time.
+     */
+    locality?: string;
     /** Copied from destinationDirectory.ts — backend-known, never curated here. */
     arrivalAirport: string;
     activity: 'wakeboard' | 'snowboard' | 'surf' | 'kitesurf';
@@ -263,7 +270,22 @@ export const RIDE_SPOTS: RideSpot[] = [
     // climate derived from that airport — were wrong by a country. Re-add it
     // only with a confirmed location. The backend still resolves the label to
     // PGF and needs the same correction.
-    spot('Ibiza Cable Park', 'IBZ'),
+    {
+        // Renamed 2026-09-12. There is no cable park on Ibiza; the label
+        // asserted a facility that does not exist. The venue is boat-pulled.
+        ...spot('Ibiza Wake', 'IBZ'),
+        locality: 'Sant Antoni de Portmany, Ibiza',
+        surface: {
+            value: 'boat',
+            status: 'VERIFIED',
+            sourceUrl: null,
+            checkedOn: '2026-09-12',
+            sourceKind: 'user_report',
+            verifiedBy: 'human',
+            note: 'Reported by the product owner, 2026-09-12: boat riding at Sant Antoni, no cable on the island.',
+        },
+        cableCount: notApplicable<number>('boat-pulled, no cable'),
+    },
     spot('313 Cable Park', 'PLQ'),
     spot('Paris Wakepark', 'ORY'),
     spot('Lakecity 33', 'BOD'),
