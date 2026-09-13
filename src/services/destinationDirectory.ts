@@ -54,7 +54,7 @@ const CURATED_DESTINATIONS: DestinationHint[] = [
     { label: 'EXO 83', keywords: ['exo 83', 'exo83', 'le muy'], arrivalAirport: 'NCE', curatedByBackend: true },
     { label: 'Langenfeld', keywords: ['langenfeld'], arrivalAirport: 'DUS', curatedByBackend: true, cityLat: 51.11154, cityLon: 6.91248 },
     { label: 'Wakebeach 257', keywords: ['wakebeach'], arrivalAirport: 'DUS', curatedByBackend: true, cityLat: 51.1029, cityLon: 6.76919 },
-    { label: 'Turncable', keywords: ['turncable'], arrivalAirport: 'MUC', curatedByBackend: true, cityLat: 48.29221, cityLon: 10.44534 },
+    { label: 'Turncable', keywords: ['turncable'], arrivalAirport: 'FMM', curatedByBackend: true, cityLat: 48.29221, cityLon: 10.44534 },
     { label: 'Wasserski Hamm', keywords: ['wasserski hamm', 'hamm wake'], arrivalAirport: 'DTM', curatedByBackend: true, cityLat: 51.6985, cityLon: 7.91719 },
     { label: 'BCN Cable Park', keywords: ['bcn cable', 'olimpic cable', 'castelldefels cable'], arrivalAirport: 'BCN', curatedByBackend: true, cityLat: 41.27246, cityLon: 1.99196 },
     { label: 'Wake Way', keywords: ['wake way'], arrivalAirport: 'VNO', curatedByBackend: true, cityLat: 54.63808, cityLon: 25.37607 },
