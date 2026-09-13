@@ -35,7 +35,6 @@ const RIDE_SPOT_PRESETS: RideSpotPreset[] = [
     { label: 'Lunar', destination: 'Lunar Cable Park', activity: 'wakeboard', emoji: '🇪🇸' },
     { label: 'Wakevilla', destination: 'Wakevilla', activity: 'wakeboard', emoji: '🇵🇹' },
     { label: 'Wake Way', destination: 'Wake Way', activity: 'wakeboard', emoji: '🇱🇹' },
-    { label: 'Anupriškės', destination: 'Anupriskes', activity: 'wakeboard', emoji: '🇱🇹' },
     { label: 'Elev8', destination: 'Elev8', activity: 'wakeboard', emoji: '🇱🇹' },
     { label: 'Les Houches', destination: 'Les Houches', activity: 'snowboard', emoji: '🏂' },
 ];
