@@ -84,6 +84,9 @@ export interface UnifiedFlightOption {
     alternativeOrigin?: boolean | null;
     originDriveMinutes?: number | null;
     originAccessNote?: string | null;
+    alternativeArrival?: boolean | null;
+    lastMileTransferMinutes?: number | null;
+    destinationAccessNote?: string | null;
     // Connection detail: 0/absent = direct; otherwise the layover airports + waits.
     stops?: number | null;
     totalDurationMinutes?: number | null;
