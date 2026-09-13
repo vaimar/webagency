@@ -4,7 +4,8 @@
   edge_functions = "netlify/edge-functions"
 
 [build.environment]
-  NODE_VERSION = "20"
+  NODE_VERSION = "22"
+  YARN_IGNORE_ENGINES = "true"
   CI = "false"
 
 # SPA fallback — all routes serve index.html
