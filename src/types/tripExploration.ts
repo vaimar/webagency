@@ -25,6 +25,12 @@ export interface TripExplorationResponse {
     destination?: string | null;
     travelDate?: string | null;
     resolvedArrivalAirport?: string | null;
+    /** Human-readable destination label after backend resolve (spot/city). */
+    resolvedDestinationLabel?: string | null;
+    /** Nearest rail/metro/etc. station to the resolved destination, when known. */
+    nearestStation?: string | null;
+    /** Kind of nearestStation (e.g. metro, train), when known. */
+    stationKind?: string | null;
     resolutionReason?: string | null;
     routeAvailable?: boolean | null;
     flightComparison?: FlightComparisonResult | null;
