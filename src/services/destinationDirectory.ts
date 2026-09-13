@@ -60,8 +60,9 @@ const CURATED_DESTINATIONS: DestinationHint[] = [
     { label: 'Wake Way', keywords: ['wake way'], arrivalAirport: 'VNO', curatedByBackend: true, cityLat: 54.63808, cityLon: 25.37607 },
     { label: 'Rancho Park', keywords: ['rancho park', 'mazais ansis'], arrivalAirport: 'RIX', curatedByBackend: true, cityLat: 57.46431, cityLon: 25.25159 },
     { label: 'Palanga', keywords: ['palanga'], arrivalAirport: 'PLQ', curatedByBackend: true, cityLat: 55.9175, cityLon: 21.0686 },
-    { label: 'Lunar Cable Park', keywords: ['lunar'], arrivalAirport: 'LEI', curatedByBackend: true, cityLat: 37.31908, cityLon: -1.89555 },
+    { label: 'Lunar Cable Park', keywords: ['lunar', 'cuevas del almanzora'], arrivalAirport: 'LEI', curatedByBackend: true, cityLat: 37.3219, cityLon: -1.8983 },
     { label: 'Wakevilla', keywords: ['wakevilla', 'wake villa'], arrivalAirport: 'LIS', curatedByBackend: true, cityLat: 39.57427, cityLon: -8.28054 },
+    { label: 'Anupriškės', keywords: ['anupriskes', 'anupriškės', 'tonyresort', 'tony resort'], arrivalAirport: 'VNO', curatedByBackend: true, cityLat: 54.70604, cityLon: 24.9019 },
     { label: 'Elev8 Cable Park', keywords: ['elev8', 'elve8'], arrivalAirport: 'VNO', curatedByBackend: true, cityLat: 54.73053, cityLon: 24.86818 },
 ];
 
