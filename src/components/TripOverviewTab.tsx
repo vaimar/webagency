@@ -64,6 +64,14 @@ const buildTimeline = (trip: TripExplorationResponse, flight: UnifiedFlightOptio
         arrival
             ? { label: 'Arrival', value: [flight?.arrivalAirport ?? trip.resolvedArrivalAirport, arrival].filter(Boolean).join(' · ') }
             : null,
+        trip.nearestStation
+            ? {
+                label: 'Nearest station',
+                value: trip.stationKind
+                    ? `${trip.nearestStation} (${trip.stationKind})`
+                    : trip.nearestStation,
+            }
+            : null,
         transfer
             ? { label: 'Airport → center', value: `~${transfer}` }
             : null,
