@@ -75,8 +75,14 @@ const buildTimeline = (trip: TripExplorationResponse, flight: UnifiedFlightOptio
         transfer
             ? { label: 'Airport → center', value: `~${transfer}` }
             : null,
-        activity?.name
-            ? { label: 'Ride spot', value: [activity.name, formatKm(activity.distanceKm ?? null)].filter(Boolean).join(' · ') }
+        (trip.resolvedDestinationLabel || activity?.name)
+            ? {
+                label: 'Ride spot',
+                value: [
+                    trip.resolvedDestinationLabel || activity?.name,
+                    formatKm(activity?.distanceKm ?? null),
+                ].filter(Boolean).join(' · '),
+            }
             : null,
     ];
 
