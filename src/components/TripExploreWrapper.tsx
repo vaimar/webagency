@@ -33,6 +33,7 @@ const RIDE_SPOT_PRESETS: RideSpotPreset[] = [
     { label: 'Wakebeach 257', destination: 'Wakebeach 257', activity: 'wakeboard', emoji: '🇩🇪' },
     { label: 'BCN Cable Park', destination: 'BCN Cable Park', activity: 'wakeboard', emoji: '🇪🇸' },
     { label: 'Wake Way', destination: 'Wake Way', activity: 'wakeboard', emoji: '🇱🇹' },
+    { label: 'Les Houches', destination: 'Les Houches', activity: 'snowboard', emoji: '🏂' },
 ];
 
 const destinationSuggestions = getDestinationSuggestions();
