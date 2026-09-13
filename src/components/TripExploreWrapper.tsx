@@ -29,7 +29,10 @@ const RIDE_SPOT_PRESETS: RideSpotPreset[] = [
     { label: '313 Cable Park', destination: '313 Cable Park', activity: 'wakeboard', emoji: '🌊' },
     { label: 'Hip-Notics', destination: 'Hip-Notics', activity: 'wakeboard', emoji: '🌊' },
     { label: 'Paris Wakepark', destination: 'Paris Wakepark', activity: 'wakeboard', emoji: '🌊' },
-    { label: 'Les Houches', destination: 'Les Houches', activity: 'snowboard', emoji: '🏂' },
+    { label: 'Langenfeld', destination: 'Wasserski Langenfeld', activity: 'wakeboard', emoji: '🇩🇪' },
+    { label: 'Wakebeach 257', destination: 'Wakebeach 257', activity: 'wakeboard', emoji: '🇩🇪' },
+    { label: 'BCN Cable Park', destination: 'BCN Cable Park', activity: 'wakeboard', emoji: '🇪🇸' },
+    { label: 'Wake Way', destination: 'Wake Way', activity: 'wakeboard', emoji: '🇱🇹' },
 ];
 
 const destinationSuggestions = getDestinationSuggestions();
