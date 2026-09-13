@@ -53,16 +53,16 @@ const CURATED_DESTINATIONS: DestinationHint[] = [
     { label: 'Sailor Wake Park', keywords: ['sailor', 'kumwakepark', 'barcarès', 'barcares'], arrivalAirport: 'PGF', curatedByBackend: true },
     { label: 'EXO 83', keywords: ['exo 83', 'exo83', 'le muy'], arrivalAirport: 'NCE', curatedByBackend: true },
     { label: 'Langenfeld', keywords: ['langenfeld'], arrivalAirport: 'DUS', curatedByBackend: true, cityLat: 51.11154, cityLon: 6.91248 },
-    { label: 'Wakebeach 257', keywords: ['wakebeach'], arrivalAirport: 'DUS', curatedByBackend: true, cityLat: 51.1029, cityLon: 6.76919 },
+    { label: 'Wakebeach 257', keywords: ['wakebeach'], arrivalAirport: 'DUS', curatedByBackend: true, cityLat: 51.10296, cityLon: 6.77142 },
     { label: 'Turncable', keywords: ['turncable'], arrivalAirport: 'FMM', curatedByBackend: true, cityLat: 48.29221, cityLon: 10.44534 },
-    { label: 'Wasserski Hamm', keywords: ['wasserski hamm', 'hamm wake'], arrivalAirport: 'DTM', curatedByBackend: true, cityLat: 51.6985, cityLon: 7.91719 },
+    { label: 'Wasserski Hamm', keywords: ['wasserski hamm', 'hamm wake'], arrivalAirport: 'DTM', curatedByBackend: true, cityLat: 51.69891, cityLon: 7.91574 },
     { label: 'BCN Cable Park', keywords: ['bcn cable', 'olimpic cable', 'castelldefels cable'], arrivalAirport: 'BCN', curatedByBackend: true, cityLat: 41.27246, cityLon: 1.99196 },
     { label: 'Wake Way', keywords: ['wake way'], arrivalAirport: 'VNO', curatedByBackend: true, cityLat: 54.63808, cityLon: 25.37607 },
-    { label: 'Rancho Park', keywords: ['rancho park', 'mazais ansis'], arrivalAirport: 'RIX', curatedByBackend: true, cityLat: 57.46431, cityLon: 25.25159 },
+    { label: 'Rancho Park', keywords: ['rancho park', 'mazais ansis'], arrivalAirport: 'RIX', curatedByBackend: true, cityLat: 57.46391, cityLon: 25.25305 },
     { label: 'Palanga', keywords: ['palanga'], arrivalAirport: 'PLQ', curatedByBackend: true, cityLat: 55.9175, cityLon: 21.0686 },
-    { label: 'Lunar Cable Park', keywords: ['lunar', 'cuevas del almanzora'], arrivalAirport: 'LEI', curatedByBackend: true, cityLat: 37.3219, cityLon: -1.8983 },
+    { label: 'Lunar Cable Park', keywords: ['lunar', 'cuevas del almanzora'], arrivalAirport: 'LEI', curatedByBackend: true, cityLat: 37.3231, cityLon: -1.89417 },
     { label: 'Wakevilla', keywords: ['wakevilla', 'wake villa'], arrivalAirport: 'LIS', curatedByBackend: true, cityLat: 39.57427, cityLon: -8.28054 },
-    { label: 'Elev8 Cable Park', keywords: ['elev8', 'elve8'], arrivalAirport: 'VNO', curatedByBackend: true, cityLat: 54.73053, cityLon: 24.86818 },
+    { label: 'Elev8 Cable Park', keywords: ['elev8', 'elve8'], arrivalAirport: 'VNO', curatedByBackend: true, cityLat: 54.73596, cityLon: 24.87056 },
 ];
 
 // Popular cities the backend cannot resolve by itself: the UI supplies the
