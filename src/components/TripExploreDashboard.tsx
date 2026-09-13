@@ -82,6 +82,7 @@ const TripExploreDashboard: React.FC<TripExploreDashboardProps> = ({ tripData, e
     }, [tripData]);
 
     const destinationName = tripData.destination ?? '';
+    const resolvedDestinationLabel = tripData.resolvedDestinationLabel?.trim() || null;
 
     // Lazy — only fetch the AI guide when the tab is actually opened, and only once.
     const loadAiGuide = useCallback(async () => {
@@ -129,7 +130,9 @@ const TripExploreDashboard: React.FC<TripExploreDashboardProps> = ({ tripData, e
         }
     }, [scStatus, loadSelfConnect]);
 
-    const destination = tripData.destination ?? 'Your next drop';
+    const destination = resolvedDestinationLabel
+        ?? tripData.destination
+        ?? 'Your next drop';
     const travelDate = tripData.travelDate;
     const status = humanizeOrchestrationStatus(getOrchestrationStatus(tripData));
     const isDegraded = isDegradedResponse(tripData);
@@ -166,6 +169,9 @@ const TripExploreDashboard: React.FC<TripExploreDashboardProps> = ({ tripData, e
                     <p className="trip-explore-dashboard__eyebrow">Adrenaline weekend</p>
                     <h2 className="trip-explore-dashboard__title">{destination}</h2>
                     <p className="trip-explore-dashboard__subtitle">
+                        {resolvedDestinationLabel && tripData.destination && resolvedDestinationLabel !== tripData.destination
+                            ? `Searched ${tripData.destination} • `
+                            : ''}
                         {travelDate ? `Main move • ${formatDate(travelDate)}` : 'Main move • ready to lock'}
                         {tripData.resolvedArrivalAirport ? ` • via ${tripData.resolvedArrivalAirport}` : ''}
                     </p>
