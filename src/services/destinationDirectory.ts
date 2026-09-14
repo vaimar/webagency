@@ -36,7 +36,6 @@ const CURATED_DESTINATIONS: DestinationHint[] = [
     { label: 'Toulouse', keywords: ['toulouse'], arrivalAirport: 'TLS', curatedByBackend: true, cityLat: 43.6047, cityLon: 1.4442 },
     { label: 'Dusseldorf', keywords: ['dusseldorf', 'düsseldorf'], arrivalAirport: 'DUS', curatedByBackend: true, cityLat: 51.2277, cityLon: 6.7735 },
     { label: 'Vilnius', keywords: ['vilnius'], arrivalAirport: 'VNO', curatedByBackend: true, cityLat: 54.6872, cityLon: 25.2797 },
-    { label: 'EXO 84', keywords: ['exo 84', 'exo84'], arrivalAirport: 'MRS', curatedByBackend: true },
     { label: 'Les Houches', keywords: ['les houches', 'chamonix'], arrivalAirport: 'GVA', curatedByBackend: true, cityLat: 45.8919, cityLon: 6.7986 },
     { label: 'Paros', keywords: ['paros', 'parikia'], arrivalAirport: 'PAS', curatedByBackend: true, cityLat: 37.0853, cityLon: 25.1489 },
     { label: 'Santorini', keywords: ['santorini', 'thira', 'thera', 'fira', 'oia'], arrivalAirport: 'JTR', curatedByBackend: true, cityLat: 36.4167, cityLon: 25.4333 },
@@ -95,8 +94,8 @@ export const resolveDestinationHint = (input: string): DestinationHint | undefin
     ));
 };
 
-// Some airports serve both a city and a nearby venue (MRS → Marseille + EXO 84,
-// GVA → Geneva + Les Houches, …). When a caller asks "what city does this airport
+// Some airports serve both a city and a nearby venue (GVA → Geneva + Les Houches,
+// MRS → Marseille + EXO 83, …). When a caller asks "what city does this airport
 // serve?" the answer is always the city, never the venue — so the ambiguous
 // airports name their primary destination explicitly instead of relying on list
 // order. Airports with a single hint need no entry here.
