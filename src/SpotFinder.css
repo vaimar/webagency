@@ -60,6 +60,22 @@
     }
 }
 
+/* Thumb-sized targets on phone widths. Global .segmented__option is 36px and
+   .select is 40px; both miss the 44px floor. Scoped to .spot-search so other
+   pages keep their denser controls. */
+@media (max-width: 768px) {
+    .spot-search__field--activity .segmented__option {
+        height: auto;
+        min-height: 44px;
+        padding: var(--space-2) var(--space-3);
+    }
+
+    .spot-search .select {
+        height: auto;
+        min-height: 44px;
+    }
+}
+
 /* ── Results header ───────────────────────────────────────────────────────── */
 
 .spot-results__head {
