@@ -59,7 +59,7 @@ The `registerSink` call to add is written out at the top of
 
 - [ ] WAF / rate limiting enabled at the hosting platform
 
-Goes *in front of* [`netlify/edge-functions/rate-limit.js`](../netlify/edge-functions/rate-limit.js),
+Goes *in front of* [`netlify/lib/rate-limit.js`](../netlify/lib/rate-limit.js),
 not instead of it: the edge bucket sheds load before the backend is touched,
 which is what protects third-party API quota. The edge limiter is per-isolate
 and was never a WAF.
@@ -142,7 +142,7 @@ reason that state is stable rather than a problem. Decide between:
 - staying undeployed (free, and honest — this is the current position)
 - Netlify password protection (paid plan, one setting, no code)
 - a build-time shared-secret gate in an edge function (free, weak, ~40 lines
-  next to [`netlify/edge-functions/rate-limit.js`](../netlify/edge-functions/rate-limit.js))
+  in `netlify/edge-functions/`, next to [`api-proxy.js`](../netlify/edge-functions/api-proxy.js))
 
 Do not treat this as a copy change. It is the gate the whole private-beta stage
 rests on.

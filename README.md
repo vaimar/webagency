@@ -77,7 +77,7 @@ collector via `sendBeacon` — **add that origin to `connect-src` in
 
 ## Rate limiting
 
-[`netlify/edge-functions/rate-limit.js`](netlify/edge-functions/rate-limit.js)
+[`netlify/lib/rate-limit.js`](netlify/lib/rate-limit.js)
 token-buckets expensive endpoints (self-connect, explore, AI, flight search) at
 10/min per IP and everything else at 120/min, shedding load *before* the request
 reaches the backend so an over-limit caller cannot burn third-party quota.

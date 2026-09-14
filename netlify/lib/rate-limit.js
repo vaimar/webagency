@@ -14,6 +14,11 @@
  *
  * Platform-level rate limiting and a WAF should still be enabled in front of
  * this; see the note in README.
+ *
+ * This file lives in netlify/lib, not netlify/edge-functions, on purpose.
+ * Netlify treats every top-level file in the edge-functions directory as an
+ * edge function and fails the whole deploy when one has no default export,
+ * which a helper module like this never has.
  */
 
 /** Endpoints that cost real money or upstream quota per call. */

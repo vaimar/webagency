@@ -12,7 +12,7 @@
  *   entirely, then returns the Railway response to the browser.
  */
 
-import { classifyPath, clientKey, consume } from "./rate-limit.js";
+import { classifyPath, clientKey, consume } from "../lib/rate-limit.js";
 
 const RAILWAY_BASE = "https://slumber-production.up.railway.app";
 

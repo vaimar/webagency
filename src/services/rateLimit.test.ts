@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-// The edge function is plain JS shared with Netlify's Deno runtime; it imports
-// nothing platform-specific, so the limiter can be exercised directly here.
-import { classifyPath, clientKey, consume, LIMITS, resetBuckets } from '../../netlify/edge-functions/rate-limit.js';
+// The limiter is plain JS that the api-proxy edge function runs under Netlify's
+// Deno runtime; it imports nothing platform-specific, so it can be exercised
+// directly here.
+import { classifyPath, clientKey, consume, LIMITS, resetBuckets } from '../../netlify/lib/rate-limit.js';
 
 describe('edge rate limiting', () => {
     beforeEach(() => resetBuckets());
