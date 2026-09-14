@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from '../services/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import {
     SkiHotelOverlayGroup,
