@@ -64,15 +64,22 @@
    .select is 40px; both miss the 44px floor. Scoped to .spot-search so other
    pages keep their denser controls. */
 @media (max-width: 768px) {
+    /* Fixed height (not only min-height): global .segmented__option / .select set
+       height: 36px / 40px. When the lazy SpotFinder.css chunk races or loses
+       cascade order, those fixed heights stick — SDET still measured 36/40. */
+    .spot-search .segmented__option,
     .spot-search__field--activity .segmented__option {
-        height: auto;
+        height: 44px;
         min-height: 44px;
+        box-sizing: border-box;
         padding: var(--space-2) var(--space-3);
     }
 
+    .spot-search select.select,
     .spot-search .select {
-        height: auto;
+        height: 44px;
         min-height: 44px;
+        box-sizing: border-box;
     }
 }
 
