@@ -4787,10 +4787,13 @@ a,
 	background: var(--color-surface-muted, #eef1f5);
 }
 
-/* Desktop shows the full beta label; mobile swaps to the short chip so
-   Sign in stays on-screen (see max-width 768 header rules). */
-.brand-mark__beta-short {
-	display: none;
+/* Desktop: hide the short chip. Must be a min-width media query — a bare
+   display:none after the ≤768 block always wins (same specificity) and left
+   an empty grey pill on phones after PR #5. */
+@media (min-width: 769px) {
+    .brand-mark__beta-short {
+        display: none;
+    }
 }
 
 .footer-inline-link {
