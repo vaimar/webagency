@@ -3163,6 +3163,28 @@ a,
 }
 
 @media (max-width: 768px) {
+    /* One clearance token for the fixed bar. Previously `.site-main` / `.site-footer`
+       each used `calc(... + 56px + env(safe-area-inset-bottom))` without a fallback.
+       When that env() makes the whole calc invalid, footer falls back to 48px and
+       sits under the ~56px bar. Clearance lives on `.app-shell` so main + footer
+       both clear the overlay; env() always has a 0px fallback. */
+    :root {
+        /* Item row min-height (56) + 1px top border. Safe-area is added separately
+           so it is not double-counted against padding-bottom on the bar. */
+        --mobile-bottom-nav-height: 56px;
+        --mobile-bottom-nav-clearance: calc(
+            var(--mobile-bottom-nav-height) + 1px + env(safe-area-inset-bottom, 0px)
+        );
+    }
+
+    html {
+        scroll-padding-bottom: var(--mobile-bottom-nav-clearance);
+    }
+
+    .app-shell {
+        padding-bottom: var(--mobile-bottom-nav-clearance);
+    }
+
     .mobile-bottom-nav {
         display: flex;
         position: fixed;
@@ -3173,7 +3195,7 @@ a,
         background: var(--bg-white);
         border-top: 1px solid var(--border);
         box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
-        padding-bottom: env(safe-area-inset-bottom);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
     }
 
     /* Eight destinations do not fit a 375px bar: at flex:1 each the labels
@@ -3203,7 +3225,7 @@ a,
         color: var(--text-muted);
         text-decoration: none;
         transition: color var(--transition-fast);
-        min-height: 56px;
+        min-height: var(--mobile-bottom-nav-height);
     }
 
     .mobile-bottom-nav__item--active {
@@ -3227,13 +3249,13 @@ a,
         padding: 0 var(--space-4);
     }
 
-    /* Extra bottom padding to clear the fixed bottom nav */
+    /* Breathing room only — nav clearance is on `.app-shell`. */
     .site-main {
-        padding: var(--space-6) 0 calc(var(--space-10) + 56px + env(safe-area-inset-bottom));
+        padding: var(--space-6) 0 var(--space-10);
     }
 
     .site-footer {
-        padding-bottom: calc(var(--space-8) + 56px + env(safe-area-inset-bottom));
+        padding-bottom: var(--space-8);
     }
 
     /* Header: compact brand-only row on mobile (nav moved to bottom) */
