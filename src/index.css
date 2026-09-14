@@ -3263,6 +3263,34 @@ a,
 
     .brand-mark__title {
         font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.35em;
+        min-width: 0;
+    }
+
+    /* Long "Beta · spot discovery" pushed Sign in off-screen at ≤390px
+       (scrollWidth 406 > 390). Short chip + shrinkable brand keep the row fitting. */
+    .site-header__brand-group {
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+
+    .brand-mark {
+        min-width: 0;
+    }
+
+    .brand-mark__beta {
+        margin-left: 0;
+        flex: 0 0 auto;
+    }
+
+    .brand-mark__beta-full {
+        display: none;
+    }
+
+    .brand-mark__beta-short {
+        display: inline;
     }
 
     .hero-card,
@@ -3432,6 +3460,25 @@ a,
 @media (max-width: 480px) {
     .page-container {
         padding: 0 var(--space-3);
+    }
+
+    /* Icon-only account control — label is still exposed via aria-label on the link */
+    .account-button {
+        width: 36px;
+        padding: 0;
+        justify-content: center;
+    }
+
+    .account-button__label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+        border: 0;
     }
 
     /* Keep buttons natural width in rows, only go full-width for isolated buttons */
@@ -4738,6 +4785,12 @@ a,
 	vertical-align: middle;
 	color: var(--color-text-muted, #5a6472);
 	background: var(--color-surface-muted, #eef1f5);
+}
+
+/* Desktop shows the full beta label; mobile swaps to the short chip so
+   Sign in stays on-screen (see max-width 768 header rules). */
+.brand-mark__beta-short {
+	display: none;
 }
 
 .footer-inline-link {

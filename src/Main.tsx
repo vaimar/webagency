@@ -183,7 +183,8 @@ const Main: React.FC = () => {
 										className="brand-mark__beta"
 										title="Spot discovery is live: parks, setups and operator tariffs with the date each was checked. Flight-to-park pricing is not yet verified — our fare source cannot say which dates its prices apply to."
 									>
-										Beta · spot discovery
+										<span className="brand-mark__beta-full">Beta · spot discovery</span>
+										<span className="brand-mark__beta-short" aria-hidden="true">Beta</span>
 									</span>
 								</div>
 								<div className="brand-mark__subtitle">Find your next adventure</div>
@@ -217,12 +218,13 @@ const Main: React.FC = () => {
 						</span>
 						<NavLink
 							to="/profile"
+							aria-label={isAuthenticated ? (account?.username ?? 'Profile') : 'Sign in'}
 							className={({ isActive }) =>
 								isActive ? 'account-button account-button--active' : 'account-button'
 							}
 						>
 							<FontAwesomeIcon icon={faUser} className="account-button__icon" />
-							<span>{isAuthenticated ? (account?.username ?? 'Profile') : 'Sign in'}</span>
+							<span className="account-button__label">{isAuthenticated ? (account?.username ?? 'Profile') : 'Sign in'}</span>
 						</NavLink>
 					</div>
 				</div>
