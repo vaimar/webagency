@@ -185,6 +185,35 @@
     margin: 4px 0;
 }
 
+.spot-finder__load-error {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-5);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.spot-finder__load-error-title {
+    margin: 0;
+    font-size: var(--text-lg);
+    font-weight: 700;
+    color: var(--text);
+}
+
+.spot-finder__load-error-body {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--text-base);
+    line-height: 1.55;
+    max-width: 52ch;
+}
+
+.spot-finder__load-error-retry {
+    justify-self: start;
+}
+
 /* ─── Spot detail card ──────────────────────────────────────────────────── */
 
 .spot-detail {
