@@ -28,6 +28,7 @@ import {
     updatePreferences,
 } from './services/api';
 import { isTest } from './services/env';
+import { getServiceStatus } from './services/serviceStatus';
 
 // ─── Anonymous defaults (mid-range traveller) ─────────────────────────────────
 
@@ -174,6 +175,15 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
     }, []);
 
     const showToast = useCallback((nextToast: ToastInput, dedupeKey?: string) => {
+        // Sync/network failures already surface in ServiceStatusBanner. A second
+        // Sync-error toast on top of the page title is noise and failed a11y checks.
+        if (nextToast.source === 'sync' && nextToast.type === 'error') {
+            const { status } = getServiceStatus();
+            if (status === 'offline' || status === 'unreachable' || status === 'degraded') {
+                return;
+            }
+        }
+
         const key = `${nextToast.source}:${dedupeKey ?? `${nextToast.type}:${nextToast.title ?? ''}:${nextToast.message}`}`;
         const now = Date.now();
 
