@@ -40,7 +40,7 @@ const craAccessibilityRules = {
 };
 
 export default tseslint.config(
-    { ignores: ['build/**', 'coverage/**', 'node_modules/**', '.netlify/**'] },
+    { ignores: ['build/**', 'coverage/**', 'node_modules/**', '.netlify/**', 'cypress/**', 'cypress.config.ts'] },
 
     js.configs.recommended,
     ...tseslint.configs.recommended,
