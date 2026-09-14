@@ -88,5 +88,23 @@ describe('TripGuide', () => {
         expect(screen.getByRole('link', { name: /booking\.com/i })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /restaurants/i })).toBeInTheDocument();
     });
-});
 
+    it('renders verified restaurant and accommodation images when the recommendation provides them', async () => {
+        render(<TripGuide trip={buildTrip({
+            restaurants: [{
+                name: 'Sea Salt', cuisine: 'Seafood', priceRange: '€€', mustTry: 'Grilled fish', tip: '',
+                imageUrl: 'https://example.test/restaurant.jpg',
+            }],
+            accommodation: [{
+                type: 'Mid-range', name: 'Cold Harbour Hotel', area: 'Harbour', pricePerNight: '€120', tip: '',
+                imageUrl: 'https://example.test/hotel.jpg',
+            }],
+        })} days={5} preferredTransport="public_transport" />);
+
+        await userEvent.click(screen.getByRole('button', { name: /restaurants \(1\)/i }));
+        expect(screen.getByRole('img', { name: 'Sea Salt — restaurant photo' })).toHaveAttribute('src', 'https://example.test/restaurant.jpg');
+
+        await userEvent.click(screen.getByRole('button', { name: /where to stay \(1\)/i }));
+        expect(screen.getByRole('img', { name: 'Cold Harbour Hotel — accommodation photo' })).toHaveAttribute('src', 'https://example.test/hotel.jpg');
+    });
+});

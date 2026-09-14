@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useEffect, useMemo, useState } from 'react';
 import TruthCard from './TruthCard';
 import { AccommodationOption, Activity, ApiDiagnostics, DayPlan, Neighborhood, PreferredTransport, Restaurant, TripSuggestion } from '../services/api';
+import PlaceImage from './PlaceImage';
 import { accommodationUrls, activityUrls, flightUrls, placeUrls } from '../services/affiliates';
 import { getAntiCauchemarPricingSummary } from '../services/antiCauchemarPricing';
 
@@ -297,7 +298,6 @@ const PackageSummary: React.FC<{
                         <div className="trip-booking-links">
                             <ExternalLink href={flightBookingUrls.ryanair} label="Ryanair" />
                             <ExternalLink href={flightBookingUrls.googleFlights} label="Google Flights" />
-                            <ExternalLink href={flightBookingUrls.skyscanner} label="Skyscanner" />
                         </div>
                     </div>
                 )}
@@ -387,6 +387,7 @@ const RestaurantsTab: React.FC<{ restaurants: Restaurant[]; destination?: string
         const price = extractPrice(r.priceRange) ?? r.priceRange;
         return (
         <article key={i} className="trip-restaurant card card--hoverable">
+            <PlaceImage src={r.imageUrl} alt={`${r.name} — restaurant photo`} label={r.name} />
             <div className="trip-restaurant__header">
                 <h4>{r.name}</h4>
                 <PriceTag price={price} />
@@ -443,6 +444,7 @@ const StayTab: React.FC<{ accommodation: AccommodationOption[]; destination?: st
         const urls = accommodationUrls(a.area, destination);
         return (
         <article key={i} className="trip-accommodation-card card card--hoverable">
+            <PlaceImage src={a.imageUrl} alt={`${a.name ?? a.area} — accommodation photo`} label={a.name ?? a.area} />
             <div className="trip-accommodation-card__type">{a.type === 'Budget' ? '🏠' : a.type === 'Luxury' ? '🏰' : '🏨'} {a.type}</div>
             <h4>{a.area}</h4>
             <div className="trip-accommodation-card__price">
@@ -684,4 +686,3 @@ export const TripGuide: React.FC<TripGuideProps> = ({ trip, diagnostics, heroTit
         </section>
     );
 };
-

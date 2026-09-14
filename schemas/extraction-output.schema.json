@@ -1,0 +1,185 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slumber.local/schemas/extraction-output.schema.json",
+  "title": "Catalogue truth extraction — one spot, one run",
+  "description": "What the extractor emits per spot. Shaped for direct ingestion into spot-readiness.js: `season` populates seasonStartMonth/seasonEndMonth, `prices[]` populates the spot_price rows. Every fact carries the page it came from, the moment that page was fetched, and the verbatim span that carries it — the quote is what makes the claim re-checkable by a machine rather than trusted.",
+  "type": "object",
+  "required": ["slug", "runId", "extractedAt", "verdict"],
+  "additionalProperties": false,
+  "properties": {
+    "slug": { "type": "string", "minLength": 1, "description": "Spot slug. Must already exist; this pipeline never creates spots." },
+    "runId": { "type": "string", "minLength": 1, "description": "Groups every emission from one pipeline run, so a bad model version can be reverted as a unit." },
+    "extractedAt": { "$ref": "#/$defs/isoInstant" },
+    "modelId": { "type": "string", "description": "Exact model identifier, e.g. an NVIDIA NIM model slug. Required for accepted output; a fact whose producer is unknown cannot be re-audited." },
+    "verdict": {
+      "enum": ["accepted", "hold", "rejected"],
+      "description": "accepted = write. hold = queue for the operator checklist. rejected = discard, spot stays needs-verification."
+    },
+    "season": { "$ref": "#/$defs/seasonClaim" },
+    "prices": { "type": "array", "items": { "$ref": "#/$defs/priceClaim" }, "default": [] },
+    "pagesFetched": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/fetchedPage" },
+      "description": "Every page fetched this run, whether or not it yielded a fact. A page that produced nothing is evidence the fact is absent, which is a different finding from not having looked."
+    },
+    "reasons": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/reason" },
+      "description": "Required and non-empty when verdict is hold or rejected."
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "verdict": { "const": "accepted" } }, "required": ["verdict"] },
+      "then": {
+        "required": ["modelId", "pagesFetched"],
+        "anyOf": [
+          { "required": ["season"] },
+          { "properties": { "prices": { "minItems": 1 } }, "required": ["prices"] }
+        ]
+      }
+    },
+    {
+      "if": { "properties": { "verdict": { "enum": ["hold", "rejected"] } }, "required": ["verdict"] },
+      "then": { "required": ["reasons"], "properties": { "reasons": { "minItems": 1 } } }
+    }
+  ],
+  "$defs": {
+    "isoInstant": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$",
+      "description": "UTC, Z-suffixed. Matches the existing observedAt values in spot_price."
+    },
+    "httpsUrl": { "type": "string", "format": "uri", "pattern": "^https?://" },
+    "sourceTier": {
+      "enum": ["T1_OPERATOR", "T2_OPERATOR_CONTROLLED", "T3_INSTITUTIONAL"],
+      "description": "T1 the operator's own domain. T2 a page the operator demonstrably controls and that T1 links to (their booking platform, their official social page). T3 a municipal or tourist-board page. Anything else is not an allowed source and cannot appear here."
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["sourceUrl", "sourceTier", "observedAt", "sourceQuote"],
+      "additionalProperties": false,
+      "properties": {
+        "sourceUrl": { "$ref": "#/$defs/httpsUrl" },
+        "sourceTier": { "$ref": "#/$defs/sourceTier" },
+        "observedAt": { "$ref": "#/$defs/isoInstant", "description": "MUST equal the fetchedAt of the matching pagesFetched entry. Not the model's idea of now." },
+        "sourceQuote": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 400,
+          "description": "Verbatim span from the fetched page that carries this value, copied not paraphrased. The validator asserts it appears in that page's text after whitespace normalisation; if it does not, the fact is a fabrication and the row is rejected."
+        },
+        "quoteLang": { "type": "string", "description": "BCP-47 tag of the quote, e.g. fr. Quotes are never translated — translating is editing." }
+      }
+    },
+    "fetchedPage": {
+      "type": "object",
+      "required": ["url", "fetchedAt", "sourceTier", "status", "contentHash"],
+      "additionalProperties": false,
+      "properties": {
+        "url": { "$ref": "#/$defs/httpsUrl" },
+        "fetchedAt": { "$ref": "#/$defs/isoInstant" },
+        "sourceTier": { "$ref": "#/$defs/sourceTier" },
+        "status": { "type": "integer", "minimum": 100, "maximum": 599 },
+        "contentHash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$", "description": "Of the normalised text. Lets a later audit prove which bytes the quote was taken from." },
+        "yieldedFacts": { "type": "boolean", "default": false }
+      }
+    },
+    "seasonClaim": {
+      "type": "object",
+      "required": ["seasonStartMonth", "seasonEndMonth", "provenance", "score"],
+      "additionalProperties": false,
+      "properties": {
+        "seasonStartMonth": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "seasonEndMonth": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "yearRound": {
+          "type": "boolean",
+          "default": false,
+          "description": "True only when the page says so in words. Never inferred from a 1..12 span, and never from an absence of closing dates."
+        },
+        "wrapsYearEnd": { "type": "boolean", "default": false, "description": "Set when start > end. Legal, but flagged so a transposition does not pass silently." },
+        "provenance": { "$ref": "#/$defs/provenance" },
+        "score": { "$ref": "#/$defs/score" },
+        "notes": { "type": "string", "maxLength": 500 }
+      }
+    },
+    "priceClaim": {
+      "type": "object",
+      "required": ["kind", "amount", "currency", "tier", "perPerson", "confidence", "provenance", "score"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "enum": ["HOUR", "HALF_DAY", "DAY", "SESSION", "PACK", "COACHING", "GROUP_HIRE", "ACCESS_BAND", "MEMBERSHIP", "GEAR_RENTAL"] },
+        "amount": { "type": "number", "exclusiveMinimum": 0, "maximum": 5000 },
+        "currency": { "enum": ["EUR", "CHF", "GBP", "TRY"], "description": "The catalogue spans FR CH DE BE GB TR IT LU IE. A currency outside this set means the wrong page was read." },
+        "durationMinutes": { "type": ["integer", "null"], "minimum": 1, "maximum": 1440 },
+        "perPerson": { "type": "boolean" },
+        "partySizeMin": { "type": ["integer", "null"], "minimum": 1 },
+        "partySizeMax": { "type": ["integer", "null"], "minimum": 1 },
+        "includesGear": { "type": ["boolean", "null"] },
+        "tier": { "enum": ["STANDARD", "CHILD", "REDUCED", "STUDENT", "MEMBER", "OFF_PEAK", "PEAK"] },
+        "label": { "type": "string", "minLength": 1, "maxLength": 120, "description": "The operator's own wording, in the operator's own language. Not translated." },
+        "notes": { "type": ["string", "null"], "maxLength": 500 },
+        "confidence": {
+          "const": "STATED",
+          "description": "The only value the catalogue holds today (269 of 269 rows). A fact that is not directly stated does not get a weaker confidence value — it does not get written."
+        },
+        "provenance": { "$ref": "#/$defs/provenance" },
+        "score": { "$ref": "#/$defs/score" }
+      }
+    },
+    "score": {
+      "type": "object",
+      "required": ["total", "components"],
+      "additionalProperties": false,
+      "description": "Auditable by construction: total must equal the sum of components, so a score can be recomputed from its parts rather than trusted.",
+      "properties": {
+        "total": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "components": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "sourceTier": { "type": "integer", "enum": [10, 25, 40] },
+            "quoteMatch": { "type": "integer", "enum": [20, 25] },
+            "valueExplicit": { "type": "integer", "enum": [0, 10, 20] },
+            "fieldProximity": { "type": "integer", "enum": [0, 10] },
+            "corroborated": { "type": "integer", "enum": [0, 5] },
+            "penaltyAmbiguous": { "type": "integer", "enum": [-15, 0] },
+            "penaltyPromoBlock": { "type": "integer", "enum": [-10, 0] },
+            "penaltyUndatedSeasonal": { "type": "integer", "enum": [-10, 0] }
+          }
+        }
+      }
+    },
+    "reason": {
+      "type": "object",
+      "required": ["code", "field"],
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "enum": [
+            "E_NO_SOURCE",
+            "E_SOURCE_TIER_DISALLOWED",
+            "E_QUOTE_NOT_FOUND",
+            "E_OBSERVED_AT_MISMATCH",
+            "E_VALUE_NOT_IN_QUOTE",
+            "E_ENUM_INVALID",
+            "E_MONTH_RANGE",
+            "E_AMOUNT_RANGE",
+            "E_CURRENCY_UNSUPPORTED",
+            "E_DUPLICATE_ROW",
+            "E_CONFLICT_UNRESOLVED",
+            "E_SCORE_BELOW_THRESHOLD",
+            "E_YEAR_ROUND_INFERRED",
+            "H_SCORE_IN_REVIEW_BAND",
+            "H_CONTRADICTS_STORED_VALUE",
+            "H_SEASON_PROVENANCE_UNSTORABLE"
+          ]
+        },
+        "field": { "type": "string", "description": "Dotted path, e.g. season.seasonEndMonth or prices[2].amount" },
+        "detail": { "type": "string", "maxLength": 500 }
+      }
+    }
+  }
+}

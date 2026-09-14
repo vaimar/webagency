@@ -1,0 +1,409 @@
+/* Your trip — the cart panel above the results.
+   Laid out as a booking flow reads top to bottom: which step you are on, the
+   flights picked so far with the way out to the airline beside each one, and
+   the running total last. Nothing is bought here, so the loudest thing on the
+   panel is the tick-box that records what was bought elsewhere. */
+
+.flight-cart {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin: 20px 0 8px;
+    padding: 16px 18px;
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    color: var(--text);
+}
+
+.flight-cart__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 18px;
+}
+
+.flight-cart__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: var(--text-lg);
+    font-weight: 700;
+}
+
+/* ── Step rail ───────────────────────────────────────────────────────────── */
+
+.flight-cart__steps {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    flex-wrap: wrap;
+}
+
+.flight-cart__step {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px 4px 4px;
+    border-radius: var(--radius-full);
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    background: var(--surface-sunken);
+}
+
+.flight-cart__step + .flight-cart__step::before {
+    content: '';
+    width: 12px;
+    height: 1px;
+    background: var(--border-strong);
+    margin-left: -6px;
+}
+
+.flight-cart__step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: var(--radius-full);
+    background: var(--border);
+    color: var(--text-secondary);
+    font-size: var(--text-xs);
+    font-weight: 700;
+}
+
+.flight-cart__step--active {
+    color: var(--primary-dark);
+    background: var(--primary-light);
+    font-weight: 600;
+}
+
+.flight-cart__step--active .flight-cart__step-number {
+    background: var(--primary);
+    color: var(--text-inverse);
+}
+
+.flight-cart__step--done {
+    color: var(--truth-exact);
+    background: var(--success-light);
+}
+
+.flight-cart__step--done .flight-cart__step-number {
+    background: var(--success);
+    color: var(--text-inverse);
+}
+
+/* ── Rows ────────────────────────────────────────────────────────────────── */
+
+.flight-cart__rows {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.flight-cart__row {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface-hover);
+}
+
+/* Booked reads as settled — the row stops asking for anything. */
+.flight-cart__row--booked {
+    border-color: var(--success);
+    background: var(--success-light);
+}
+
+.flight-cart__row--empty {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    border-style: dashed;
+    background: transparent;
+}
+
+.flight-cart__empty-note {
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+}
+
+.flight-cart__row-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 12px;
+}
+
+.flight-cart__direction {
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.flight-cart__route {
+    font-weight: 700;
+    font-size: var(--text-md);
+    letter-spacing: 0.02em;
+}
+
+.flight-cart__hub {
+    color: var(--secondary);
+}
+
+.flight-cart__when,
+.flight-cart__clocks,
+.flight-cart__stops {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+}
+
+.flight-cart__clocks {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.flight-cart__next-day {
+    margin-left: 2px;
+    color: var(--truth-warn);
+    font-size: 0.7em;
+}
+
+.flight-cart__row-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 10px;
+}
+
+.flight-cart__link-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 4px;
+    border: none;
+    background: none;
+    color: var(--primary);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+}
+
+.flight-cart__link-button:hover {
+    text-decoration: underline;
+}
+
+.flight-cart__link-button:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+.flight-cart__link-button--remove {
+    color: var(--truth-warn);
+}
+
+.flight-cart__row-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 240px;
+    gap: 16px;
+    align-items: start;
+}
+
+.flight-cart__legs {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+}
+
+.flight-cart__carriers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.flight-cart__leg {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.flight-cart__leg-label {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+/* ── Money rail ──────────────────────────────────────────────────────────── */
+
+.flight-cart__money {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    padding-left: 16px;
+    border-left: 1px solid var(--divider);
+    text-align: right;
+}
+
+.flight-cart__amount {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: var(--truth-fare);
+    font-variant-numeric: tabular-nums;
+}
+
+.flight-cart__amount--paid {
+    color: var(--truth-exact);
+}
+
+.flight-cart__basis {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    max-width: 22ch;
+}
+
+.flight-cart__booked {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    padding: 6px 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.flight-cart__booked input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--success);
+    cursor: pointer;
+}
+
+.flight-cart__row--booked .flight-cart__booked {
+    border-color: var(--success);
+    color: var(--truth-exact);
+}
+
+.flight-cart__confirm {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.flight-cart__field {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    text-align: left;
+}
+
+.flight-cart__input {
+    width: 100%;
+    max-width: 120px;
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    font-size: var(--text-sm);
+}
+
+.flight-cart__input:focus-visible {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: var(--focus-ring);
+}
+
+/* ── Total ───────────────────────────────────────────────────────────────── */
+
+.flight-cart__total {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+
+.flight-cart__total-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-width: 62ch;
+}
+
+.flight-cart__total-label {
+    font-size: var(--text-md);
+    font-weight: 700;
+}
+
+.flight-cart__total-note {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.flight-cart__total-figure {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.flight-cart__total-amount {
+    font-size: var(--text-2xl);
+    font-weight: 800;
+    color: var(--truth-total);
+    font-variant-numeric: tabular-nums;
+}
+
+.flight-cart__total-amount--paid {
+    color: var(--truth-exact);
+}
+
+.flight-cart__total-split {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+@media (max-width: 780px) {
+    .flight-cart__row-body {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .flight-cart__money {
+        align-items: flex-start;
+        padding-left: 0;
+        border-left: none;
+        border-top: 1px solid var(--divider);
+        padding-top: 10px;
+        text-align: left;
+    }
+
+    .flight-cart__row-actions {
+        margin-left: 0;
+    }
+}

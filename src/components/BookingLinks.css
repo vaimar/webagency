@@ -13,7 +13,7 @@
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #94a3b8;
+    color: var(--text-muted);
 }
 
 .booking-links__link {
@@ -24,7 +24,7 @@
     border-radius: 999px;
     background: rgba(125, 211, 252, 0.1);
     border: 1px solid rgba(125, 211, 252, 0.28);
-    color: #e0f2fe;
+    color: var(--primary-dark);
     font-size: 0.8rem;
     font-weight: 700;
     text-decoration: none;
@@ -34,4 +34,10 @@
 .booking-links__link:hover {
     background: rgba(125, 211, 252, 0.2);
     border-color: rgba(125, 211, 252, 0.5);
+}
+
+.booking-links__disclaimer {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    font-style: italic;
 }

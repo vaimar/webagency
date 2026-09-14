@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest';
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -40,15 +41,15 @@ const tour = {
 
 describe('IslandHop page', () => {
     beforeEach(() => {
-        global.fetch = jest.fn((url: string, init?: RequestInit) => {
+        global.fetch = vi.fn((url: string, _init?: RequestInit) => {
             if (String(url).endsWith('/templates')) {
                 return Promise.resolve({ ok: true, json: async () => templates } as Response);
             }
             return Promise.resolve({ ok: true, json: async () => tour } as Response);
-        }) as jest.Mock;
+        }) as Mock;
     });
 
-    afterEach(() => jest.restoreAllMocks());
+    afterEach(() => vi.restoreAllMocks());
 
     it('auto-plans the default itinerary and renders the costed open-jaw timeline', async () => {
         render(<IslandHop />);
@@ -79,7 +80,7 @@ describe('IslandHop page', () => {
         await userEvent.selectOptions(screen.getByRole('combobox'), 'Mykonos');
 
         await waitFor(() => {
-            const postCalls = (global.fetch as jest.Mock).mock.calls.filter(([u]) => String(u).endsWith('/island-hop'));
+            const postCalls = (global.fetch as Mock).mock.calls.filter(([u]) => String(u).endsWith('/island-hop'));
             const lastBody = JSON.parse(postCalls[postCalls.length - 1][1].body);
             expect(lastBody.stops.map((s: { island: string }) => s.island)).toContain('Mykonos');
         }, { timeout: 3000 });

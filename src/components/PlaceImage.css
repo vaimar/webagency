@@ -1,0 +1,29 @@
+.place-image {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: 12px;
+    object-fit: cover;
+    background: #0f2942;
+}
+
+.place-image--fallback {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: linear-gradient(135deg, #163a5f, #0f766e);
+    color: #f8fafc;
+    font-weight: 800;
+}
+
+.place-image--fallback span {
+    font-size: 1.5rem;
+}
+
+.place-image--fallback small {
+    color: #cbd5e1;
+    font-size: 0.7rem;
+    font-weight: 700;
+}

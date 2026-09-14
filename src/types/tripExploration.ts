@@ -205,6 +205,7 @@ export interface ActivityPlace {
     distanceKm?: number | null;
     matchScore?: number | null;
     selectionReason?: string | null;
+    thumbnailUrl?: string | null;
 }
 
 export interface AccommodationTradeoff {

@@ -1,0 +1,45 @@
+/* Resort hub — when to go, and what it costs once you are there. */
+
+.resort-hub {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: var(--space-6) var(--space-4) var(--space-12);
+}
+
+.resort-hub__tabs {
+    display: flex;
+    gap: var(--space-2);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: var(--space-4);
+}
+
+.resort-hub__tab {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-base);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.resort-hub__tab:hover {
+    color: var(--text);
+}
+
+.resort-hub__tab--active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    font-weight: 600;
+}
+
+/* The windows component brings its own page padding; the vendors panel does not. */
+.resort-hub .lcw {
+    padding: 0;
+    max-width: none;
+}
+
+.resort-hub__panel {
+    padding-top: var(--space-2);
+}
