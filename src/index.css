@@ -3152,6 +3152,27 @@ input[type="range"]::-webkit-slider-thumb:hover {
     min-height: 44px;
 }
 
+/* Spot finder Activity / WHERE — also in SpotFinder.css; duplicated here so the
+   main bundle wins even before the lazy /spots chunk CSS arrives. Global
+   .segmented__option { height: 36px } and .select { height: 40px } must be
+   overridden with an explicit height, not min-height alone. */
+@media (max-width: 768px) {
+    .spot-search .segmented__option,
+    .spot-search__field--activity .segmented__option {
+        height: 44px;
+        min-height: 44px;
+        box-sizing: border-box;
+        padding: var(--space-2) var(--space-3);
+    }
+
+    .spot-search select.select,
+    .spot-search .select {
+        height: 44px;
+        min-height: 44px;
+        box-sizing: border-box;
+    }
+}
+
 /* Prevent tap highlight on interactive elements */
 button,
 a,
