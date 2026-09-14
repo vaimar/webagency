@@ -4508,9 +4508,13 @@ a,
 
 @media (max-width: 768px) {
     .global-toast-stack {
+        /* Top placement sat on page-head titles ("Where to ride?", profile h1)
+           even after clearing the sticky header. Park the stack above the
+           bottom nav so logo, sign-in, and the primary heading stay clear. */
+        top: auto;
+        bottom: calc(var(--mobile-bottom-nav-clearance, 57px) + var(--space-3));
         left: var(--space-4);
         right: var(--space-4);
-        top: calc(var(--site-header-height) + env(safe-area-inset-top, 0px) + var(--space-3));
         width: auto;
     }
 
