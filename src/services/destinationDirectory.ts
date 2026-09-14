@@ -100,7 +100,7 @@ export const resolveDestinationHint = (input: string): DestinationHint | undefin
 };
 
 // Some airports serve both a city and a nearby venue (GVA → Geneva + Les Houches,
-// MRS → Marseille + EXO 83, …). When a caller asks "what city does this airport
+// DUS → Dusseldorf + Langenfeld, …). When a caller asks "what city does this airport
 // serve?" the answer is always the city, never the venue — so the ambiguous
 // airports name their primary destination explicitly instead of relying on list
 // order. Airports with a single hint need no entry here.
