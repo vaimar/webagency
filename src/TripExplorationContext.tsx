@@ -2,6 +2,7 @@ import React, { ReactNode, createContext, useCallback, useContext, useMemo, useS
 import { CACHE_TTL, useCache } from './CacheContext';
 import { getHotelsNearby } from './services/api';
 import { DestinationHint } from './services/destinationDirectory';
+import { trackedFetch } from './services/serviceStatus';
 import { getOrchestrationStatus, isDegradedResponse } from './services/tripExploreSelectors';
 import {
     HotelResult,
@@ -78,7 +79,7 @@ export const TripExplorationProvider: React.FC<{ children: ReactNode }> = ({ chi
         try {
             // Relative URL — CRA dev proxy and production reverse proxy both
             // route /api to the Spring backend; no host hardcoding.
-            const response = await fetch('/api/trips/explore', {
+            const response = await trackedFetch('/api/trips/explore', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(request),

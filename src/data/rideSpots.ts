@@ -124,7 +124,10 @@ export interface SessionPrice {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface RideSpot {
-    /** MUST resolve through resolveDestinationHint() to `arrivalAirport`. */
+    /**
+     * MUST resolve through resolveDestinationHint() to `arrivalAirport` —
+     * unless the venue has verifiably closed, which the directory drops (R2).
+     */
     label: string;
     /**
      * Where the venue actually is, in words. Descriptive only — never used for
@@ -671,9 +674,17 @@ export const validateRideSpots = (
         }
         seen.add(key);
 
+        // A venue confirmed closed is exempt from resolving: it is never
+        // shortlisted, so it never hands off to /explore, and the routing
+        // directory removes closed venues (EXO 84 left it on 2026-09-14). The
+        // row stays here as the record of why it disappeared.
+        const operating = resolveFact(spot.operating, 'operating', now);
+        const closed = isUsableForHardFilter(operating.status) && operating.value === false;
         const hint = resolveDestinationHint(label);
         if (!hint) {
-            add(label, 'label', 'R2-resolvable', 'does not resolve via resolveDestinationHint()');
+            if (!closed) {
+                add(label, 'label', 'R2-resolvable', 'does not resolve via resolveDestinationHint()');
+            }
         } else if (hint.arrivalAirport !== spot.arrivalAirport) {
             add(label, 'arrivalAirport', 'R2-airport-agrees',
                 `directory says ${hint.arrivalAirport}, row says ${spot.arrivalAirport}`);

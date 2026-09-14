@@ -12,6 +12,7 @@ import {
 } from './api';
 import { getComparableFlightPrice } from './antiCauchemarPricing';
 import { normalizeAirportCode } from '../data/airportMetadata';
+import { funnel } from './telemetry';
 
 export interface FlightFirstSearchParams extends FlightSearchParams {
     refreshFlightsFirst?: boolean;
@@ -175,7 +176,33 @@ export const loadPriorityFlights = async (
 };
 
 export const searchFlightFirstRoute = async (params: FlightFirstSearchParams): Promise<FlightFirstSearchResult> => {
-    const flightResult = await loadPriorityFlights(params);
+    // Funnel stage 1. Instrumented here rather than in each screen so every
+    // route search is counted the same way, whichever page started it.
+    const startedAt = Date.now();
+    funnel.searchStarted({
+        surface: 'flight-first',
+        origin: params.origin,
+        destination: params.destination,
+    });
+
+    let flightResult: Awaited<ReturnType<typeof loadPriorityFlights>>;
+    try {
+        flightResult = await loadPriorityFlights(params);
+    } catch (error) {
+        funnel.searchFailed({
+            surface: 'flight-first',
+            reason: error instanceof Error ? error.message : 'unknown',
+        });
+        throw error;
+    }
+
+    // Stage 2. A search that succeeds but returns nothing is a distinct
+    // outcome from one that errors — conflating them hides the real problem.
+    funnel.searchSucceeded({
+        surface: 'flight-first',
+        resultCount: flightResult.flights.length,
+        durationMs: Date.now() - startedAt,
+    });
 
     if (flightResult.flights.length === 0) {
         return {

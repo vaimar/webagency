@@ -106,9 +106,36 @@ const PROVIDER_LABELS: Record<string, string> = {
     EXTERNAL_PROVIDER: 'Partner Offer',
     EXTERNAL_SEARCH: '',
     RYANAIR_CACHE: 'Ryanair · cached fare',
+    FALLBACK_ROUTING: 'Alternative route',
 };
 
-const looksLikeBackendConstant = (value: string): boolean => (
+const FALLBACK_FLIGHT_RE = /^FALLBACK[-_]/i;
+
+/**
+ * True when the backend synthesised this option instead of finding it.
+ * `FlightSearchService.buildHeuristicFallbackFlight` invents airline "Fallback
+ * Routing", number "FALLBACK-<origin><dest>", a flat fare and placeholder times.
+ * Exported so views can label it rather than each re-deriving the test.
+ */
+export const isFallbackOption = (flight?: { flightNumber?: string | null; airline?: string | null } | null): boolean => (
+    Boolean(flight)
+    && (FALLBACK_FLIGHT_RE.test(flight!.flightNumber ?? '')
+        || /^fallback\s+routing$/i.test((flight!.airline ?? '').trim()))
+);
+
+export const sanitizeFlightNumber = (value?: string | null): string | null => {
+    if (!value) return null;
+    if (FALLBACK_FLIGHT_RE.test(value)) return null;
+    return value;
+};
+
+export const sanitizeAirline = (value?: string | null): string | null => {
+    if (!value) return null;
+    if (FALLBACK_FLIGHT_RE.test(value) || /^FALLBACK\s/i.test(value)) return null;
+    return value;
+};
+
+export const looksLikeBackendConstant = (value: string): boolean => (
     /^[A-Z0-9]+(?:[_\s][A-Z0-9()]+)*$/.test(value) && (value.includes('_') || value.length > 3)
 );
 
@@ -217,7 +244,11 @@ export const getFlightPricing = (flight?: UnifiedFlightOption | null): FlightPri
         doorToTripPrice: asPositiveAmount(flight?.doorToTripPrice) ?? pricing.doorToTripPrice,
         currency: pricing.currency,
         manualCheckRequired: pricing.hasManualCheckRequired,
-        provenance: flight?.priceLabel ?? flight?.freshnessLabel ?? null,
+        // Humanised here rather than at each call site: TripOverviewTab rendered
+        // this field straight out and put the raw "EXTERNAL_SEARCH" constant on
+        // screen under the fare. Sanitising at the source means no consumer can
+        // forget to.
+        provenance: humanizeProviderLabel(flight?.priceLabel ?? flight?.freshnessLabel ?? null),
     };
 };
 
@@ -273,6 +304,10 @@ export interface FlightRowView {
     flyDrive: boolean;
     /** Backend-provided tip explaining the drive trade-off. */
     originAccessNote: string | null;
+    /** Lands at a denser arrival hub than the curated default (destination hack). */
+    flightHack: boolean;
+    /** Backend tip for last-mile transfer from the hack hub to the park. */
+    destinationAccessNote: string | null;
     /** 0 = direct; otherwise the number of layover stops. */
     stops: number;
     /** "1 stop · via LHR (2h24 wait)" — null when direct. */
@@ -311,18 +346,25 @@ const buildRouteLabel = (departure?: string | null, arrival?: string | null): st
 const buildTransitSummary = (flight: UnifiedFlightOption): string | null => {
     const truth = flight.antiCauchemar;
     const driveMinutes = asPositiveAmount(flight.originDriveMinutes);
+    const lastMileMinutes = asPositiveAmount(flight.lastMileTransferMinutes);
     const totalMinutes = asPositiveAmount(truth?.totalTravelTimeMinutes);
-    // Honest total time: a fly-drive departure adds the drive to the hub on
-    // top of the backend's flight + transfer total.
+    // Honest total time: fly-drive drive + destination last-mile transfer sit
+    // on top of the backend's flight + transfer total.
     const doorToDoor = totalMinutes != null
-        ? formatMinutes(totalMinutes + (driveMinutes ?? 0))
+        ? formatMinutes(totalMinutes + (driveMinutes ?? 0) + (lastMileMinutes ?? 0))
         : null;
+
+    const extras: string[] = [];
+    if (driveMinutes != null) extras.push('incl. drive');
+    if (lastMileMinutes != null) extras.push('incl. last mile');
 
     const parts = [
         driveMinutes != null && `Drive ${formatMinutes(driveMinutes)}${flight.departureAirport ? ` to ${flight.departureAirport}` : ''}`,
         formatMinutes(truth?.flightDurationMinutes) && `Flight ${formatMinutes(truth?.flightDurationMinutes)}`,
-        formatMinutes(truth?.transferToCenterMinutes) && `Transfer ~${formatMinutes(truth?.transferToCenterMinutes)}`,
-        doorToDoor && `Door-to-door ${doorToDoor}${driveMinutes != null ? ' incl. drive' : ''}`,
+        lastMileMinutes != null && `Last mile ~${formatMinutes(lastMileMinutes)}${flight.arrivalAirport ? ` from ${flight.arrivalAirport}` : ''}`,
+        formatMinutes(truth?.transferToCenterMinutes) && lastMileMinutes == null
+            && `Transfer ~${formatMinutes(truth?.transferToCenterMinutes)}`,
+        doorToDoor && `Door-to-door ${doorToDoor}${extras.length ? ` ${extras.join(', ')}` : ''}`,
     ].filter(Boolean) as string[];
 
     return parts.length > 0 ? parts.join(' · ') : null;
@@ -367,8 +409,8 @@ const toRowFromUnified = (flight: UnifiedFlightOption, index: number): FlightRow
     return {
         key: `${flight.flightNumber ?? 'unified'}-${flight.source ?? index}-${flight.scheduledDeparture ?? ''}-${index}`,
         option: flight,
-        airline: flight.airline ?? null,
-        flightNumber: flight.flightNumber ?? null,
+        airline: sanitizeAirline(flight.airline),
+        flightNumber: sanitizeFlightNumber(flight.flightNumber),
         routeLabel: buildRouteLabel(flight.departureAirport, flight.arrivalAirport),
         departureLabel: formatDateTime(flight.scheduledDeparture),
         arrivalLabel: formatDateTime(flight.scheduledArrival),
@@ -377,6 +419,11 @@ const toRowFromUnified = (flight: UnifiedFlightOption, index: number): FlightRow
         honestTotal: pricing.honestTotal,
         doorToTripPrice: pricing.doorToTripPrice,
         currency: pricing.currency,
+        // Already humanised by getFlightPricing. It used to read
+        // `humanizeProviderLabel(x) ?? x`, which defeated the point: the helper
+        // returns null both when there is nothing to show *and* when the label is
+        // one it is meant to suppress (PROVIDER_LABELS maps EXTERNAL_SEARCH to
+        // ''), so the `??` resurrected the raw constant it had just hidden.
         provenance: pricing.provenance,
         approved: isAntiCauchemarApproved(flight),
         penaltyScore: getAntiCauchemarPenaltyScore(flight),
@@ -384,6 +431,8 @@ const toRowFromUnified = (flight: UnifiedFlightOption, index: number): FlightRow
         transitSummary: buildTransitSummary(flight),
         flyDrive: Boolean(flight.alternativeOrigin) || asPositiveAmount(flight.originDriveMinutes) != null,
         originAccessNote: flight.originAccessNote ?? null,
+        flightHack: Boolean(flight.alternativeArrival) || asPositiveAmount(flight.lastMileTransferMinutes) != null,
+        destinationAccessNote: flight.destinationAccessNote ?? null,
         stops: flight.stops ?? (flight.layovers?.length ?? 0),
         connectionSummary: buildConnectionSummary(flight),
         totalDurationLabel: formatMinutes(flight.totalDurationMinutes),
@@ -905,7 +954,7 @@ export const MIN_VERDICT_SAVING_EUR = 5;
 export type VerdictTargetTab = 'flights' | 'selfConnect' | 'stays';
 
 export interface VerdictSaving {
-    kind: 'flyDrive' | 'sameFlightQuote' | 'selfTransfer' | 'sameRoomQuote';
+    kind: 'flyDrive' | 'flightHack' | 'sameFlightQuote' | 'selfTransfer' | 'sameRoomQuote';
     /** Whole euros saved vs the obvious option. */
     amount: number;
     currency: string;
@@ -958,6 +1007,33 @@ const getFlyDriveSaving = (rows: FlightRowView[]): VerdictSaving | null => {
         currency: driveBest.currency,
         title: `Fly-drive via ${hub} — save ${formatCurrency(Math.round(saving), driveBest.currency)}`,
         detail: `Cheapest from ${home} is ${formatCurrency(rowComparablePrice(homeBest), homeBest.currency)}; departing ${hub} costs ${formatCurrency(rowComparablePrice(driveBest), driveBest.currency)}${driveLabel ? ` (~${driveLabel} drive each way)` : ''}.`,
+        targetTab: 'flights',
+    };
+};
+
+/** Cheapest destination-hub hack vs cheapest curated-arrival option. */
+const getFlightHackSaving = (rows: FlightRowView[]): VerdictSaving | null => {
+    const priced = rows.filter((row) => rowComparablePrice(row) != null);
+    const defaultBest = cheapestRow(priced.filter((row) => !row.flightHack));
+    const hackBest = cheapestRow(priced.filter((row) => row.flightHack));
+    if (!defaultBest || !hackBest) {
+        return null;
+    }
+
+    const saving = rowComparablePrice(defaultBest)! - rowComparablePrice(hackBest)!;
+    if (saving < MIN_VERDICT_SAVING_EUR) {
+        return null;
+    }
+
+    const hub = hackBest.option.arrivalAirport ?? 'another hub';
+    const home = defaultBest.option.arrivalAirport ?? 'the default airport';
+    const transferLabel = formatMinutes(hackBest.option.lastMileTransferMinutes);
+    return {
+        kind: 'flightHack',
+        amount: Math.round(saving),
+        currency: hackBest.currency,
+        title: `Arrive via ${hub} — save ${formatCurrency(Math.round(saving), hackBest.currency)}`,
+        detail: `Cheapest into ${home} is ${formatCurrency(rowComparablePrice(defaultBest), defaultBest.currency)}; ${hub} costs ${formatCurrency(rowComparablePrice(hackBest), hackBest.currency)}${transferLabel ? ` (~${transferLabel} last mile)` : ''}.`,
         targetTab: 'flights',
     };
 };
@@ -1138,6 +1214,7 @@ export const getTripVerdict = (
     const cost = getTripCostEstimate(trip, options.nights, options.driveEur, flight);
     const savings = [
         getFlyDriveSaving(getFlightRows(trip)),
+        getFlightHackSaving(getFlightRows(trip)),
         getSameFlightQuoteSaving(trip),
         getSelfTransferSaving(options.selfConnect),
         getSameRoomQuoteSaving(trip, cost.nights, options.extraStays ?? []),

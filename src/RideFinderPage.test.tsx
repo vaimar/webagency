@@ -2,6 +2,8 @@
 // search-mode page had — no model calls, explicit no-backing, explicit
 // degraded — and add the ones the route flow introduces.
 
+import type { Mock } from 'vitest';
+import { vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
@@ -11,7 +13,7 @@ import { ProfileProvider } from './ProfileContext';
 import RideFinderPage from './RideFinderPage';
 
 const calledUrls = (): string[] =>
-    (global.fetch as jest.Mock).mock.calls.map((call) => String(call[0]));
+    (global.fetch as Mock).mock.calls.map((call) => String(call[0]));
 
 const renderPage = () => render(
     <CacheProvider>
@@ -32,13 +34,13 @@ const answerOrigin = async () => {
 describe('RideFinderPage — route mode', () => {
     beforeEach(() => {
         // Profile bootstrap only; the route flow needs nothing else.
-        global.fetch = jest.fn().mockResolvedValue({
+        global.fetch = vi.fn().mockResolvedValue({
             ok: false, status: 401,
             headers: { get: () => 'application/json' },
             json: async () => ({}), text: async () => '',
         }) as unknown as typeof fetch;
     });
-    afterEach(() => { jest.resetAllMocks(); });
+    afterEach(() => { vi.resetAllMocks(); });
 
     it('says plainly that nothing is model-written', () => {
         renderPage();

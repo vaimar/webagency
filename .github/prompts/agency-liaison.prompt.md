@@ -9,5 +9,5 @@ Load:
 - `agent-skills/shared/core-rules.md`
 - `agent-skills/skills/agency-liaison.md`
 
-Goal: explain the technical value of the Slumber frontend to clients and partners.
+Goal: explain the technical value: Haversine estimator, PriceBreakdown CostLine stack, FirstMileAccess door-to-trip, Anti-Cauchemar pipeline.
 

@@ -1,0 +1,70 @@
+/* ─── Spot tile ──────────────────────────────────────────────────────────────
+   Photo or generated fallback, same box either way so a grid of mixed states
+   stays on one baseline. */
+
+.spot-tile {
+    position: relative;
+    display: block;
+    margin: 0;
+    overflow: hidden;
+    background: var(--surface-sunken);
+    border-radius: var(--radius-md);
+}
+
+.spot-tile--grid { aspect-ratio: 4 / 3; }
+.spot-tile--hero { aspect-ratio: 21 / 9; border-radius: var(--radius-lg); }
+
+.spot-tile__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    /* Park photos are wildly inconsistent — banners, screenshots, portrait shots.
+       Biasing the crop upward keeps the horizon and the cable in frame more often
+       than centring does. */
+    object-position: center 40%;
+}
+
+.spot-tile__credit {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    max-width: 100%;
+    padding: 2px 7px;
+    font-size: 0.65rem;
+    line-height: 1.4;
+    color: #fff;
+    background: rgba(15, 23, 42, 0.62);
+    border-top-left-radius: var(--radius-sm);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ── Generated fallback ──────────────────────────────────────────────────────
+   Deliberately not a grey box. The gradient and the initials make each spot
+   visually distinct, so a grid that is three-quarters photoless still reads as a
+   set of places rather than a set of failures. */
+
+.spot-tile--generated {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: #fff;
+}
+
+.spot-tile__icon {
+    font-size: 1.5rem;
+    opacity: 0.75;
+}
+
+.spot-tile__initials {
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    opacity: 0.95;
+}
+
+.spot-tile--hero .spot-tile__icon { font-size: 2.4rem; }
+.spot-tile--hero .spot-tile__initials { font-size: 2.8rem; }

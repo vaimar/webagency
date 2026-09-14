@@ -25,6 +25,12 @@ export interface TripExplorationResponse {
     destination?: string | null;
     travelDate?: string | null;
     resolvedArrivalAirport?: string | null;
+    /** Human-readable destination label after backend resolve (spot/city). */
+    resolvedDestinationLabel?: string | null;
+    /** Nearest rail/metro/etc. station to the resolved destination, when known. */
+    nearestStation?: string | null;
+    /** Kind of nearestStation (e.g. metro, train), when known. */
+    stationKind?: string | null;
     resolutionReason?: string | null;
     routeAvailable?: boolean | null;
     flightComparison?: FlightComparisonResult | null;
@@ -78,6 +84,9 @@ export interface UnifiedFlightOption {
     alternativeOrigin?: boolean | null;
     originDriveMinutes?: number | null;
     originAccessNote?: string | null;
+    alternativeArrival?: boolean | null;
+    lastMileTransferMinutes?: number | null;
+    destinationAccessNote?: string | null;
     // Connection detail: 0/absent = direct; otherwise the layover airports + waits.
     stops?: number | null;
     totalDurationMinutes?: number | null;
@@ -196,6 +205,7 @@ export interface ActivityPlace {
     distanceKm?: number | null;
     matchScore?: number | null;
     selectionReason?: string | null;
+    thumbnailUrl?: string | null;
 }
 
 export interface AccommodationTradeoff {

@@ -113,8 +113,8 @@ function parseRyanairDestinations(rawSource) {
     }
 
     let countryCell = '';
-    let townCell = '';
-    let airportCell = '';
+    let townCell;
+    let airportCell;
 
     if (cells.length >= 5) {
       [countryCell, townCell, airportCell] = cells;

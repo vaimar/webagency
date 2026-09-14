@@ -27,6 +27,8 @@ import {
     setAuthFailureHandler,
     updatePreferences,
 } from './services/api';
+import { isTest } from './services/env';
+import { getServiceStatus } from './services/serviceStatus';
 
 // ─── Anonymous defaults (mid-range traveller) ─────────────────────────────────
 
@@ -173,6 +175,15 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
     }, []);
 
     const showToast = useCallback((nextToast: ToastInput, dedupeKey?: string) => {
+        // Sync/network failures already surface in ServiceStatusBanner. A second
+        // Sync-error toast on top of the page title is noise and failed a11y checks.
+        if (nextToast.source === 'sync' && nextToast.type === 'error') {
+            const { status } = getServiceStatus();
+            if (status === 'offline' || status === 'unreachable' || status === 'degraded') {
+                return;
+            }
+        }
+
         const key = `${nextToast.source}:${dedupeKey ?? `${nextToast.type}:${nextToast.title ?? ''}:${nextToast.message}`}`;
         const now = Date.now();
 
@@ -192,15 +203,23 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
     }, []);
 
     const handleAuthFailure = useCallback((event: AuthFailureEvent) => {
-        const message = event.status === 403 ? 'Session expired, please sign in again.' : 'Authentication required. Please sign in again.';
-
+        // Only a user who actually HAD a session can have it expire. Anonymous
+        // visitors get 401s on every profile probe — bouncing them to /profile
+        // for that hijacked normal navigation (e.g. opening /spots or /explore
+        // by URL landed on the profile page instead).
+        const hadSession = hasAuthHint() || account !== null;
         clearLocalAuthState();
         setStatusMessage(null);
+        if (!hadSession) {
+            return;
+        }
+
+        const message = event.status === 403 ? 'Session expired, please sign in again.' : 'Authentication required. Please sign in again.';
         setError(message);
         setSessionNotice(message);
         setPendingLoginRedirect({ reason: message, nonce: Date.now() });
         showToast({ type: 'info', source: 'auth', title: 'Session expired', message }, 'session-expired');
-    }, [clearLocalAuthState, showToast]);
+    }, [account, clearLocalAuthState, hasAuthHint, showToast]);
 
     useEffect(() => {
         setAuthFailureHandler(handleAuthFailure);
@@ -284,7 +303,7 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
     }, [clearLocalAuthState, getReadableError, hasAuthHint, loadAuthenticatedSession, showToast]);
 
     useEffect(() => {
-        if (process.env.NODE_ENV === 'test') {
+        if (isTest()) {
             setIsLoading(false);
             setHasCheckedSession(true);
             return;

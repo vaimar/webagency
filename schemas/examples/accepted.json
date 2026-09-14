@@ -1,0 +1,88 @@
+{
+  "slug": "rouffiac-teleski-fr",
+  "runId": "extract-2026-09-08T09:00:00Z-a41c",
+  "extractedAt": "2026-09-08T09:04:11Z",
+  "modelId": "nvidia/llama-3.3-nemotron-super-49b-v1",
+  "verdict": "accepted",
+  "season": {
+    "seasonStartMonth": 4,
+    "seasonEndMonth": 10,
+    "yearRound": false,
+    "wrapsYearEnd": false,
+    "provenance": {
+      "sourceUrl": "https://www.rouffiac-teleski.com/infos-pratiques/",
+      "sourceTier": "T1_OPERATOR",
+      "observedAt": "2026-09-08T09:03:58Z",
+      "sourceQuote": "Le téléski nautique est ouvert d'avril à octobre, tous les jours de 10h à 19h.",
+      "quoteLang": "fr"
+    },
+    "score": {
+      "total": 95,
+      "components": {
+        "sourceTier": 40,
+        "quoteMatch": 25,
+        "valueExplicit": 20,
+        "fieldProximity": 10,
+        "corroborated": 0,
+        "penaltyAmbiguous": 0,
+        "penaltyPromoBlock": 0,
+        "penaltyUndatedSeasonal": 0
+      }
+    },
+    "notes": "Months named in words in the source; mapped avril=4, octobre=10."
+  },
+  "prices": [
+    {
+      "kind": "HOUR",
+      "amount": 25.0,
+      "currency": "EUR",
+      "durationMinutes": 60,
+      "perPerson": true,
+      "partySizeMin": null,
+      "partySizeMax": null,
+      "includesGear": true,
+      "tier": "STANDARD",
+      "label": "1 heure",
+      "notes": "Gilet et casque fournis.",
+      "confidence": "STATED",
+      "provenance": {
+        "sourceUrl": "https://www.rouffiac-teleski.com/tarifs/",
+        "sourceTier": "T1_OPERATOR",
+        "observedAt": "2026-09-08T09:04:02Z",
+        "sourceQuote": "1 heure — 25 € (gilet et casque fournis)",
+        "quoteLang": "fr"
+      },
+      "score": {
+        "total": 95,
+        "components": {
+          "sourceTier": 40,
+          "quoteMatch": 25,
+          "valueExplicit": 20,
+          "fieldProximity": 10,
+          "corroborated": 0,
+          "penaltyAmbiguous": 0,
+          "penaltyPromoBlock": 0,
+          "penaltyUndatedSeasonal": 0
+        }
+      }
+    }
+  ],
+  "pagesFetched": [
+    {
+      "url": "https://www.rouffiac-teleski.com/infos-pratiques/",
+      "fetchedAt": "2026-09-08T09:03:58Z",
+      "sourceTier": "T1_OPERATOR",
+      "status": 200,
+      "contentHash": "sha256:3f7a1c9e02b84d6f5a1e8c07d9b2f4a63c5e8d1092af7b4c6e3d0a5f8b7c2e19",
+      "yieldedFacts": true
+    },
+    {
+      "url": "https://www.rouffiac-teleski.com/tarifs/",
+      "fetchedAt": "2026-09-08T09:04:02Z",
+      "sourceTier": "T1_OPERATOR",
+      "status": 200,
+      "contentHash": "sha256:9b2e5d1a7c83f0461d8a2b6e94c7f30518ad6b9e2c4f7a01d5e83b6c9f204a7d",
+      "yieldedFacts": true
+    }
+  ]
+}

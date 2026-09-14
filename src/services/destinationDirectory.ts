@@ -26,17 +26,16 @@ export interface DestinationHint {
 // Mirrors AirportResolutionService.createDestinations() + the wakeboard
 // venue catalog examples the backend advertises in DESTINATION_AIRPORT_REQUIRED.
 const CURATED_DESTINATIONS: DestinationHint[] = [
-    { label: 'Nice', keywords: ['nice'], arrivalAirport: 'NCE', curatedByBackend: true },
-    { label: 'Dublin', keywords: ['dublin'], arrivalAirport: 'DUB', curatedByBackend: true },
-    { label: 'Barcelona', keywords: ['barcelona'], arrivalAirport: 'BCN', curatedByBackend: true },
-    { label: 'Madrid', keywords: ['madrid'], arrivalAirport: 'MAD', curatedByBackend: true },
-    { label: 'Lisbon', keywords: ['lisbon', 'lisboa'], arrivalAirport: 'LIS', curatedByBackend: true },
-    { label: 'Rome', keywords: ['rome', 'roma'], arrivalAirport: 'FCO', curatedByBackend: true },
-    { label: 'Marseille', keywords: ['marseille'], arrivalAirport: 'MRS', curatedByBackend: true },
-    { label: 'Toulouse', keywords: ['toulouse'], arrivalAirport: 'TLS', curatedByBackend: true },
-    { label: 'Dusseldorf', keywords: ['dusseldorf', 'düsseldorf'], arrivalAirport: 'DUS', curatedByBackend: true },
-    { label: 'Vilnius', keywords: ['vilnius'], arrivalAirport: 'VNO', curatedByBackend: true },
-    { label: 'EXO 84', keywords: ['exo 84', 'exo84'], arrivalAirport: 'MRS', curatedByBackend: true },
+    { label: 'Nice', keywords: ['nice'], arrivalAirport: 'NCE', curatedByBackend: true, cityLat: 43.7102, cityLon: 7.2620 },
+    { label: 'Dublin', keywords: ['dublin'], arrivalAirport: 'DUB', curatedByBackend: true, cityLat: 53.3498, cityLon: -6.2603 },
+    { label: 'Barcelona', keywords: ['barcelona'], arrivalAirport: 'BCN', curatedByBackend: true, cityLat: 41.3874, cityLon: 2.1686 },
+    { label: 'Madrid', keywords: ['madrid'], arrivalAirport: 'MAD', curatedByBackend: true, cityLat: 40.4168, cityLon: -3.7038 },
+    { label: 'Lisbon', keywords: ['lisbon', 'lisboa'], arrivalAirport: 'LIS', curatedByBackend: true, cityLat: 38.7223, cityLon: -9.1393 },
+    { label: 'Rome', keywords: ['rome', 'roma'], arrivalAirport: 'FCO', curatedByBackend: true, cityLat: 41.9028, cityLon: 12.4964 },
+    { label: 'Marseille', keywords: ['marseille'], arrivalAirport: 'MRS', curatedByBackend: true, cityLat: 43.2965, cityLon: 5.3698 },
+    { label: 'Toulouse', keywords: ['toulouse'], arrivalAirport: 'TLS', curatedByBackend: true, cityLat: 43.6047, cityLon: 1.4442 },
+    { label: 'Dusseldorf', keywords: ['dusseldorf', 'düsseldorf'], arrivalAirport: 'DUS', curatedByBackend: true, cityLat: 51.2277, cityLon: 6.7735 },
+    { label: 'Vilnius', keywords: ['vilnius'], arrivalAirport: 'VNO', curatedByBackend: true, cityLat: 54.6872, cityLon: 25.2797 },
     { label: 'Les Houches', keywords: ['les houches', 'chamonix'], arrivalAirport: 'GVA', curatedByBackend: true, cityLat: 45.8919, cityLon: 6.7986 },
     { label: 'Paros', keywords: ['paros', 'parikia'], arrivalAirport: 'PAS', curatedByBackend: true, cityLat: 37.0853, cityLon: 25.1489 },
     { label: 'Santorini', keywords: ['santorini', 'thira', 'thera', 'fira', 'oia'], arrivalAirport: 'JTR', curatedByBackend: true, cityLat: 36.4167, cityLon: 25.4333 },
@@ -46,19 +45,23 @@ const CURATED_DESTINATIONS: DestinationHint[] = [
     // Curated backend-side since city-destinations.json gained Ibiza (city +
     // IBZ + coords + water-sports anchor venue); coords kept as a fallback.
     { label: 'Ibiza', keywords: ['ibiza', 'eivissa'], arrivalAirport: 'IBZ', curatedByBackend: true, cityLat: 38.9067, cityLon: 1.4206 },
-    // Verified 2026-09-12: the park is at Mokyklos g. 82, Uzpelkiai — a 10-15
-    // minute drive from Palanga, and ~300 km from Vilnius. The backend still
-    // resolves this label to VNO, so the airport is sent explicitly to override
-    // it; that costs backend-side activity POIs but keeps stays via the
-    // city-coordinate hotel fallback below. The backend catalogue should be
-    // corrected too. Sources: park4night.com/it/place/138754, kupi.com.
-    { label: '313 Cable Park', keywords: ['313'], arrivalAirport: 'PLQ', curatedByBackend: false, cityLat: 55.9175, cityLon: 21.0686 },
-    { label: 'Paris Wakepark', keywords: ['paris wakepark'], arrivalAirport: 'ORY', curatedByBackend: true },
+    { label: '313 Cable Park', keywords: ['313'], arrivalAirport: 'PLQ', curatedByBackend: true, cityLat: 55.95156, cityLon: 21.15009 },
+    { label: 'Paris Wakepark', keywords: ['paris wakepark', 'le kable'], arrivalAirport: 'ORY', curatedByBackend: true, cityLat: 48.789, cityLon: 2.455 },
     { label: 'Lakecity 33', keywords: ['lakecity'], arrivalAirport: 'BOD', curatedByBackend: true },
-    // Hypnotics removed 2026-09-12: reported to be in Turkey, not near
-    // Perpignan. Suggesting a French airport for it would price the wrong
-    // trip entirely. The backend catalogue still resolves it to PGF.
-    { label: 'Langenfeld', keywords: ['langenfeld'], arrivalAirport: 'DUS', curatedByBackend: true },
+    { label: 'Hip-Notics', keywords: ['hypnotics', 'hip-notics', 'hipnotics'], arrivalAirport: 'AYT', curatedByBackend: true, cityLat: 36.91196, cityLon: 31.20131 },
+    { label: 'Sailor Wake Park', keywords: ['sailor', 'kumwakepark', 'barcarès', 'barcares'], arrivalAirport: 'PGF', curatedByBackend: true },
+    { label: 'EXO 83', keywords: ['exo 83', 'exo83', 'le muy'], arrivalAirport: 'NCE', curatedByBackend: true },
+    { label: 'Langenfeld', keywords: ['langenfeld'], arrivalAirport: 'DUS', curatedByBackend: true, cityLat: 51.11154, cityLon: 6.91248 },
+    { label: 'Wakebeach 257', keywords: ['wakebeach'], arrivalAirport: 'DUS', curatedByBackend: true, cityLat: 51.10296, cityLon: 6.77142 },
+    { label: 'Turncable', keywords: ['turncable'], arrivalAirport: 'FMM', curatedByBackend: true, cityLat: 48.29221, cityLon: 10.44534 },
+    { label: 'Wasserski Hamm', keywords: ['wasserski hamm', 'hamm wake'], arrivalAirport: 'DTM', curatedByBackend: true, cityLat: 51.69891, cityLon: 7.91574 },
+    { label: 'BCN Cable Park', keywords: ['bcn cable', 'olimpic cable', 'castelldefels cable'], arrivalAirport: 'BCN', curatedByBackend: true, cityLat: 41.27246, cityLon: 1.99196 },
+    { label: 'Wake Way', keywords: ['wake way'], arrivalAirport: 'VNO', curatedByBackend: true, cityLat: 54.63808, cityLon: 25.37607 },
+    { label: 'Rancho Park', keywords: ['rancho park', 'mazais ansis'], arrivalAirport: 'RIX', curatedByBackend: true, cityLat: 57.46391, cityLon: 25.25305 },
+    { label: 'Palanga', keywords: ['palanga'], arrivalAirport: 'PLQ', curatedByBackend: true, cityLat: 55.9175, cityLon: 21.0686 },
+    { label: 'Lunar Cable Park', keywords: ['lunar', 'cuevas del almanzora'], arrivalAirport: 'LEI', curatedByBackend: true, cityLat: 37.3231, cityLon: -1.89417 },
+    { label: 'Wakevilla', keywords: ['wakevilla', 'wake villa'], arrivalAirport: 'LIS', curatedByBackend: true, cityLat: 39.57427, cityLon: -8.28054 },
+    { label: 'Elev8 Cable Park', keywords: ['elev8', 'elve8'], arrivalAirport: 'VNO', curatedByBackend: true, cityLat: 54.73596, cityLon: 24.87056 },
 ];
 
 // Popular cities the backend cannot resolve by itself: the UI supplies the
@@ -94,6 +97,45 @@ export const resolveDestinationHint = (input: string): DestinationHint | undefin
     return ALL_DESTINATIONS.find((hint) => hint.keywords.some(
         (keyword) => normalized === keyword || normalized.includes(keyword),
     ));
+};
+
+// Some airports serve both a city and a nearby venue (GVA → Geneva + Les Houches,
+// MRS → Marseille + EXO 83, …). When a caller asks "what city does this airport
+// serve?" the answer is always the city, never the venue — so the ambiguous
+// airports name their primary destination explicitly instead of relying on list
+// order. Airports with a single hint need no entry here.
+const PRIMARY_DESTINATION_BY_AIRPORT: Record<string, string> = {
+    MRS: 'Marseille',
+    DUS: 'Dusseldorf',
+    VNO: 'Vilnius',
+    GVA: 'Geneva',
+    ORY: 'Paris Wakepark',
+    BOD: 'Lakecity 33',
+    PGF: 'Hypnotics',
+};
+
+/**
+ * Resolve an IATA code to the destination whose city-centre coordinates should
+ * anchor a location search. Note this is NOT what {@link resolveDestinationHint}
+ * does — that matches city-name keywords, so an IATA code ('MAD') never matches
+ * a keyword ('madrid'). Only hints that actually carry coordinates are returned;
+ * callers fall back to the airport's own location when this yields nothing.
+ */
+export const resolveDestinationHintByAirport = (iata: string): DestinationHint | undefined => {
+    const code = iata.trim().toUpperCase();
+    if (!code) {
+        return undefined;
+    }
+
+    const candidates = ALL_DESTINATIONS.filter(
+        (hint) => hint.arrivalAirport === code && hint.cityLat != null && hint.cityLon != null,
+    );
+    if (candidates.length <= 1) {
+        return candidates[0];
+    }
+
+    const preferred = PRIMARY_DESTINATION_BY_AIRPORT[code];
+    return candidates.find((hint) => hint.label === preferred) ?? candidates[0];
 };
 
 // Rough origin hub lookup — the backend does the real flight search; this only

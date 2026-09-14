@@ -1,0 +1,57 @@
+name: Deploy gate
+
+# The promotion gate. Run this against a deployed environment — a Netlify deploy
+# preview before promoting, or the production domain after — so a release is
+# only blessed once the running site has been checked, not just its source.
+#
+#   gh workflow run deploy-gate.yml -f url=https://your-site
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: Origin to verify (e.g. https://travelhub.example)
+        required: true
+        type: string
+      skip_api:
+        description: Skip backend checks (use when no backend is deployed yet)
+        required: false
+        default: false
+        type: boolean
+      strict_readiness:
+        description: Fail if any launch-readiness item is still unconfigured
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  verify-deployment:
+    name: Verify ${{ inputs.url }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install (clean, from lockfile)
+        run: npm ci
+
+      # Configuration is not evidence — Netlify ignores a malformed [[headers]]
+      # block silently, and a CDN can rewrite headers after the fact.
+      - name: Verify response headers on the live site
+        run: npm run headers:verify -- "${{ inputs.url }}"
+
+      - name: Smoke test the live site
+        run: npm run smoke -- "${{ inputs.url }}" ${{ inputs.skip_api && '--skip-api' || '' }}
+
+      # Configuration completeness, read out of the deployed bundle. The values
+      # are baked in by whichever environment built it, so this is the only
+      # place the real answer exists — a local build proves nothing about what
+      # Netlify produced. Advisory until `strict_readiness` is set, so the gate
+      # is usable during the beta while affiliate IDs and a DSN are still
+      # outstanding.
+      - name: Launch readiness
+        run: npm run readiness -- "${{ inputs.url }}" ${{ inputs.strict_readiness && '--strict' || '' }}

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { RideSpot, RideSurface, unverified } from '../data/rideSpots';
 import { normalizeTripIntent, ResolvedIntent } from '../services/tripIntent';
@@ -98,7 +99,7 @@ describe('useRideFinder', () => {
 
     // The rule the whole hook exists to enforce.
     it('re-enters at searching on a chip edit — never re-parses', async () => {
-        const parser = jest.fn(async () => ({ origin: 'DUB' }));
+        const parser = vi.fn(async () => ({ origin: 'DUB' }));
         const { result } = renderHook(() => useRideFinder({
             parser, fetcher: okFetcher, spots: SPOTS, now: NOW,
         }));

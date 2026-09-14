@@ -1,13 +1,15 @@
+import type { MockedFunction } from 'vitest';
 import { searchFlightsByDeparture } from './api';
 import { fetchFlightDestinations } from './flightService';
 
-jest.mock('./api', () => ({
-    searchFlightsByDeparture: jest.fn(),
+vi.mock('./api', () => ({
+    searchFlightsByDeparture: vi.fn(),
 }));
 
-const mockedSearchFlightsByDeparture = searchFlightsByDeparture as jest.MockedFunction<typeof searchFlightsByDeparture>;
+const mockedSearchFlightsByDeparture = searchFlightsByDeparture as MockedFunction<typeof searchFlightsByDeparture>;
 
 const diagnostics = {
+    requestId: 'test-request-id',
     url: 'https://slumber-production.up.railway.app/api/flight-search/departures?iata=DUB&provider=serpapi',
     method: 'GET',
     ok: true,
@@ -19,7 +21,7 @@ const diagnostics = {
 
 describe('fetchFlightDestinations', () => {
     beforeEach(() => {
-        jest.resetAllMocks();
+        vi.resetAllMocks();
     });
 
     it('builds live DUB showcase cards from backend departures and sorts them by honest price', async () => {

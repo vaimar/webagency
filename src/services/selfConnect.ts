@@ -2,6 +2,8 @@
 // local airport to a cheap hub, separate ticket onward). Loaded on demand
 // because the backend fans out many flight searches.
 
+import { trackedFetch } from './serviceStatus';
+
 export interface SelfConnectLeg {
     airline?: string | null;
     flightNumber?: string | null;
@@ -39,7 +41,7 @@ export const fetchSelfConnect = async (
     destination: string,
     date?: string | null,
 ): Promise<SelfConnectResult> => {
-    const response = await fetch('/api/trips/self-connect', {
+    const response = await trackedFetch('/api/trips/self-connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ origin, destination, date: date ?? undefined }),

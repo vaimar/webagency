@@ -1,6 +1,7 @@
 // Route guard for the Ride Finder flag. Kept separate from App.test.js so the
 // pre-existing landing-page test is untouched.
 
+import { vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter, Navigate, Route, Routes } from 'react-router-dom';
@@ -34,7 +35,7 @@ describe('/ride-finder route guard', () => {
     const original = process.env.REACT_APP_RIDE_FINDER;
 
     beforeEach(() => {
-        global.fetch = jest.fn().mockResolvedValue({
+        global.fetch = vi.fn().mockResolvedValue({
             ok: false, status: 401,
             headers: { get: () => 'application/json' },
             json: async () => ({}), text: async () => '',
@@ -43,7 +44,7 @@ describe('/ride-finder route guard', () => {
 
     afterEach(() => {
         process.env.REACT_APP_RIDE_FINDER = original;
-        jest.resetAllMocks();
+        vi.resetAllMocks();
     });
 
     it('redirects to /explore when the flag is off, so a shared link never dead-ends', async () => {

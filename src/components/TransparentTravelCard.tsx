@@ -86,6 +86,11 @@ const TransparentTravelCard: React.FC<TransparentTravelCardProps> = ({
 
             <details className="transparent-travel-card__details">
                 <summary>Why this price?</summary>
+                {/* eslint-disable-next-line jsx-a11y/no-redundant-roles --
+                    not redundant in practice: this list is styled
+                    `list-style: none` (TransparentTravelCard.css), and Safari
+                    strips list semantics from such lists in VoiceOver. The
+                    explicit role is what keeps "list, 3 items" being announced. */}
                 <ul className="transparent-travel-card__fees" role="list">
                     {hiddenFees.map((fee) => (
                         <li key={fee.id} className="transparent-travel-card__fee-row">

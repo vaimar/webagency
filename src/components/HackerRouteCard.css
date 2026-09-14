@@ -1,0 +1,634 @@
+/* Route Hacker card — one result row, laid out the way flight metasearch has
+   taught everyone to read one: the journey on the left (take-off → landing,
+   duration, stops), the price and the action on a rail to the right, and the
+   per-leg partner links folded away until this is the route someone picks.
+
+   Everything that decides whether the routing is safe to book — the layover,
+   the tight-connection warning, where the price came from — stays on the
+   collapsed card. Only the booking detail hides. */
+
+.hacker-route-card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 18px 20px;
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    box-shadow: var(--shadow-xs);
+    transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.hacker-route-card:hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-card);
+}
+
+/* The picked route reads as picked. */
+.hacker-route-card--open {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-card);
+}
+
+/* The route in the trip stays findable in a list of twenty-two. */
+.hacker-route-card--selected {
+    border-color: var(--success);
+    box-shadow: 0 0 0 1px var(--success), var(--shadow-card);
+}
+
+/* ── Summary | price rail ────────────────────────────────────────────────── */
+
+.hacker-route-card__main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 232px;
+    gap: 18px;
+    align-items: stretch;
+}
+
+.hacker-route-card__summary {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+}
+
+/* The fare column. Dashed, because the price is a separate proposition from
+   the journey — the convention every airline result page uses. */
+.hacker-route-card__rail {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: 10px;
+    padding-left: 20px;
+    border-left: 1px dashed var(--border-strong);
+    text-align: right;
+}
+
+@media (max-width: 760px) {
+    .hacker-route-card__main {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 14px;
+    }
+
+    .hacker-route-card__rail {
+        padding-left: 0;
+        padding-top: 14px;
+        border-left: none;
+        border-top: 1px solid var(--divider);
+        text-align: left;
+    }
+}
+
+/* ── Head strip: route, date, stop count ─────────────────────────────────── */
+
+.hacker-route-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.hacker-route-card__head-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.hacker-route-card__head-date {
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+/* Only present when the journey ends on a later day than it starts. */
+.hacker-route-card__head-until {
+    color: var(--primary-dark);
+}
+
+/* The card's title. It was letter-spaced small caps back when it held three
+   IATA codes; with city names in it, it is a line of prose and reads as one. */
+.hacker-route-card__route {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    font-size: var(--text-md);
+    font-weight: 700;
+    letter-spacing: 0;
+    color: var(--text);
+}
+
+.hacker-route-card__code--hub {
+    color: var(--truth-total);
+}
+
+.hacker-route-card__arrow {
+    font-size: 0.68rem;
+    color: var(--text-light);
+}
+
+.hacker-route-card__type-badge {
+    padding: 3px 10px;
+    border-radius: var(--radius-full);
+    background: #eef2ff;
+    border: 1px solid rgba(67, 56, 202, 0.28);
+    color: var(--truth-door);
+    font-size: var(--text-xs);
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.hacker-route-card__type-badge--direct {
+    background: var(--success-light);
+    border-color: rgba(0, 135, 90, 0.3);
+    color: var(--truth-transfer);
+}
+
+/* ── Timeline: carriers · take-off · path · landing ──────────────────────── */
+
+.hacker-route-card__timeline {
+    display: grid;
+    grid-template-columns: auto minmax(110px, 1fr) auto;
+    align-items: center;
+    gap: 18px;
+}
+
+/* Who flies it, under the times it flies. One line, wrapping — a merged
+   flight can carry half a dozen marketing codes and none of them should push
+   the clocks around. */
+.hacker-route-card__carriers {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 14px;
+    min-width: 0;
+}
+
+.hacker-route-card__airline {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+/* The operator leads and is named plainly; the codeshares that follow are
+   the same flight sold under another name. */
+.hacker-route-card__airline:first-child {
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+
+/* The count of airlines that sell this flight without flying it. Quiet, and
+   never styled like a carrier — it is a footnote about the row above, not
+   another operator in it. */
+.hacker-route-card__airline--sold {
+    font-weight: 600;
+    color: var(--text-light);
+    cursor: help;
+}
+
+.hacker-route-card__airline-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.hacker-route-card__endpoint {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.hacker-route-card__endpoint--arrive {
+    text-align: right;
+}
+
+.hacker-route-card__clock {
+    font-size: 1.55rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.hacker-route-card__place {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+}
+
+.hacker-route-card__path {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+}
+
+.hacker-route-card__path-duration {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.hacker-route-card__path-line {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--border-strong);
+}
+
+.hacker-route-card__path-line::before,
+.hacker-route-card__path-line::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 6px;
+    height: 6px;
+    margin-top: -3px;
+    border-radius: 50%;
+    background: var(--border-strong);
+}
+
+.hacker-route-card__path-line::before { left: 0; }
+.hacker-route-card__path-line::after { right: 0; }
+
+/* The stop itself — the thing that makes this a self-transfer. */
+.hacker-route-card__path-stop {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 9px;
+    height: 9px;
+    margin: -4.5px 0 0 -4.5px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 2px solid var(--secondary);
+}
+
+.hacker-route-card__path-stops {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    color: var(--secondary);
+    white-space: nowrap;
+}
+
+.hacker-route-card__path-stops--direct {
+    color: var(--truth-transfer);
+}
+
+@media (max-width: 560px) {
+    .hacker-route-card__timeline {
+        gap: 10px;
+    }
+
+    .hacker-route-card__clock {
+        font-size: 1.35rem;
+    }
+}
+
+/* ── Connection note ─────────────────────────────────────────────────────── */
+
+.hacker-route-card__layover {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 7px 12px;
+    border-radius: var(--radius-md);
+    background: var(--surface-sunken);
+    border: 1px solid var(--divider);
+    color: var(--text-secondary);
+    font-size: var(--text-xs);
+}
+
+.hacker-route-card__layover strong {
+    color: var(--text);
+}
+
+/* A connection too short to move a hold bag through. Warned, not hidden —
+   plenty of people fly these deliberately with a cabin bag. */
+.hacker-route-card__layover--tight {
+    background: var(--warning-light);
+    border-color: var(--warning);
+    color: var(--color-warning-text);
+}
+
+.hacker-route-card__cabin-only {
+    margin-left: auto;
+    padding: 2px 10px;
+    border-radius: var(--radius-full);
+    background: var(--warning);
+    color: #3b2a05;
+    font-size: var(--text-xs);
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+/* Said outright on the card. Full width so it wraps under the layover line
+   rather than competing with it. */
+.hacker-route-card__tight-warning {
+    flex-basis: 100%;
+    margin: 2px 0 0;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    line-height: 1.45;
+    color: var(--text);
+}
+
+/* ── Price rail ──────────────────────────────────────────────────────────── */
+
+.hacker-route-card__price {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.hacker-route-card__price-total {
+    font-size: 1.75rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    color: var(--truth-estimated);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Where a fare came from. NOT clamped, though it is the longest text on the
+   card: "this price belongs to another departure" is the sentence the whole
+   product exists to print, and a tidier card is not worth hiding half of it. */
+.hacker-route-card__price-note {
+    font-size: var(--text-xs);
+    line-height: 1.45;
+    color: var(--text-muted);
+}
+
+.hacker-route-card__price-note--error {
+    color: var(--truth-warn);
+}
+
+/* A fare that is genuinely THIS itinerary's, rather than the day's floor
+   borrowed from another departure. */
+.hacker-route-card__price--exact .hacker-route-card__price-total {
+    color: var(--truth-transfer);
+}
+
+/* A part-priced journey must not read like a total. */
+.hacker-route-card__price-total--partial {
+    color: var(--text-secondary);
+    font-size: 1.25rem;
+}
+
+/* A total that leans on a price the traveller supplied. Marked with ≈ and a
+   softer weight than a fetched fare, because part of it is a sighting. */
+.hacker-route-card__price-total--observed {
+    color: var(--text-secondary);
+}
+
+/* What the extras are, itemised. Quieter than the honest line above it: that
+   line is the claim, this is the receipt. */
+.hacker-route-card__extras {
+    font-size: var(--text-xs);
+    line-height: 1.4;
+    color: var(--text-muted);
+}
+
+/* The honest total's provenance: fare vs the costs nobody quotes. */
+.hacker-route-card__honest {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--truth-transfer);
+}
+
+/* A fare this tab already had, rather than one fetched for this search. Quiet,
+   but present: a remembered number is not a fresh quote. */
+.hacker-route-card__seen {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.hacker-route-card__price-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--primary);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color 120ms ease, background 120ms ease;
+}
+
+.hacker-route-card__price-cta:hover:not(:disabled) {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.hacker-route-card__price-cta:disabled {
+    opacity: 0.7;
+    cursor: progress;
+}
+
+/* The one filled button on the card: it opens the partner links. */
+/* Picking the route is the primary action now that the page assembles a trip;
+   the partner links behind "Booking options" are the step after it, so they
+   drop to an outline. Two identical filled buttons on one rail would make the
+   card ask its question twice. */
+.hacker-route-card__add {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 2px;
+    padding: 11px 14px;
+    border-radius: var(--radius-md);
+    border: none;
+    background: var(--primary);
+    color: var(--text-inverse);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 800;
+    cursor: pointer;
+    transition: background 120ms ease;
+}
+
+.hacker-route-card__add:hover {
+    background: var(--primary-hover);
+}
+
+.hacker-route-card__add:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+/* Already in the trip: the button stops inviting a click and starts reporting
+   a state, without going away — it is also how you tell which of twenty-two
+   routes you picked. */
+.hacker-route-card__add--selected {
+    background: var(--success-light);
+    color: var(--truth-exact);
+    box-shadow: inset 0 0 0 1px var(--success);
+}
+
+.hacker-route-card__add--selected:hover {
+    background: var(--success-light);
+}
+
+/* The way out to the airline. A quiet text button: it is the step after the
+   decision, not a second version of it. */
+.hacker-route-card__select {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 4px;
+    border: none;
+    background: none;
+    color: var(--primary);
+    font: inherit;
+    font-size: var(--text-xs);
+    font-weight: 700;
+    cursor: pointer;
+    transition: color 120ms ease;
+}
+
+.hacker-route-card__select:hover {
+    color: var(--primary-hover);
+    text-decoration: underline;
+}
+
+.hacker-route-card__select:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+/* ── Details: one row per flight, with its partner links ─────────────────── */
+
+.hacker-route-card__details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--divider);
+}
+
+.hacker-route-card__leg {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+}
+
+.hacker-route-card__leg-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.hacker-route-card__leg-top strong {
+    color: var(--text);
+    font-size: var(--text-base);
+}
+
+.hacker-route-card__leg-label {
+    font-size: var(--text-xs);
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+/* The leg's own calendar date — the thing that tells you leg 2 is tomorrow. */
+.hacker-route-card__leg-date {
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.hacker-route-card__next-day {
+    margin-left: 2px;
+    padding: 1px 4px;
+    border-radius: 4px;
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    font-size: 0.62rem;
+    font-weight: 800;
+    vertical-align: super;
+}
+
+.hacker-route-card__leg-times {
+    margin-left: auto;
+    font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+    font-size: var(--text-base);
+    font-weight: 700;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+/* Time in the air for one flight — quieter than the clock times it follows,
+   so the row still reads "when", with "how long" as the supporting detail. */
+.hacker-route-card__leg-duration {
+    margin-left: 8px;
+    padding: 1px 7px;
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: var(--text-xs);
+    font-weight: 700;
+}
+
+/* Codeshare operators for a single (merged) flight. */
+.hacker-route-card__operated {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+/* Airlines that sell this flight without flying it. Set back from the operator
+   deliberately: the name someone needs in order to go and look up a fare is the
+   one in front, and these must not compete with it. */
+.hacker-route-card__codeshare {
+    color: var(--text-subtle, var(--text-muted));
+    opacity: 0.75;
+}
+
+.hacker-route-card__observed {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border);
+}

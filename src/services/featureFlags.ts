@@ -1,8 +1,11 @@
 // Feature flags.
 //
 // Read at call time rather than module scope so a flag can be flipped in a
-// test without reloading the module. CRA's build still inlines the literal
-// `process.env.REACT_APP_*` expressions, so this works in production too.
+// test without reloading the module. Values come through readEnv(), which
+// checks Vite's import.meta.env first and falls back to process.env — the
+// source Vitest tests set — so this works in the built app and under test.
+
+import { readEnv } from './env';
 
 /** Values that count as "on" in an env var. */
 const TRUTHY = ['1', 'true', 'on', 'yes'];
@@ -39,6 +42,6 @@ const currentSearch = (): string => (
  */
 export const isRideFinderEnabled = (search: string = currentSearch()): boolean => (
     readUrlOverride(search, 'rideFinder')
-    ?? readEnvFlag(process.env.REACT_APP_RIDE_FINDER)
+    ?? readEnvFlag(readEnv('REACT_APP_RIDE_FINDER'))
     ?? false
 );

@@ -254,7 +254,7 @@ export interface RouteCostInput {
  * whose board policy is unknown, which is surfaced rather than dropped.
  */
 export const routeToBudgetLines = (input: RouteCostInput): BudgetLineInput[] => {
-    const { plan, partySize } = input;
+    const { plan } = input;
     const lines: BudgetLineInput[] = [];
     const nights = plan.order.reduce((sum, stop) => sum + stop.nights, 0);
 

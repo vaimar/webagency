@@ -9,5 +9,5 @@ Load order:
 4. `agent-skills/context/backend-contracts.md`
 5. `agent-skills/skills/package-booking.md`
 
-Use this skill when editing planner totals, package summary tabs, booking links, and external booking handoff UX.
+Use this skill when editing planner totals, package summary tabs, booking links, hotel enrichment wiring, and external booking handoff UX.
 

@@ -1,6 +1,5 @@
 import {
     ALL_FACT_KEYS,
-    LAUNCH_CRITICAL_FACTS,
     RIDE_SPOTS,
     RideSpot,
     VenueFact,
@@ -167,6 +166,13 @@ describe('validateRideSpots', () => {
     it('rejects a label the routing directory cannot resolve', () => {
         expect(validateRideSpots([spot('Totally Made Up Park')], AT).map((i) => i.rule))
             .toContain('R2-resolvable');
+    });
+
+    it('does not require a venue confirmed closed to resolve', () => {
+        // The directory drops closed venues; the catalogue keeps the row so
+        // nobody re-adds it. Only an open venue has to be routable.
+        const closed = spot('Totally Made Up Park', { operating: verified(false) });
+        expect(validateRideSpots([closed], AT).map((i) => i.rule)).not.toContain('R2-resolvable');
     });
 
     it('rejects cableCount on a non-cable venue', () => {

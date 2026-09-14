@@ -1,6 +1,7 @@
 // Route mode runs through the SAME state machine as search mode. These tests
 // exist to prove the migration did not lose no-backing or degraded handling.
 
+import { vi } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { TYPICAL_BOARD_CM } from '../data/boardRules';
 import { RideSpot, unverified } from '../data/rideSpots';
@@ -72,7 +73,7 @@ describe('route mode — same machine, different output', () => {
     });
 
     it('keeps chip editing out of the parser and re-runs the route', async () => {
-        const parser = jest.fn(async () => ({ origin: 'LYS' }));
+        const parser = vi.fn(async () => ({ origin: 'LYS' }));
         const { result } = renderHook(() => useRideFinder({
             mode: 'route', spots: PLACED, home: HOME, now: NOW, parser,
         }));
