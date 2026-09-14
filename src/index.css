@@ -75,6 +75,9 @@
     --space-12: 48px;
     --space-16: 64px;
 
+    /* Sticky header content row — keep toast stack below this. */
+    --site-header-height: 64px;
+
     /* ── Type scale ──────────────────────────────────────────────────────────
        One ramp for the whole product. Page titles are the only thing above
        1.75rem outside the marketing hero: on a data-dense travel UI, oversized
@@ -3259,6 +3262,10 @@ a,
     }
 
     /* Header: compact brand-only row on mobile (nav moved to bottom) */
+    :root {
+        --site-header-height: 60px;
+    }
+
     .site-header__content {
         height: 60px;
         min-height: 60px;
@@ -4074,7 +4081,9 @@ a,
 
 .global-toast-stack {
     position: fixed;
-    top: calc(var(--space-6) + env(safe-area-inset-top));
+    /* Below sticky header chrome — was space-6/safe-area only, so the stack
+       painted over logo / sign-in (z-index 220 > header 100). */
+    top: calc(var(--site-header-height) + env(safe-area-inset-top, 0px) + var(--space-3));
     right: var(--space-6);
     z-index: 220;
     display: grid;
@@ -4501,7 +4510,7 @@ a,
     .global-toast-stack {
         left: var(--space-4);
         right: var(--space-4);
-        top: calc(var(--space-4) + env(safe-area-inset-top));
+        top: calc(var(--site-header-height) + env(safe-area-inset-top, 0px) + var(--space-3));
         width: auto;
     }
 
