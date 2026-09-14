@@ -3561,6 +3561,21 @@ a,
         grid-template-columns: 1fr;
     }
 
+    /* Legal/nav footer links were ~14px text with no padding — under 44×44.
+       Tall hit area; list gap collapses so spacing stays between targets, not
+       between text. App-shell bottom clearance still keeps them above the nav. */
+    .footer-links {
+        gap: 0;
+    }
+
+    .footer-link {
+        display: flex;
+        align-items: center;
+        min-height: 44px;
+        min-width: 44px;
+        padding: 0;
+    }
+
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
     }
