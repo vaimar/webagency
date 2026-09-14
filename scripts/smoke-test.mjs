@@ -230,7 +230,9 @@ await check('outbound booking link builders shipped in the bundle', async () => 
     }
 
     const haystack = bodies.join('');
-    const partners = ['ryanair.com', 'booking.com', 'skyscanner'];
+    // Skyscanner was dropped from affiliates.ts (every deep link hit a bot
+    // check), so Kiwi is the flight-search partner the bundle should carry.
+    const partners = ['ryanair.com', 'booking.com', 'kiwi.com'];
     const missing = partners.filter((partner) => !haystack.includes(partner));
     expect(missing.length === 0, `no link builder found for: ${missing.join(', ')}`);
     return `${partners.length} partners across ${seen.size} chunks`;
