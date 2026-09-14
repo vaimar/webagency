@@ -150,6 +150,11 @@ const TripFlightsTab: React.FC<TripFlightsTabProps> = ({ trip, selectedFlightKey
                                             Fly-Drive Alternative
                                         </span>
                                     )}
+                                    {row.flightHack && (
+                                        <span className="trip-explore-dashboard__badge trip-explore-dashboard__badge--accent">
+                                            Arrival Hub Hack
+                                        </span>
+                                    )}
                                     <strong
                                         className={
                                             row.baseFare == null
@@ -201,6 +206,12 @@ const TripFlightsTab: React.FC<TripFlightsTabProps> = ({ trip, selectedFlightKey
                             {row.originAccessNote && (
                                 <div className="trip-explore-dashboard__reason-pill">
                                     {row.originAccessNote}
+                                </div>
+                            )}
+
+                            {row.destinationAccessNote && (
+                                <div className="trip-explore-dashboard__reason-pill">
+                                    {row.destinationAccessNote}
                                 </div>
                             )}
 

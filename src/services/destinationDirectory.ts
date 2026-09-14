@@ -46,11 +46,23 @@ const CURATED_DESTINATIONS: DestinationHint[] = [
     // Curated backend-side since city-destinations.json gained Ibiza (city +
     // IBZ + coords + water-sports anchor venue); coords kept as a fallback.
     { label: 'Ibiza', keywords: ['ibiza', 'eivissa'], arrivalAirport: 'IBZ', curatedByBackend: true, cityLat: 38.9067, cityLon: 1.4206 },
-    { label: '313 Cable Park', keywords: ['313'], arrivalAirport: 'VNO', curatedByBackend: true },
-    { label: 'Paris Wakepark', keywords: ['paris wakepark'], arrivalAirport: 'ORY', curatedByBackend: true },
+    { label: '313 Cable Park', keywords: ['313'], arrivalAirport: 'PLQ', curatedByBackend: true, cityLat: 55.95156, cityLon: 21.15009 },
+    { label: 'Paris Wakepark', keywords: ['paris wakepark', 'le kable'], arrivalAirport: 'ORY', curatedByBackend: true, cityLat: 48.789, cityLon: 2.455 },
     { label: 'Lakecity 33', keywords: ['lakecity'], arrivalAirport: 'BOD', curatedByBackend: true },
-    { label: 'Hypnotics', keywords: ['hypnotics'], arrivalAirport: 'PGF', curatedByBackend: true },
-    { label: 'Langenfeld', keywords: ['langenfeld'], arrivalAirport: 'DUS', curatedByBackend: true },
+    { label: 'Hip-Notics', keywords: ['hypnotics', 'hip-notics', 'hipnotics'], arrivalAirport: 'AYT', curatedByBackend: true, cityLat: 36.91196, cityLon: 31.20131 },
+    { label: 'Sailor Wake Park', keywords: ['sailor', 'kumwakepark', 'barcarès', 'barcares'], arrivalAirport: 'PGF', curatedByBackend: true },
+    { label: 'EXO 83', keywords: ['exo 83', 'exo83', 'le muy'], arrivalAirport: 'NCE', curatedByBackend: true },
+    { label: 'Langenfeld', keywords: ['langenfeld'], arrivalAirport: 'DUS', curatedByBackend: true, cityLat: 51.11154, cityLon: 6.91248 },
+    { label: 'Wakebeach 257', keywords: ['wakebeach'], arrivalAirport: 'DUS', curatedByBackend: true, cityLat: 51.10296, cityLon: 6.77142 },
+    { label: 'Turncable', keywords: ['turncable'], arrivalAirport: 'FMM', curatedByBackend: true, cityLat: 48.29221, cityLon: 10.44534 },
+    { label: 'Wasserski Hamm', keywords: ['wasserski hamm', 'hamm wake'], arrivalAirport: 'DTM', curatedByBackend: true, cityLat: 51.69891, cityLon: 7.91574 },
+    { label: 'BCN Cable Park', keywords: ['bcn cable', 'olimpic cable', 'castelldefels cable'], arrivalAirport: 'BCN', curatedByBackend: true, cityLat: 41.27246, cityLon: 1.99196 },
+    { label: 'Wake Way', keywords: ['wake way'], arrivalAirport: 'VNO', curatedByBackend: true, cityLat: 54.63808, cityLon: 25.37607 },
+    { label: 'Rancho Park', keywords: ['rancho park', 'mazais ansis'], arrivalAirport: 'RIX', curatedByBackend: true, cityLat: 57.46391, cityLon: 25.25305 },
+    { label: 'Palanga', keywords: ['palanga'], arrivalAirport: 'PLQ', curatedByBackend: true, cityLat: 55.9175, cityLon: 21.0686 },
+    { label: 'Lunar Cable Park', keywords: ['lunar', 'cuevas del almanzora'], arrivalAirport: 'LEI', curatedByBackend: true, cityLat: 37.3231, cityLon: -1.89417 },
+    { label: 'Wakevilla', keywords: ['wakevilla', 'wake villa'], arrivalAirport: 'LIS', curatedByBackend: true, cityLat: 39.57427, cityLon: -8.28054 },
+    { label: 'Elev8 Cable Park', keywords: ['elev8', 'elve8'], arrivalAirport: 'VNO', curatedByBackend: true, cityLat: 54.73596, cityLon: 24.87056 },
 ];
 
 // Popular cities the backend cannot resolve by itself: the UI supplies the

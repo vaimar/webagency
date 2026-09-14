@@ -25,10 +25,17 @@ interface RideSpotPreset {
 
 const RIDE_SPOT_PRESETS: RideSpotPreset[] = [
     { label: 'EXO 84', destination: 'EXO 84', activity: 'wakeboard', emoji: '🌊' },
-    { label: 'Ibiza Cable Park', destination: 'Ibiza Cable Park', activity: 'wakeboard', emoji: '🌊' },
+    { label: 'EXO 83', destination: 'EXO 83', activity: 'wakeboard', emoji: '🌊' },
     { label: '313 Cable Park', destination: '313 Cable Park', activity: 'wakeboard', emoji: '🌊' },
-    { label: 'Hypnotics', destination: 'Hypnotics', activity: 'wakeboard', emoji: '🌊' },
+    { label: 'Hip-Notics', destination: 'Hip-Notics', activity: 'wakeboard', emoji: '🌊' },
     { label: 'Paris Wakepark', destination: 'Paris Wakepark', activity: 'wakeboard', emoji: '🌊' },
+    { label: 'Langenfeld', destination: 'Wasserski Langenfeld', activity: 'wakeboard', emoji: '🇩🇪' },
+    { label: 'Wakebeach 257', destination: 'Wakebeach 257', activity: 'wakeboard', emoji: '🇩🇪' },
+    { label: 'BCN Cable Park', destination: 'BCN Cable Park', activity: 'wakeboard', emoji: '🇪🇸' },
+    { label: 'Lunar', destination: 'Lunar Cable Park', activity: 'wakeboard', emoji: '🇪🇸' },
+    { label: 'Wakevilla', destination: 'Wakevilla', activity: 'wakeboard', emoji: '🇵🇹' },
+    { label: 'Wake Way', destination: 'Wake Way', activity: 'wakeboard', emoji: '🇱🇹' },
+    { label: 'Elev8', destination: 'Elev8', activity: 'wakeboard', emoji: '🇱🇹' },
     { label: 'Les Houches', destination: 'Les Houches', activity: 'snowboard', emoji: '🏂' },
 ];
 
