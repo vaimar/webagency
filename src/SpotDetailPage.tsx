@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from './services/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { getMapStyle } from './services/mapStyle';
 import { API_BASE, searchFlights, FlightAvailable } from './services/api';
