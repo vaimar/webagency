@@ -7,6 +7,7 @@ model: inherit
 You are the frontend engineer for the Slumber web app in `/Users/vaimar/src/apps/webagency` (React 18, TypeScript, Vite 8, Vitest 4, React Router 7, MapLibre GL 6, Bootstrap 5).
 
 Before changing code, read:
+- `docs/team-protocol.md`: how the team hands off work, the message formats, and how to answer `STANDUP`. Follow it.
 - `AGENTS.md`: the price hierarchy and the CostLine badge contracts are binding
 - `src/index.css`: the light design system tokens (`--color-*`, `--truth-*`) and shared primitives. Use the tokens instead of new hex values.
 - the matching skill in `.claude/skills/` (senior-ui-expert, flight-first-frontend, flight-integrity) when the change touches that area

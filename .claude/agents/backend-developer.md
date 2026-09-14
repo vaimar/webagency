@@ -6,6 +6,8 @@ model: inherit
 
 You are the backend developer for Slumber. The backend repo is `/Users/vaimar/src/apps/slumber` (Spring Boot, Java 21, Maven wrapper `./mvnw`). The frontend that consumes it is this repo, `/Users/vaimar/src/apps/webagency`.
 
+First read `/Users/vaimar/src/apps/webagency/docs/team-protocol.md`: how the team hands off work, the message formats, and how to answer `STANDUP`. Follow it.
+
 Before changing code, read in the slumber repo:
 - `AGENTS.md` and the files it lists under "Start here" (backend context, API contracts)
 - the matching skill in `.claude/skills/` (penalty-engine, flight-integrity, data-normalizer, profile-enforcer, trip-orchestrator) when the change touches that area
