@@ -2043,15 +2043,18 @@ export default function SpotFinder({ initialActivity = 'wakeboarding' }: SpotFin
     const [spots, setSpots] = useState<SpotCard[]>([]);
     const [country, setCountry] = useState<string>('');
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [loadFailure, setLoadFailure] = useState<'offline' | 'unavailable' | null>(null);
+    const [reloadToken, setReloadToken] = useState(0);
     const [selected, setSelected] = useState<string | null>(null);
     const [accessDetail, setAccessDetail] = useState<AccessDetail | null>(null);
     const [accessLoading, setAccessLoading] = useState(false);
 
+    const retryLoad = () => setReloadToken((n) => n + 1);
+
     useEffect(() => {
         let cancelled = false;
         setLoading(true);
-        setError(null);
+        setLoadFailure(null);
         setSelected(null);
 
         const loadSpots = activity === 'skiing'
@@ -2088,8 +2091,12 @@ export default function SpotFinder({ initialActivity = 'wakeboarding' }: SpotFin
                 const firstCountry = data.find((s) => s.country)?.country ?? '';
                 setCountry(firstCountry);
             })
-            .catch((err) => {
-                if (!cancelled) setError(err.message ?? 'Could not load spots');
+            .catch(() => {
+                if (cancelled) return;
+                // Never surface raw browser/network strings ("Failed to fetch") —
+                // the empty panel has to say what happened in product language.
+                const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+                setLoadFailure(offline ? 'offline' : 'unavailable');
             })
             .finally(() => {
                 if (!cancelled) setLoading(false);
@@ -2097,7 +2104,7 @@ export default function SpotFinder({ initialActivity = 'wakeboarding' }: SpotFin
         return () => {
             cancelled = true;
         };
-    }, [activity]);
+    }, [activity, reloadToken]);
 
     const countries = useMemo(() => {
         const seen = new Set<string>();
@@ -2234,7 +2241,7 @@ export default function SpotFinder({ initialActivity = 'wakeboarding' }: SpotFin
                 </div>
             </div>
 
-            {!loading && !error && visibleSpots.length > 0 && (
+            {!loading && !loadFailure && visibleSpots.length > 0 && (
                 <div className="spot-results__head">
                     <h2 className="spot-results__count">
                         {visibleSpots.length} {activity === 'skiing' ? 'resort' : 'spot'}{visibleSpots.length === 1 ? '' : 's'} in {countryLabel(country)}
@@ -2249,7 +2256,7 @@ export default function SpotFinder({ initialActivity = 'wakeboarding' }: SpotFin
                 </div>
             )}
 
-            {!loading && !error && visibleSpots.length > 0 && (
+            {!loading && !loadFailure && visibleSpots.length > 0 && (
                 <SpotOverviewMap
                     spots={visibleSpots}
                     selected={selected}
@@ -2259,8 +2266,28 @@ export default function SpotFinder({ initialActivity = 'wakeboarding' }: SpotFin
             )}
 
             {loading && <p className="spot-finder__muted">Loading spots…</p>}
-            {error && <p className="spot-finder__muted">Couldn't load spots ({error}).</p>}
-            {!loading && !error && visibleSpots.length === 0 && (
+            {loadFailure && (
+                <div className="spot-finder__load-error" role="alert">
+                    <p className="spot-finder__load-error-title">
+                        {loadFailure === 'offline'
+                            ? 'You are offline'
+                            : 'Spot catalogue is unavailable'}
+                    </p>
+                    <p className="spot-finder__load-error-body">
+                        {loadFailure === 'offline'
+                            ? 'Your device has no internet connection, so the catalogue cannot load. Check the connection and try again.'
+                            : 'The service that supplies cable parks and resorts is not responding. This is on our side, not yours — the rest of the page still works.'}
+                    </p>
+                    <button
+                        type="button"
+                        className="button button--secondary spot-finder__load-error-retry"
+                        onClick={retryLoad}
+                    >
+                        Try again
+                    </button>
+                </div>
+            )}
+            {!loading && !loadFailure && visibleSpots.length === 0 && (
                 <p className="spot-finder__muted">
                     {/* Surf and scuba are in the picker but have no spots behind them.
                         "It's next on the list" promised a roadmap we have not committed
@@ -2306,7 +2333,7 @@ export default function SpotFinder({ initialActivity = 'wakeboarding' }: SpotFin
                     </button>
                 </div>
             ) : (
-                !loading && !error && visibleSpots.length > 0 && (
+                !loading && !loadFailure && visibleSpots.length > 0 && (
                     <p className="spot-finder__muted">
                         Click a spot on the map, or pick one below.
                     </p>
@@ -2324,7 +2351,7 @@ export default function SpotFinder({ initialActivity = 'wakeboarding' }: SpotFin
 
                 Capped, because the point is to give the eye somewhere to land, not to
                 paginate the catalogue back onto the page. */}
-            {!loading && !error && visibleSpots.length > 0 && (
+            {!loading && !loadFailure && visibleSpots.length > 0 && (
                 <div className="spot-gallery">
                     {gallerySpots.map((spot) => (
                         <button
@@ -2362,7 +2389,7 @@ export default function SpotFinder({ initialActivity = 'wakeboarding' }: SpotFin
                 </div>
             )}
 
-            {!loading && !error && visibleSpots.length > GALLERY_LIMIT && (
+            {!loading && !loadFailure && visibleSpots.length > GALLERY_LIMIT && (
                 <p className="spot-finder__muted spot-gallery__more">
                     Showing {GALLERY_LIMIT} of {visibleSpots.length}. The map has all of them.
                 </p>
