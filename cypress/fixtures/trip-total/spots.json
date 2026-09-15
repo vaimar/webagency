@@ -1,0 +1,39 @@
+[
+  {
+    "slug": "nice-wake-park",
+    "destinationLabel": "Nice Wake Park",
+    "arrivalAirport": "NCE",
+    "activity": "wakeboarding",
+    "country": "FR",
+    "towType": "FULL_CABLE",
+    "modes": ["FLY", "DRIVE"],
+    "imageUrl": null,
+    "imageCredit": null,
+    "imageLicense": null,
+    "curationLevel": "VENUE_READY",
+    "cityLatitude": 43.7102,
+    "cityLongitude": 7.262,
+    "airportLatitude": 43.6584,
+    "airportLongitude": 7.2159,
+    "bboxLonMin": null,
+    "bboxLatMin": null,
+    "bboxLonMax": null,
+    "bboxLatMax": null,
+    "aliases": null,
+    "access": [
+      {
+        "mode": "PLANE",
+        "hub": "Nice Côte d'Azur (NCE)",
+        "lastMile": "20 min by taxi to the lake",
+        "fare": {
+          "price": 49.99,
+          "currency": "EUR",
+          "entryPrice": 74.99,
+          "departureDate": "2026-10-03T07:00:00",
+          "priceLabel": "Current",
+          "priceDisclaimer": null
+        }
+      }
+    ]
+  }
+]

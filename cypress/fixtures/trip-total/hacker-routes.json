@@ -1,0 +1,25 @@
+[
+  {
+    "type": "SELF_TRANSFER",
+    "origin": "DUB",
+    "hub": "STN",
+    "destination": "NCE",
+    "leg1": {
+      "airlineCodes": ["FR"],
+      "origin": "DUB",
+      "destination": "STN",
+      "departureTime": "07:00",
+      "arrivalTime": "08:20"
+    },
+    "leg2": {
+      "airlineCodes": ["U2"],
+      "origin": "STN",
+      "destination": "NCE",
+      "departureTime": "11:05",
+      "arrivalTime": "14:10"
+    },
+    "layoverMinutes": 165,
+    "totalJourneyMinutes": 370,
+    "status": "SCHEDULE_ONLY"
+  }
+]

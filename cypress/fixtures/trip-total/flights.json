@@ -1,0 +1,47 @@
+[
+  {
+    "origin": "DUB",
+    "destination": "NCE",
+    "departureDate": "2026-10-03T07:00:00",
+    "arrivalDate": "2026-10-03T10:45:00",
+    "price": 49.99,
+    "currency": "EUR",
+    "airline": "Ryanair",
+    "flightNumber": "FR 1234",
+    "priceLabel": "Current",
+    "priceDisclaimer": null,
+    "realWorldEntryPrice": 68.99,
+    "antiCauchemar": {
+      "ticketPrice": 49.99,
+      "airportShuttleEstimate": 5,
+      "cabinBagEstimate": 14,
+      "realCost": 68.99,
+      "realWorldEntryPrice": 68.99,
+      "auditedTotalCost": 74.99,
+      "manualCheckRequired": false,
+      "currency": "EUR"
+    }
+  },
+  {
+    "origin": "DUB",
+    "destination": "NCE",
+    "departureDate": "2026-10-04T09:30:00",
+    "arrivalDate": "2026-10-04T13:15:00",
+    "price": 89.5,
+    "currency": "EUR",
+    "airline": "Aer Lingus",
+    "flightNumber": "EI 520",
+    "priceLabel": "Estimated (Cached)",
+    "priceDisclaimer": "Estimated (Cached): this fare was fetched more than 12 hours ago.",
+    "realWorldEntryPrice": 104.5,
+    "antiCauchemar": {
+      "ticketPrice": 89.5,
+      "airportShuttleEstimate": 5,
+      "cabinBagEstimate": 10,
+      "realCost": 104.5,
+      "realWorldEntryPrice": 104.5,
+      "auditedTotalCost": 110.5,
+      "currency": "EUR"
+    }
+  }
+]

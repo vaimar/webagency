@@ -1,0 +1,17 @@
+{
+  "airports": [
+    {
+      "iata": "NCE",
+      "name": "Nice Côte d'Azur",
+      "municipality": "Nice",
+      "country": "FR",
+      "distanceKm": 11.8,
+      "latitude": 43.6584,
+      "longitude": 7.2159
+    }
+  ],
+  "station": null,
+  "stationPending": false,
+  "drivingDirectionsUrl": null,
+  "websiteUrl": null
+}
