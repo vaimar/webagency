@@ -31,6 +31,7 @@ import './SpotDetailPage.css';
 // and SpotFinder.tsx imports SpotFinder.css before SpotTile — listing them in the
 // other order here gives webpack two conflicting orderings for the same pair of
 // stylesheets and fails the production build on a mini-css-extract warning.
+import AccessFare from './components/AccessFare';
 import NearbyRestaurants, { NearbyRestaurantsSkeleton } from './components/NearbyRestaurants';
 import SpotTariff, { PriceLine } from './components/SpotTariff';
 import SpotTile from './components/SpotTile';
@@ -201,10 +202,6 @@ const AMENITIES: { key: keyof SpotDetailData; label: string; icon: IconDefinitio
 ];
 
 const countryLabel = (code: string | null): string => (code ? COUNTRY_NAME[code] ?? code : '');
-
-const formatPrice = (amount: number, currency = 'EUR'): string => new Intl.NumberFormat('en-IE', {
-    style: 'currency', currency, maximumFractionDigits: 0,
-}).format(amount);
 
 const formatDistanceKm = (km: number): string => (
     km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(km < 10 ? 1 : 0)} km`
@@ -1154,15 +1151,7 @@ export default function SpotDetailPage() {
                                             </div>
                                             <div className="spot-detail__way-fare">
                                                 {way.fare ? (
-                                                    <>
-                                                        <span className="spot-detail__fare-price">
-                                                            {formatPrice(way.fare.entryPrice, way.fare.currency)}
-                                                        </span>
-                                                        <span className="spot-detail__fare-note">
-                                                            fare {formatPrice(way.fare.price, way.fare.currency)}
-                                                            {way.fare.priceLabel ? ` · ${way.fare.priceLabel.toLowerCase()}` : ''}
-                                                        </span>
-                                                    </>
+                                                    <AccessFare fare={way.fare} />
                                                 ) : (
                                                     <span className="spot-detail__fare-none">{unpricedNote(way.mode)}</span>
                                                 )}
