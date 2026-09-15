@@ -27,6 +27,7 @@ import './SpotDetailPage.css';
 // and SpotFinder.tsx imports SpotFinder.css before SpotTile — listing them in the
 // other order here gives webpack two conflicting orderings for the same pair of
 // stylesheets and fails the production build on a mini-css-extract warning.
+import AccessFare from './components/AccessFare';
 import NearbyRestaurants, { NearbyRestaurantsSkeleton } from './components/NearbyRestaurants';
 import SpotTariff, { PriceLine } from './components/SpotTariff';
 import SpotTile from './components/SpotTile';
@@ -1091,15 +1092,7 @@ export default function SpotDetailPage() {
                                             </div>
                                             <div className="spot-detail__way-fare">
                                                 {way.fare ? (
-                                                    <>
-                                                        <span className="spot-detail__fare-price">
-                                                            {formatPrice(way.fare.entryPrice, way.fare.currency)}
-                                                        </span>
-                                                        <span className="spot-detail__fare-note">
-                                                            fare {formatPrice(way.fare.price, way.fare.currency)}
-                                                            {way.fare.priceLabel ? ` · ${way.fare.priceLabel.toLowerCase()}` : ''}
-                                                        </span>
-                                                    </>
+                                                    <AccessFare fare={way.fare} />
                                                 ) : (
                                                     <span className="spot-detail__fare-none">{unpricedNote(way.mode)}</span>
                                                 )}
