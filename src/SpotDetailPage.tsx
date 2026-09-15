@@ -11,7 +11,11 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { getMapStyle } from './services/mapStyle';
 import { API_BASE, searchFlights, FlightAvailable } from './services/api';
 import { fetchHackerRoutes, HackerItinerary } from './services/hackerRoutes';
-import { formatClock, formatDuration } from './services/flightFormat';
+import { formatCents, formatClock, formatDuration, formatShortDate } from './services/flightFormat';
+import { getAntiCauchemarPricingSummary } from './services/antiCauchemarPricing';
+import {
+    combineTripTotal, flightPickId, outboundFromFlight, stayFromNearby, TotalComponent, TotalLineKind,
+} from './services/tripTotal';
 import { nextScheduleProbeDate } from './hooks/routeSearchDates';
 import { useDepartureOrigin } from './hooks/useDepartureOrigin';
 import { DEPARTURES } from './services/departureOrigin';
@@ -27,9 +31,11 @@ import './SpotDetailPage.css';
 // and SpotFinder.tsx imports SpotFinder.css before SpotTile — listing them in the
 // other order here gives webpack two conflicting orderings for the same pair of
 // stylesheets and fails the production build on a mini-css-extract warning.
+import AccessFare from './components/AccessFare';
 import NearbyRestaurants, { NearbyRestaurantsSkeleton } from './components/NearbyRestaurants';
 import SpotTariff, { PriceLine } from './components/SpotTariff';
 import SpotTile from './components/SpotTile';
+import TripTotalCard from './components/TripTotalCard';
 
 // ─── Types (mirror SpotFinder's wire contracts) ─────────────────────────────
 
@@ -196,10 +202,6 @@ const AMENITIES: { key: keyof SpotDetailData; label: string; icon: IconDefinitio
 ];
 
 const countryLabel = (code: string | null): string => (code ? COUNTRY_NAME[code] ?? code : '');
-
-const formatPrice = (amount: number, currency = 'EUR'): string => new Intl.NumberFormat('en-IE', {
-    style: 'currency', currency, maximumFractionDigits: 0,
-}).format(amount);
 
 const formatDistanceKm = (km: number): string => (
     km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(km < 10 ? 1 : 0)} km`
@@ -430,6 +432,10 @@ interface FlightTeaserProps {
     arrivalAirport: string;
     departure: string;
     spotLabel: string;
+    /** `flightPickId` of the fare in the trip cost card, if any. */
+    pickedFlightId: string | null;
+    /** The page toggles: the picked fare again un-picks it, another replaces it. */
+    onPickFlight: (flight: FlightAvailable) => void;
 }
 
 /**
@@ -463,7 +469,7 @@ const carriersOf = (itinerary: HackerItinerary): string => {
     return Array.from(new Set(codes)).join(' + ');
 };
 
-const FlightTeaser: React.FC<FlightTeaserProps> = ({ arrivalAirport, departure }) => {
+const FlightTeaser: React.FC<FlightTeaserProps> = ({ arrivalAirport, departure, pickedFlightId, onPickFlight }) => {
     const [waysIn, setWaysIn] = useState<WaysIn>({ kind: 'loading' });
 
     useEffect(() => {
@@ -607,12 +613,20 @@ const FlightTeaser: React.FC<FlightTeaserProps> = ({ arrivalAirport, departure }
             <div className="sdp-flights">
                 {waysIn.flights.map((flight, i) => {
                     const price = typeof flight.price === 'number' ? flight.price : parseFloat(String(flight.price));
-                    const honest = flight.realWorldEntryPrice ?? flight.antiCauchemar?.realWorldEntryPrice;
-                    const dateLabel = flight.departureDate
-                        ? new Date(flight.departureDate).toLocaleDateString('en-IE', { weekday: 'short', day: 'numeric', month: 'short' })
-                        : null;
+                    const currency = flight.currency ?? 'EUR';
+                    // The same all-in the trip cost card uses (auditedTotalCost
+                    // first), so the row and the card never disagree about one
+                    // flight. Compared in cents: 74.99 and 74.990000001 are one price.
+                    const allIn = getAntiCauchemarPricingSummary(flight.price, flight.antiCauchemar).estimatedEntryPrice;
+                    const priceCents = Number.isFinite(price) ? Math.round(price * 100) : null;
+                    const allInCents = typeof allIn === 'number' && Number.isFinite(allIn) ? Math.round(allIn * 100) : null;
+                    // Built by hand: toLocaleDateString gives "Sat, 3 Oct" on some
+                    // ICU builds, and the card's label says "Sat 3 Oct".
+                    const dateLabel = formatShortDate(flight.departureDate);
+                    const pickId = flightPickId(flight);
+                    const picked = pickedFlightId === pickId;
                     return (
-                        <div key={i} className="sdp-flight">
+                        <div key={`${pickId}-${i}`} className="sdp-flight">
                             <div className="sdp-flight__info">
                                 {dateLabel && <span className="sdp-flight__date">{dateLabel}</span>}
                                 {flight.airline && <span className="sdp-flight__airline">{flight.airline}</span>}
@@ -621,12 +635,22 @@ const FlightTeaser: React.FC<FlightTeaserProps> = ({ arrivalAirport, departure }
                                 )}
                             </div>
                             <div className="sdp-flight__prices">
-                                <span className="sdp-flight__price">{formatPrice(price, flight.currency)}</span>
-                                {honest != null && honest !== price && (
+                                {priceCents != null && (
+                                    <span className="sdp-flight__price">{formatCents(priceCents, currency)}</span>
+                                )}
+                                {allInCents != null && allInCents !== priceCents && (
                                     <span className="sdp-flight__honest">
-                                        honest {formatPrice(honest, flight.currency)}
+                                        honest {formatCents(allInCents, currency)}
                                     </span>
                                 )}
+                                <button
+                                    type="button"
+                                    className={`btn btn--sm ${picked ? 'btn--primary' : 'btn--secondary'} sdp-pick`}
+                                    aria-pressed={picked}
+                                    onClick={() => onPickFlight(flight)}
+                                >
+                                    {picked ? 'In trip cost' : 'Add to trip cost'}
+                                </button>
                             </div>
                         </div>
                     );
@@ -651,6 +675,42 @@ export default function SpotDetailPage() {
     const [activeTab, setActiveTab] = useState<SpotTab>('getting-there');
     const [selectedAirport, setSelectedAirport] = useState<NearbyAirport | null>(null);
     const tabsRef = useRef<HTMLElement | null>(null);
+
+    // Rough trip cost: one fare, one stay, page-local and never persisted. The
+    // picks are held here rather than in FlightTeaser, which unmounts and
+    // refetches on every tab switch.
+    const [tripOutbound, setTripOutbound] = useState<TotalComponent | null>(null);
+    const [tripStay, setTripStay] = useState<TotalComponent | null>(null);
+    const [tripNights, setTripNights] = useState(2);
+    const [tripTravellers, setTripTravellers] = useState(1);
+
+    // Another spot is another trip: a hotel picked in Nice is not a place to
+    // stay in Lisbon. The route component stays mounted across slugs, so the
+    // picks are reset while rendering the new slug — React's pattern for state
+    // that depends on a changing key, and no stale card painted in between.
+    const [tripSlug, setTripSlug] = useState(slug);
+    if (tripSlug !== slug) {
+        setTripSlug(slug);
+        setTripOutbound(null);
+        setTripStay(null);
+        setTripNights(2);
+        setTripTravellers(1);
+    }
+
+    const pickTripFlight = (flight: FlightAvailable): void => {
+        const next = outboundFromFlight(flight);
+        setTripOutbound((current) => (current?.id === next.id ? null : next));
+    };
+
+    const pickTripStay = (stay: NearbyStay): void => {
+        const next = stayFromNearby(stay);
+        setTripStay((current) => (current?.id === next.id ? null : next));
+    };
+
+    const removeTripLine = (kind: TotalLineKind): void => {
+        if (kind === 'stay') setTripStay(null);
+        else setTripOutbound(null);
+    };
 
     /**
      * Switch tabs, and bring the tab you just pressed fully into view.
@@ -1091,15 +1151,7 @@ export default function SpotDetailPage() {
                                             </div>
                                             <div className="spot-detail__way-fare">
                                                 {way.fare ? (
-                                                    <>
-                                                        <span className="spot-detail__fare-price">
-                                                            {formatPrice(way.fare.entryPrice, way.fare.currency)}
-                                                        </span>
-                                                        <span className="spot-detail__fare-note">
-                                                            fare {formatPrice(way.fare.price, way.fare.currency)}
-                                                            {way.fare.priceLabel ? ` · ${way.fare.priceLabel.toLowerCase()}` : ''}
-                                                        </span>
-                                                    </>
+                                                    <AccessFare fare={way.fare} />
                                                 ) : (
                                                     <span className="spot-detail__fare-none">{unpricedNote(way.mode)}</span>
                                                 )}
@@ -1217,6 +1269,7 @@ export default function SpotDetailPage() {
                                     </p>
                                     <ul className="spot-stays">
                                         {stays.slice(0, STAY_PREVIEW_COUNT).map((stay) => {
+                                            const stayPicked = tripStay?.id === stay.id;
                                             const booking = stay.bookingLink ?? accommodationUrls(stay.name, spot.destinationLabel).booking;
                                             const maps = stay.latitude != null && stay.longitude != null
                                                 ? `https://www.google.com/maps/search/?api=1&query=${stay.latitude},${stay.longitude}`
@@ -1246,14 +1299,25 @@ export default function SpotDetailPage() {
                                                     <div className="spot-detail__way-fare">
                                                         {stay.pricePerNight != null ? (
                                                             <>
+                                                                {/* To the cent, the same figure the trip cost card multiplies. */}
                                                                 <span className="spot-detail__fare-price">
-                                                                    {formatPrice(stay.pricePerNight, stay.priceCurrency ?? 'EUR')}
+                                                                    {formatCents(Math.round(stay.pricePerNight * 100), stay.priceCurrency ?? 'EUR')}
                                                                 </span>
                                                                 <span className="spot-detail__fare-note">per night</span>
                                                             </>
                                                         ) : (
                                                             <span className="spot-detail__fare-none">no live rate</span>
                                                         )}
+                                                        {/* Unpriced rows too: the card then shows the stay as
+                                                            "no live rate" instead of pretending it costs nothing. */}
+                                                        <button
+                                                            type="button"
+                                                            className={`btn btn--sm ${stayPicked ? 'btn--primary' : 'btn--secondary'} sdp-pick`}
+                                                            aria-pressed={stayPicked}
+                                                            onClick={() => pickTripStay(stay)}
+                                                        >
+                                                            {stayPicked ? 'In trip cost' : 'Add to trip cost'}
+                                                        </button>
                                                     </div>
                                                 </li>
                                             );
@@ -1322,9 +1386,33 @@ export default function SpotDetailPage() {
                                 arrivalAirport={arrivalAirport}
                                 departure={departure}
                                 spotLabel={spot.destinationLabel}
+                                pickedFlightId={tripOutbound?.id ?? null}
+                                onPickFlight={pickTripFlight}
                             />
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* Rough trip cost — outside the tab panels, so a fare picked on
+                Flights and a stay picked on Hotels sit together on every tab.
+                Gated like the tabs: without coordinates there is nothing on the
+                page to pick from. */}
+            {lat != null && lon != null && (
+                <div className="sdp-trip-total">
+                    <TripTotalCard
+                        total={combineTripTotal({
+                            outbound: tripOutbound,
+                            stay: tripStay,
+                            nights: tripNights,
+                            travellers: tripTravellers,
+                            arrivalAirport: arrivalAirport ?? 'the airport',
+                            hasTariff: Boolean(detail?.prices && detail.prices.length > 0),
+                        })}
+                        onNightsChange={setTripNights}
+                        onTravellersChange={setTripTravellers}
+                        onRemove={removeTripLine}
+                    />
                 </div>
             )}
         </section>

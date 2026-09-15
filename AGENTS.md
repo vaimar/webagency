@@ -170,11 +170,11 @@ Validated routes:
 ## Open work items
 
 - [ ] `FirstMileAccess` input UI in `Home.tsx` search box — collapsible "I know my home → airport travel" section (revealed by Nice/Limerick car case study)
-- [ ] Combined trip total surface — component that sums transport + hotel + (optional activities) into a single `€549.65` card (no such component exists yet)
+- [ ] Combined trip total surface — `TripTotalCard` on `/spots/:slug` summing outbound fare × travellers + stay × nights into one card in cents (`≈ €549.65`); spec in `docs/specs/combined-trip-total.md`. Two partial totals already exist: flight cart `cartTotals()` (flights only) and Trip Ledger `computeTotals()` (hand-typed)
 - [ ] Hotel bbox search UI — `getHotelsByBbox` exists in `api.ts` but no UI consumer; TripGuide only uses AI-suggested hotels
 - [ ] Hotel occupancy-aware pricing — hotel bbox API returns single nightly rate, not occupancy-specific; display should note "price may vary for group size"
 - [ ] Return leg late-arrival overstatement — when `firstMileMode = rental_car` and return airport = departure airport, the late-night return warning is overstated; user's car is parked there
-- [ ] Wakeboard / activity cost gap — activity session pricing is not in any API; must be surfaced as an "excluded from total" note
+- [ ] Wakeboard / activity cost gap — tariffs are in the API (`spot_price` rows as `PriceLine[]` on `/api/spots/{slug}`), but aren't summable without a product choice (session vs hour vs group hire, access band); excluded from the trip total and listed as "Not in this total" until follow-up F3
 - [ ] Wire `/api/hotels/{xid}/enrichment` to `TripGuide.tsx` accommodation tab
 - [ ] Wire `/api/flight-search/departures` + `/api/flight-search/routes` to a UI consumer
 - [ ] Wire `/api/ai/providers` to provider selector in `Assistant.tsx`

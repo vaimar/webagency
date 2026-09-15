@@ -1,0 +1,35 @@
+[
+  {
+    "hotelKey": "g1-d2",
+    "name": "Hôtel Le Lac",
+    "latitude": 43.7141,
+    "longitude": 7.2688,
+    "rating": 4.4,
+    "reviewsCount": 312,
+    "pricePerNight": 149.89,
+    "priceCurrency": "EUR",
+    "rateQuotes": [{ "code": "BookingCom", "name": "Booking.com", "ratePerNight": 149.89 }]
+  },
+  {
+    "hotelKey": "g1-d3",
+    "name": "Villa Mar",
+    "latitude": 43.718,
+    "longitude": 7.275,
+    "rating": 4.1,
+    "reviewsCount": 88,
+    "pricePerNight": 189.0,
+    "priceCurrency": "EUR",
+    "rateQuotes": [{ "code": "Expedia", "name": "Expedia", "ratePerNight": 189.0 }]
+  },
+  {
+    "hotelKey": "g1-d4",
+    "name": "Camping du Lac",
+    "latitude": 43.706,
+    "longitude": 7.258,
+    "rating": 3.9,
+    "reviewsCount": 41,
+    "pricePerNight": null,
+    "priceCurrency": null,
+    "rateQuotes": []
+  }
+]

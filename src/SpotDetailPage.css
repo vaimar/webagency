@@ -462,6 +462,43 @@
     color: var(--text-muted);
 }
 
+/* ─── Rough trip cost ───────────────────────────────────────────────────────
+   The pick button sits under the price it picks, so what goes into the card is
+   the number right above the button. The card itself follows the map-and-tabs
+   card, outside every tab panel, so a fare picked on Flights and a stay picked
+   on Hotels are seen together whichever tab is open. */
+
+.sdp-pick {
+    margin-top: var(--space-1);
+}
+
+.sdp-trip-total {
+    margin-top: var(--space-4);
+}
+
+/* A row with a price column and a button under it leaves little for the name
+   at 400px, so the price column drops under the name instead of crushing it. */
+@media (max-width: 480px) {
+    .sdp-flight,
+    .sdp-tab-panel .spot-stay {
+        flex-wrap: wrap;
+    }
+
+    .sdp-flight__prices,
+    .sdp-tab-panel .spot-stay .spot-detail__way-fare {
+        flex-basis: 100%;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-1) var(--space-3);
+    }
+
+    .sdp-pick {
+        margin-top: 0;
+    }
+}
+
 
 /* Not found state */
 .sdp-empty {

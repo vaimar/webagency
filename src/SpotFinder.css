@@ -437,7 +437,15 @@
 .spot-detail__fare-price {
     font-size: 0.92rem;
     font-weight: 700;
-    color: var(--text);
+    color: var(--truth-fare);
+}
+
+/* Same treatment as HackerRouteCard's all-in, so the figure reads alike everywhere. */
+.spot-detail__fare-allin {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    color: var(--truth-transfer);
+    white-space: nowrap;
 }
 
 .spot-detail__fare-note {
