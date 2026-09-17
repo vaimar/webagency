@@ -1,0 +1,241 @@
+/* "By train" — train ways in to a French spot.
+   Spec: docs/specs/sncf-rail-ways-in.md (rev 4), 8.2–8.3.
+
+   The reading order is the order a rider asks: which date is this, which
+   station do the trains go to, is there a price (no — manual check), then the
+   trains themselves. The journey is the content, so it gets the ink: the
+   summary line is the strongest thing in the block and every leg sits under it
+   in a quieter weight, indented against a rule so a three-leg journey still
+   reads as one thing.
+
+   Colours come from the design-system tokens only. The manual-check badge
+   reuses the shared .badge--danger primitive rather than restating red here,
+   so the provenance contract in AGENTS.md lives in exactly one place.
+
+   Everything wraps; nothing scrolls sideways. Station names are long
+   ("Aéroport CDG 2 TGV"), so no line in this block may be nowrap — at 400px a
+   leg line has to be free to break. */
+
+.rail-ways-in {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-top: var(--space-5);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--border);
+    min-width: 0;
+}
+
+.rail-ways-in__title {
+    margin: 0;
+    font-size: var(--text-md);
+    font-weight: 700;
+    color: var(--text);
+}
+
+/* ── Framing lines: date, station, provenance ────────────────────────────── */
+
+.rail-ways-in__note,
+.rail-ways-in__date,
+.rail-ways-in__station,
+.rail-ways-in__message,
+.rail-ways-in__attribution {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: 1.45;
+    color: var(--text-secondary);
+}
+
+/* The date is the block's premise — it says whether these trains are for the
+   reader's trip or a sample — so it carries full text colour, not muted. */
+.rail-ways-in__date {
+    color: var(--text);
+    font-weight: 600;
+}
+
+.rail-ways-in__attribution {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+/* Absence of a price is a state, not a blank: badge first, then why. */
+.rail-ways-in__price-note {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+}
+
+/* ── Origins ─────────────────────────────────────────────────────────────── */
+
+.rail-ways-in__origins {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.rail-ways-in__origin {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+}
+
+.rail-ways-in__origin-title {
+    margin: 0;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--text);
+}
+
+.rail-ways-in__origin-note,
+.rail-ways-in__origin-status {
+    margin: 0;
+    font-size: var(--text-xs);
+    line-height: 1.45;
+    color: var(--text-muted);
+}
+
+/* ── Journeys ────────────────────────────────────────────────────────────── */
+
+.rail-ways-in__journeys {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.rail-ways-in__journey {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    min-width: 0;
+}
+
+/* "08:49 → 11:00 · 2h11 · 1 change" — the line the rider scans for. */
+.rail-ways-in__journey-summary {
+    margin: 0;
+    font-size: var(--text-base);
+    font-weight: 700;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+}
+
+.rail-ways-in__legs {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: 0;
+    /* Room for the rule below, which ties the legs together as one journey. */
+    padding: 0 0 0 var(--space-3);
+    border-left: 2px solid var(--border-strong);
+    list-style: none;
+}
+
+.rail-ways-in__leg-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 0;
+}
+
+.rail-ways-in__leg {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: 1.45;
+    color: var(--text);
+}
+
+/* A change is waiting, not travelling: green like every other transfer figure
+   in the app (--truth-transfer), and lighter than the trains around it. */
+.rail-ways-in__change {
+    margin: 0;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    line-height: 1.45;
+    color: var(--truth-transfer);
+}
+
+/* ── Where to get off ────────────────────────────────────────────────────────
+   The point of the whole block. A rider who reads only one thing should read
+   this: the same ticket puts them at Le Mans at 10:30 seven kilometres out, or
+   at Arnage at 13:25 two kilometres out. So it sits on its own sunken ground,
+   away from the legs, with both options equally visible — no toggle, nothing
+   to expand. Indigo is the onward-travel colour elsewhere in the app
+   (--truth-door), and that is exactly what these are. */
+
+.rail-ways-in__alighting {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border-radius: var(--radius-sm);
+    background: var(--surface-sunken);
+    min-width: 0;
+}
+
+.rail-ways-in__alighting-title {
+    margin: 0;
+    font-size: var(--text-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+}
+
+.rail-ways-in__options {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.rail-ways-in__option {
+    padding-left: var(--space-3);
+    border-left: 3px solid var(--truth-door);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    line-height: 1.45;
+    color: var(--text);
+}
+
+/* The destination the journey was asked for. Same weight as the alternative —
+   nearer is not automatically better when it costs an afternoon — but marked,
+   so the rider can tell which one is "just stay on". */
+.rail-ways-in__option--final {
+    border-left-color: var(--truth-total);
+}
+
+.rail-ways-in__alighting-note {
+    margin: 0;
+    font-size: var(--text-xs);
+    line-height: 1.45;
+    color: var(--text-muted);
+}
+
+.rail-ways-in__link {
+    align-self: flex-start;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--primary);
+    text-decoration: underline;
+}
+
+.rail-ways-in__link:hover,
+.rail-ways-in__link:focus-visible {
+    color: var(--primary-dark);
+}
