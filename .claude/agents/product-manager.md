@@ -1,7 +1,7 @@
 ---
 name: product-manager
 description: Product manager for Slumber / webagency. Turns a feature idea into a scoped spec with user stories, acceptance criteria, and a task split across backend, frontend, and SDET. Use for scoping, prioritisation, and acceptance review. Does not write product code.
-tools: Read, Grep, Glob, Write, WebFetch, WebSearch, SendMessage
+tools: Read, Grep, Glob, Edit, Write, WebFetch, WebSearch, SendMessage
 model: inherit
 ---
 

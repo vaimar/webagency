@@ -16,6 +16,7 @@ import { getAntiCauchemarPricingSummary } from './services/antiCauchemarPricing'
 import {
     combineTripTotal, flightPickId, outboundFromFlight, stayFromNearby, TotalComponent, TotalLineKind,
 } from './services/tripTotal';
+import { fetchRailWaysIn, RailWaysInResponse } from './services/railWaysIn';
 import { nextScheduleProbeDate } from './hooks/routeSearchDates';
 import { useDepartureOrigin } from './hooks/useDepartureOrigin';
 import { DEPARTURES } from './services/departureOrigin';
@@ -33,6 +34,7 @@ import './SpotDetailPage.css';
 // stylesheets and fails the production build on a mini-css-extract warning.
 import AccessFare from './components/AccessFare';
 import NearbyRestaurants, { NearbyRestaurantsSkeleton } from './components/NearbyRestaurants';
+import RailWaysIn from './components/RailWaysIn';
 import SpotTariff, { PriceLine } from './components/SpotTariff';
 import SpotTile from './components/SpotTile';
 import TripTotalCard from './components/TripTotalCard';
@@ -660,6 +662,22 @@ const FlightTeaser: React.FC<FlightTeaserProps> = ({ arrivalAirport, departure, 
     );
 };
 
+/** What the "By train" block is showing: still coming, failed, or an answer. */
+type RailView =
+    | { kind: 'loading' }
+    | { kind: 'error' }
+    | { kind: 'loaded'; data: RailWaysInResponse };
+
+/**
+ * Identity of one rail lookup. The slug is in the key so a held answer can
+ * never be shown on another spot's page, and the flight's airport and landing
+ * time are in it so picking back to a flight already looked up re-shows that
+ * answer instead of asking again.
+ */
+const railKey = (slug: string, destination?: string | null, arrivalDate?: string | null): string => (
+    destination && arrivalDate ? `${slug}|${destination}|${arrivalDate}` : `${slug}|sample`
+);
+
 // ─── Main page component ────────────────────────────────────────────────────
 
 export default function SpotDetailPage() {
@@ -688,6 +706,17 @@ export default function SpotDetailPage() {
     // stay in Lisbon. The route component stays mounted across slugs, so the
     // picks are reset while rendering the new slug — React's pattern for state
     // that depends on a changing key, and no stale card painted in between.
+    // The picked flight itself, beside the total's component. The trains a rider
+    // can catch depend on where and when they land, which TotalComponent does not
+    // carry — it is a money line. An addition to combined-trip-total's page
+    // state, not a change to it.
+    const [pickedFlight, setPickedFlight] = useState<FlightAvailable | null>(null);
+    // Every rail answer this page has received, by request key. Held for the
+    // page's life so switching tabs, or picking back to a flight already looked
+    // up, sends nothing.
+    const [railByKey, setRailByKey] = useState<Record<string, RailView>>({});
+    const railRequested = useRef<Set<string>>(new Set());
+
     const [tripSlug, setTripSlug] = useState(slug);
     if (tripSlug !== slug) {
         setTripSlug(slug);
@@ -695,11 +724,16 @@ export default function SpotDetailPage() {
         setTripStay(null);
         setTripNights(2);
         setTripTravellers(1);
+        setPickedFlight(null);
+        setRailByKey({});
     }
 
     const pickTripFlight = (flight: FlightAvailable): void => {
         const next = outboundFromFlight(flight);
         setTripOutbound((current) => (current?.id === next.id ? null : next));
+        // Same toggle as the line above, so the fare and the flight behind it
+        // never disagree about what is picked.
+        setPickedFlight((current) => (current && flightPickId(current) === next.id ? null : flight));
     };
 
     const pickTripStay = (stay: NearbyStay): void => {
@@ -709,8 +743,71 @@ export default function SpotDetailPage() {
 
     const removeTripLine = (kind: TotalLineKind): void => {
         if (kind === 'stay') setTripStay(null);
-        else setTripOutbound(null);
+        else {
+            setTripOutbound(null);
+            setPickedFlight(null);
+        }
     };
+
+    // ── Train ways in (docs/specs/sncf-rail-ways-in.md, 8.1) ────────────────
+    //
+    // Two lookups, both lazy and both per slug: a labelled sample on load, and
+    // a chained one once a flight is picked. Neither is sent by a pick control
+    // — picking only moves page state, and the chained request is made by the
+    // effect below when the Getting there tab is showing.
+    //
+    // The country gate is trim + upper-case, matching the backend's own
+    // normalisation: the API answers OK for `fr`, so an exact-case comparison
+    // would silently withhold rail from a valid spot.
+    const railEligible = spot?.country?.trim().toUpperCase() === 'FR'
+        && spot?.cityLatitude != null
+        && spot?.cityLongitude != null;
+    const pickedDestination = pickedFlight?.destination ?? null;
+    const pickedArrivalDate = pickedFlight?.arrivalDate ?? null;
+
+    useEffect(() => {
+        if (!slug || !railEligible) return;
+        const key = railKey(slug);
+        if (railRequested.current.has(key)) return;
+        railRequested.current.add(key);
+
+        let cancelled = false;
+        fetchRailWaysIn(slug)
+            .then((data) => { if (!cancelled) setRailByKey((c) => ({ ...c, [key]: { kind: 'loaded', data } })); })
+            .catch(() => { if (!cancelled) setRailByKey((c) => ({ ...c, [key]: { kind: 'error' } })); });
+        return () => { cancelled = true; };
+    }, [slug, railEligible]);
+
+    useEffect(() => {
+        if (!slug || !railEligible) return;
+        if (activeTab !== 'getting-there') return;
+        if (!pickedDestination || !pickedArrivalDate) return;
+        const key = railKey(slug, pickedDestination, pickedArrivalDate);
+        if (railRequested.current.has(key)) return;
+        railRequested.current.add(key);
+
+        let cancelled = false;
+        fetchRailWaysIn(slug, { airport: pickedDestination, time: pickedArrivalDate })
+            .then((data) => { if (!cancelled) setRailByKey((c) => ({ ...c, [key]: { kind: 'loaded', data } })); })
+            .catch(() => { if (!cancelled) setRailByKey((c) => ({ ...c, [key]: { kind: 'error' } })); });
+        return () => { cancelled = true; };
+    }, [slug, railEligible, activeTab, pickedDestination, pickedArrivalDate]);
+
+    // The chained answer for the current pick wins; while it is still coming,
+    // the block says so rather than showing sample trains under a flight's
+    // date. With no pick, the sample.
+    //
+    // "Still coming" is DERIVED — an eligible spot with no answer held yet is
+    // loading — rather than written into state by the effects below. Setting it
+    // there would be a second render before the request even leaves, and the
+    // effects would be calling setState synchronously in their own bodies.
+    const railView: RailView | null = (() => {
+        if (!slug || !railEligible) return null;
+        if (pickedDestination && pickedArrivalDate) {
+            return railByKey[railKey(slug, pickedDestination, pickedArrivalDate)] ?? { kind: 'loading' };
+        }
+        return railByKey[railKey(slug)] ?? { kind: 'loading' };
+    })();
 
     /**
      * Switch tabs, and bring the tab you just pressed fully into view.
@@ -1216,6 +1313,8 @@ export default function SpotDetailPage() {
                                     Click an airport to trace its route on the map.
                                 </p>
                             )}
+
+                            {railView && <RailWaysIn state={railView} />}
                         </div>
                     )}
 

@@ -153,6 +153,10 @@ rests on.
       use, with the answer written down per source
 - [ ] Any source that does not survive that reading is removed from the public
       build, or replaced with a licensed feed
+- [ ] **SNCF / Navitia API** (`api.sncf.com`, added 2026-09-16 for train ways in):
+      CGU at numerique.sncf.com not yet read against commercial, public use. The
+      user accepted it for the private beta only, so read it before any public
+      stage. It returns no fares, so only routing data is displayed.
 
 Data gathered under a personal, low-volume posture is not automatically
 licensed for a public site that carries affiliate tags on its outbound links.
