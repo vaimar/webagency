@@ -212,6 +212,8 @@ const sampleRequests = () => railRequests.filter((url) => !url.includes('?'));
 interface StubOptions extends SpotOptions {
   flights?: unknown[];
   arrival?: unknown;
+  /** Override the sample `/rail` body (default: railSample, which carries no journeys). */
+  railBody?: unknown;
   /** Delay applied to the chained `/rail` response, for criterion 34's loading state. */
   chainedDelayMs?: number;
   /** Fail the sample `/rail` request at the network level, for criterion 34's error state. */
@@ -219,7 +221,7 @@ interface StubOptions extends SpotOptions {
 }
 
 const stubSpotPage = (options: StubOptions) => {
-  const { slug, flights = [], arrival, chainedDelayMs, failSample = false } = options;
+  const { slug, flights = [], arrival, railBody, chainedDelayMs, failSample = false } = options;
 
   cy.mockSpotsFixture();
 
@@ -244,7 +246,7 @@ const stubSpotPage = (options: StubOptions) => {
   // let it swallow every chained request and `@railChained` would never fire.
   cy.intercept(
     { method: 'GET', pathname: `/api/spots/${slug}/rail` },
-    failSample ? { forceNetworkError: true } : { body: railSample(slug) },
+    failSample ? { forceNetworkError: true } : { body: railBody ?? railSample(slug) },
   ).as('rail');
   cy.intercept(
     { method: 'GET', pathname: `/api/spots/${slug}/rail`, query: { arrivalAirport: 'BVA' } },
@@ -280,6 +282,94 @@ const expectNoRailRequest = (label: string, act: () => void) => {
     expect(railRequests.length - before, `/rail requests sent by "${label}"`).to.eq(0);
   });
 };
+
+/**
+ * V1 with actual journey content, for criterion 36 (no horizontal scroll at
+ * 400px). The other stubs in this file deliberately carry NO journeys because
+ * the request-shape criteria don't need them. This one needs the summary, leg
+ * lines, alighting block and fare link to be present.
+ */
+const railV1 = (slug: string) => ({
+  slug,
+  status: 'OK',
+  provider: 'SNCF',
+  date: '2026-10-03',
+  dateBasis: 'SAMPLE',
+  departAfter: '08:00',
+  chain: null,
+  station: arnage(),
+  origins: [
+    {
+      kind: 'AIRPORT',
+      code: 'CDG',
+      label: 'Paris Charles de Gaulle',
+      stationName: 'Aéroport CDG 2 TGV',
+      note: 'Station inside Terminal 2.',
+      status: 'OK',
+      journeys: [
+        {
+          departure: '2026-10-03T08:48:00+02:00',
+          arrival: '2026-10-03T13:25:00+02:00',
+          durationMinutes: 277,
+          changes: 1,
+          fare: null,
+          legs: [
+            {
+              mode: 'TGV INOUI',
+              line: null,
+              trainNumber: '5210',
+              from: 'Aéroport Charles de Gaulle 2 TGV',
+              to: 'Le Mans',
+              departure: '2026-10-03T08:48:00+02:00',
+              arrival: '2026-10-03T10:30:00+02:00',
+            },
+            {
+              mode: 'Aléop',
+              line: 'P30',
+              trainNumber: '857065',
+              from: 'Le Mans',
+              to: 'Arnage',
+              departure: '2026-10-03T13:20:00+02:00',
+              arrival: '2026-10-03T13:25:00+02:00',
+            },
+          ],
+          alightingOptions: [
+            {
+              stationId: 'stop_area:SNCF:87396002',
+              stationName: 'Le Mans',
+              arrivalTime: '2026-10-03T10:30:00+02:00',
+              distanceKm: 7.2,
+              durationMinutes: 102,
+              changes: 0,
+              final: false,
+            },
+            {
+              stationId: 'stop_area:SNCF:87396549',
+              stationName: 'Arnage',
+              arrivalTime: '2026-10-03T13:25:00+02:00',
+              distanceKm: 2.0,
+              durationMinutes: 277,
+              changes: 1,
+              final: true,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      kind: 'CITY',
+      code: 'PARIS',
+      label: 'Paris',
+      stationName: null,
+      note: 'Any Paris station. Getting into Paris is not included.',
+      status: 'NO_JOURNEY',
+      journeys: [],
+    },
+  ],
+  priceState: 'MANUAL_CHECK',
+  bookingUrl: 'https://www.sncf-connect.com/',
+  fetchedAt: '2026-09-15T09:12:00Z',
+});
 
 describe('spot-rail-ways-in', () => {
   describe('C32: the sample request is sent once, for a French spot only', () => {
@@ -485,6 +575,70 @@ describe('spot-rail-ways-in', () => {
         expect(countButtonsNamed($region, 'Add to trip cost'), 'Add to trip cost buttons').to.eq(0);
         expect(countButtonsNamed($region, 'In trip cost'), 'In trip cost buttons').to.eq(0);
         expect($region.find('button[aria-pressed]'), 'pick toggles').to.have.length(0);
+      });
+    });
+  });
+
+  describe('C36: no horizontal overflow at 400px viewport width', () => {
+    /**
+     * The V1 response has actual journey content (summary, leg lines, alighting
+     * options, fare link). At 400px the rendered rail block must not cause
+     * horizontal scrolling.
+     */
+
+    it('C36: at 400px the rail block scrollWidth does not exceed clientWidth', () => {
+      cy.viewport(400, 800);
+
+      stubSpotPage({
+        slug: FR_SLUG,
+        country: 'FR',
+        label: 'Nice Wake Park',
+        railBody: railV1(FR_SLUG),
+      });
+      visitResolvedSpot(FR_SLUG, 'Nice Wake Park');
+      cy.wait('@rail');
+
+      // The journey content must be visible (proves V1 rendered).
+      railRegion().should('contain.text', 'TGV INOUI');
+      railRegion().should('contain.text', 'Le Mans');
+
+      // The rail container itself must not overflow.
+      railRegion().should(($region) => {
+        const el = $region[0];
+        expect(el.scrollWidth, 'rail region scrollWidth <= clientWidth')
+          .to.be.at.most(el.clientWidth);
+      });
+
+      // The document root must not have horizontal scroll caused by the rail block.
+      cy.document().should((doc) => {
+        expect(doc.documentElement.scrollWidth, 'document scrollWidth <= clientWidth')
+          .to.be.at.most(doc.documentElement.clientWidth);
+      });
+    });
+
+    it('C36: at 1280px the rail block also has no horizontal overflow', () => {
+      cy.viewport(1280, 800);
+
+      stubSpotPage({
+        slug: FR_SLUG,
+        country: 'FR',
+        label: 'Nice Wake Park',
+        railBody: railV1(FR_SLUG),
+      });
+      visitResolvedSpot(FR_SLUG, 'Nice Wake Park');
+      cy.wait('@rail');
+
+      railRegion().should('contain.text', 'TGV INOUI');
+
+      railRegion().should(($region) => {
+        const el = $region[0];
+        expect(el.scrollWidth, 'rail region scrollWidth <= clientWidth')
+          .to.be.at.most(el.clientWidth);
+      });
+
+      cy.document().should((doc) => {
+        expect(doc.documentElement.scrollWidth, 'document scrollWidth <= clientWidth')
+          .to.be.at.most(doc.documentElement.clientWidth);
       });
     });
   });

@@ -34,6 +34,7 @@
     "headers:verify": "node scripts/check-response-headers.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
+    "preview:tunnel": "node scripts/preview-tunnel.mjs",
     "readiness": "node scripts/launch-readiness.mjs",
     "resolve:ryanair-airports": "node scripts/resolve-ryanair-airport-candidates.mjs",
     "smoke": "node scripts/smoke-test.mjs",

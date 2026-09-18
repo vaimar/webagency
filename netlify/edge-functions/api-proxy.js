@@ -16,6 +16,21 @@ import { classifyPath, clientKey, consume } from "../lib/rate-limit.js";
 
 const RAILWAY_BASE = "https://slumber-production.up.railway.app";
 
+/**
+ * Where this deploy sends /api and /actuator.
+ *
+ * Defaults to Railway. Set the `BACKEND_ORIGIN` site variable to point a deploy
+ * somewhere else — in particular at a `cloudflared` tunnel in front of a
+ * backend running on a laptop, which is how a preview deploy is given real data
+ * while Railway is unpaid (see docs/local-preview.md). Edge functions read site
+ * variables at request time, but the value is bound when the deploy is created,
+ * so changing it needs a redeploy.
+ */
+const backendOrigin = () => {
+  const configured = globalThis.Netlify?.env?.get("BACKEND_ORIGIN");
+  return (configured && configured.trim() ? configured.trim() : RAILWAY_BASE).replace(/\/$/, "");
+};
+
 export default async (request, _context) => {
   const url = new URL(request.url);
 
@@ -40,7 +55,7 @@ export default async (request, _context) => {
   const backendPath = url.pathname === "/api/accounts/logout" ? "/logout" : url.pathname;
 
   // Build target URL on Railway — preserve path and query string
-  const target = `${RAILWAY_BASE}${backendPath}${url.search}`;
+  const target = `${backendOrigin()}${backendPath}${url.search}`;
 
   // Copy request headers but strip browser-specific ones that would trigger
   // CORS rejection on the backend.
@@ -48,6 +63,13 @@ export default async (request, _context) => {
   headers.delete("origin");
   headers.delete("referer");
   headers.delete("host");
+
+  // Shared secret for the tunnelled-laptop setup. The gateway in front of that
+  // backend 404s anything without it, so the tunnel hostname on its own is
+  // worthless to anyone who finds it. Added here, server-side, which is why it
+  // never reaches a browser. Unset for a normal Railway deploy.
+  const previewToken = globalThis.Netlify?.env?.get("PREVIEW_TOKEN");
+  if (previewToken) headers.set("X-Preview-Token", previewToken);
 
   // Forward the request body for POST / PUT / PATCH
   const hasBody = !["GET", "HEAD"].includes(request.method.toUpperCase());
