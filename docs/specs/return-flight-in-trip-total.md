@@ -1,10 +1,16 @@
 # Return flight in trip total — spec
 
-Status: **draft** (rev 3, 2026-09-19). Reviewers:
+Status: **draft** (rev 4, 2026-09-19). Reviewers:
 - `backend`: **R1 reviewed rev 2** — buildable with 6 changes. All 6 accepted
   and applied in rev 3; 3 further non-blocking flags also applied. Needs a
   re-confirm on rev 3, not a fresh review round.
 - `frontend`, `sdet`: not yet sent.
+
+**Rev 4 opens no review round.** It corrects statements about behaviour that
+already exists, and the one scope line it moves (the Postman collection into
+BE2) is coverage criterion 42's own cited invariant already required. `sdet`
+must re-read criteria **34**, **35**, **42** and **52** before finishing T4;
+nothing in T0–T3, FE1–FE3 or BE1 changes.
 
 Owner: `pm`
 
@@ -65,6 +71,41 @@ Source: combined-trip-total follow-up F1, marked "Next, per the user"
   - New follow-ups **F17** (away-airport shuttle billed once though ridden both
     ways) and **F18** (`cy.wait(750)`), both explicitly out of this slice.
   - 44 → 51 criteria.
+- **rev 4** (2026-09-19): **amendment, not a review round.** Corrections to
+  things reviewers already agreed; no new scope and no reopened contract.
+  - **Criterion 34 was factually wrong and is corrected.** Rev 3's §7.11 claimed
+    a bad `leg` yields code `VALIDATION_ERROR` with per-field `details`, "the
+    shape `origin` and `destination` already produce on this controller". They
+    do not, and never have. Measured live against the dev backend on `:9090`:
+    `400` with code `BAD_REQUEST`, message
+    `getFlights.leg: leg must be OUTBOUND or RETURN`, and **no `details` key**.
+    Cause confirmed in source: the class-level `@Validated` on
+    `RyanairController` L27 proxies the controller, so a violated
+    `@Pattern` on a query param throws `ConstraintViolationException`, which
+    `GlobalExceptionHandler` L65–68 maps to `BAD_REQUEST` with `Map.of()`.
+    `HandlerMethodValidationException` (L49–62, the `VALIDATION_ERROR` branch)
+    is never reached on this path. §7.11 rewritten, criterion 34 restated.
+    **The spec is amended, not the app** — reasoning in §7.11.1.
+  - Rev 3's other backend-R1 ask stands unchanged and was right: `leg` is a
+    `@Pattern` String, not a Java enum. Only the error *code* asserted
+    alongside it was wrong.
+  - **`manualCheckReasons` on a return leg — decided** (§7.12.2). Rev 3 was
+    silent; backend's judgement call is **confirmed**. New criterion **52**.
+  - **BE2 gains `docs/slumber-api.postman_collection.json`** (criterion 42).
+    The slumber `AGENTS.md` invariant 6 that criterion 42 already cites names
+    all three files, so this is coverage the criterion always implied.
+  - New follow-up **F19**: `docs/openapi-lite.yaml` does not parse as YAML on
+    `HEAD` and did not before this feature. Cause recorded so nobody
+    re-diagnoses it.
+  - **Three rev 2 leftovers that contradicted rev 3's own decisions**, found
+    while amending and corrected so T4 cannot assert the overturned value:
+    §7.12's `lateArrivalMarkup` paragraph and the **V4 vector** both still said
+    `manualCheckRequired` is `true` (§7.12.1 made it `false`; criterion 38 was
+    already right), and **criterion 35** named a line *label*
+    (`Arrival transfer (home airport)`) that `CostLine` cannot carry (rev 3
+    reused the `shuttleFee` slot). No behaviour changes — the built code already
+    matches the corrected text.
+  - 51 → 52 criteria.
 
 ---
 
@@ -190,6 +231,7 @@ No Route Hacker schedule fallback for the return direction.
 | F16 | Dated round trips: a real outbound/return pair with a stay between them | Needs a dated fare feed (§7.14). |
 | F17 | **The away airport's shuttle is billed once though the rider rides that corridor both ways.** `profileForAirport` is arrival-keyed, so `DUB↔MRS` counts Marseille's €10 on the outbound only. Pre-existing, found by backend at R1. | An **understatement**, so it does not overstate a price to a traveller, and fixing it means deciding whether a return-corridor fare equals the arrival one. Sweep with F14. |
 | F18 | `cy.wait(750)` at `cypress/e2e/spot-trip-total.cy.ts:318` violates the standing intercept-and-alias rule | Pre-existing and unrelated to this card. Logged by sdet at R1; explicitly **not** a blocker for this slice. |
+| F19 | **`docs/openapi-lite.yaml` (slumber) is not valid YAML and has not been for some time.** It fails to parse on `HEAD`, before any of this feature's changes, so the lite spec is broken for every consumer that loads it. **Cause, measured and written down so nobody re-diagnoses it:** the `'404'` `description` at **L857** is an unquoted plain scalar containing a `": "` — `` description: No spot with that slug (`code: SPOT_NOT_FOUND`). Checked before the parameters. ``. A plain scalar may not contain `": "`, so the parser reads the second colon as a mapping separator and errors. **Fix:** single-quote that description (or make it a `>-` block scalar); doubled `''` for the inner quote is not needed since it contains none. Verified that BE1/BE2's own additions to the file are correct by parsing a copy with only L857 patched — the additions parse clean, so nothing here is BE2's doing. | Pre-existing and outside this feature's diff; fixing it in BE2 would mix an unrelated repair into a documented-in-one-place change. Cheap and self-contained — one line, one owner, `backend`. Worth doing **before** the next consumer trips over it, because it silently breaks anything that loads the lite spec. Blocks nothing in this slice: criterion 42 is verified against the patched-copy parse plus a direct read of the added lines. |
 | — | Return rail (rail spec F3) | Depends on this feature. |
 
 Also out: first-mile, food, gear hire, multiple rooms, booking handoff, telemetry.
@@ -425,20 +467,61 @@ GET /api/flights?origin=MRS&destination=DUB&leg=RETURN
 - `leg` is also threaded through `RyanairService.getFlights(...)` to
   `AntiCauchemarService`. No other endpoint gains the parameter in this slice.
 
-**It must be a `@Pattern` String, not a Java enum** (backend R1). An enum
-parameter throws `MethodArgumentTypeMismatchException`, which
-`GlobalExceptionHandler` L65–69 maps to code `BAD_REQUEST` with `Map.of()` —
-no per-field details. A `@Pattern` String throws
-`HandlerMethodValidationException`, handled at L49–62 as code
-`VALIDATION_ERROR` with per-field details, which is the shape criterion 34
-names and the shape `origin` and `destination` already produce on this
-controller.
+**It must be a `@Pattern` String, not a Java enum** (backend R1, still correct).
+An enum parameter throws `MethodArgumentTypeMismatchException`, whose message
+leaks the Java type name and the enum's internals at the rider-facing edge. A
+`@Pattern` String gives a message we wrote.
 
 ```java
 @RequestParam(required = false)
-@Pattern(regexp = "(?i)^(OUTBOUND|RETURN)$", message = "leg must be OUTBOUND or RETURN")
+@Pattern(regexp = "(?i)^(OUTBOUND|RETURN)$", message = LEG_VALIDATION_MESSAGE)
 String leg
 ```
+
+#### 7.11.1 The 400 shape — corrected in rev 4
+
+Rev 3 asserted code `VALIDATION_ERROR` with per-field `details` here. **That was
+wrong.** Measured against the running dev backend on `:9090`:
+
+```
+GET /api/flights?origin=MRS&destination=DUB&leg=BOTH
+HTTP 400
+{"timestamp":"2026-09-19T08:36:10Z","status":400,"code":"BAD_REQUEST",
+ "message":"getFlights.leg: leg must be OUTBOUND or RETURN","path":"/api/flights"}
+```
+
+No `details` key. Why, in source:
+
+- `RyanairController` carries a **class-level `@Validated`** (L27), so Spring
+  validates method parameters through a proxy.
+- A violated `@Pattern` on a query param therefore throws
+  `ConstraintViolationException`, not `HandlerMethodValidationException`.
+- `GlobalExceptionHandler` L65–68 handles that exception with
+  `buildResponse(BAD_REQUEST, "BAD_REQUEST", ex.getMessage(), request, Map.of())`
+  — hence the `getFlights.leg: ` prefix (the constraint path) and the absent
+  `details`.
+- The `VALIDATION_ERROR` branch (L49–62) is only reached when method validation
+  is **not** proxied. It is unreachable on this controller.
+
+`origin` and `destination` behave exactly the same way. Rev 3's claim that they
+produce `VALIDATION_ERROR` was the specific error.
+
+**Ruling: amend the spec, do not change the app.** Making `leg` alone emit
+`VALIDATION_ERROR` would leave it inconsistent with its own siblings on the same
+endpoint — a rider hitting two bad params in one request would get two different
+error shapes. Removing the class-level `@Validated` to reach the other branch
+would change the error payload of every `@Validated` controller in the codebase,
+which is a cross-cutting API change several features wide and nothing this
+feature needs. The measured shape is coherent and already documented; the spec
+was the thing that was wrong. **No new backend task.** If a consistent
+`VALIDATION_ERROR` envelope is wanted later, it is an API-wide piece of work
+with its own spec, not a line in this one.
+
+**Test harness note.** `RyanairController.resolveLeg` (L50–57) re-raises the
+same status, code and message as an `ApiException` for harnesses without method
+validation (a standalone `MockMvc` setup reaches the handler with the raw
+value). So criterion 34 asserts one shape and it holds in both the running app
+and a standalone slice test — that is deliberate, not a duplicate guard.
 
 Frontend: `FlightSearchParams` in `src/services/api.ts` L1021 gains
 `leg?: 'OUTBOUND' | 'RETURN'`, appended to the query only when present.
@@ -457,6 +540,7 @@ airport's friction.**
 | `timePenaltyMinutes` | origin + destination | **`0`**, same reasoning |
 | `lateArrivalMarkup` (the amount) | as today | **excluded from `auditedTotalCost`**; see §7.12.1 |
 | `manualCheckRequired` | `transfer.manualCheckRequired() \|\| lateArrivalMarkup == null` | **always `false`** — see §7.12.1 |
+| `manualCheckReasons` | as today | **empty**, unless the `lateArrivalMarkup` line is `MANUAL_CHECK_REQUIRED` — see §7.12.2 |
 | `transferToCenterMinutes` | profile for arrival airport | **`0`** — no transfer to a city centre is being made |
 | `totalTravelTimeMinutes` | `flightMinutes + transferMinutes` | **`flightMinutes`** only |
 | `dataConfidence` | from the transfer profile | **`"estimated"`** — the transfer profile is unused, and the cabin bag is the only estimated input left |
@@ -537,8 +621,12 @@ not a hidden cost we discovered for them. A `MRS→STN` return therefore carries
 no friction penalty even though `STN` is in the table (criterion 40).
 
 **`lateArrivalMarkup` on a return — decided.** It is **not** added to
-`auditedTotalCost`. Instead the analysis sets `manualCheckRequired = true` and
-`priceBreakdown` carries a `MANUAL_CHECK_REQUIRED` line. Rationale:
+`auditedTotalCost`. Instead `priceBreakdown.lateArrivalMarkup` carries a
+`MANUAL_CHECK_REQUIRED` line and `manualCheckReasons` carries its prose form
+(§7.12.2), while top-level `manualCheckRequired` stays **`false`**. *(Rev 4
+correction: this paragraph still read "sets `manualCheckRequired = true`", the
+rev 2 wording that §7.12.1 overturned two paragraphs above. Same decision,
+stated correctly.)* Rationale:
 
 - We cannot validate it. The rider may have a car parked at the airport, a lift,
   or a night bus. `AGENTS.md` already lists this as the "Return leg
@@ -566,6 +654,49 @@ accepted rather than fixed: `combineTripTotal` already sets
 figure is presented as a floor, which is what it is. Attributing the outbound's
 costs to a return the rider has not paired with anything would be the worse
 error.
+
+#### 7.12.2 `manualCheckReasons` on a return — decided in rev 4
+
+Rev 3 was silent on this field, so BE1 made a judgement call. **Confirmed as
+specified**, now a recorded decision rather than an accident.
+
+**The rule.** On `leg=RETURN`, `manualCheckReasons` is **empty**, except when the
+`lateArrivalMarkup` CostLine is `MANUAL_CHECK_REQUIRED` (§7.13), in which case
+it carries **exactly one** plain-English line and no constant prefix:
+
+| Case | `manualCheckReasons` |
+|---|---|
+| Daytime landing | `[]` |
+| Late landing (`>= 23` or `< 6`), no local-access override | `["This lands late. How you get home at that hour cannot be checked, so it is not included in this total."]` |
+| Landing time unknown | `["Landing time is unknown, so getting home from the airport is not included in this total."]` |
+| Local-access override applies (e.g. `BCN`) | `[]` — the override is a confident "no markup needed", so nothing needs checking (criterion 49) |
+
+**Why this is right.**
+
+1. **It tracks the CostLine, not the boolean.** §7.12.1 put the caveat on the
+   `lateArrivalMarkup` status. The reasons list is the prose form of the same
+   caveat, so it must appear under exactly the same condition. One condition,
+   two renderings — they cannot drift.
+2. **Empty is the honest default, not an omission.** On a return with a daytime
+   landing nothing is unvalidatable: the audited total is fare plus bag, both
+   known. Carrying a reason would manufacture doubt the numbers do not have.
+3. **It does not reintroduce the ranking problem §7.12.1 solved.** The
+   `/api/flights` sort in `RyanairService.enrichFlights` reads only the boolean,
+   which stays `false`. The one consumer that weighs the list —
+   `getAntiCauchemarPenaltyScore` (`src/services/tripExploreSelectors.ts`
+   L387–395, `Math.min(12, reasons.length * 4)`) — scores explore's
+   `UnifiedFlightOption`s, which pass no leg context and get `legRole === null`
+   (§7.13). Even if a future surface did score a return, one line weighs `4`
+   against the boolean's `25`, so a late return still ranks above a genuinely
+   unreliable fare rather than below it.
+4. **It renders without a frontend change.** `getFlightCatchMessage`
+   (`tripExploreSelectors.ts` L373–385) already falls back to the joined reasons
+   when `theCatch` and `priceDisclaimer` are absent, which on a return they are
+   for the late-taxi clause (criterion 48). The line must therefore read as
+   rider-facing copy on its own — hence plain English, no `MANUAL_CHECK_REQUIRED:`
+   prefix, and one line rather than several joined by ` · `.
+
+Covered by criterion **52**.
 
 ### 7.13 Backend response shape
 
@@ -689,8 +820,12 @@ Round trip, corrected: `100.99 + 65.99 = 166.98`. Today: `100.99 + 88.99 =
 
 **V4** (V3's return, arriving `DUB` at `23:40`). Today: `lateArrivalMarkup =
 60.0`, `auditedTotalCost = 148.99`. Under §7.12: `auditedTotalCost` stays
-**65.99**, `manualCheckRequired` is `true`, and the `Getting home late` line is
-present. **Overstated by €83.00 today.**
+**65.99**, top-level `manualCheckRequired` is **`false`** (§7.12.1), the
+`priceBreakdown.lateArrivalMarkup` line is `MANUAL_CHECK_REQUIRED` with
+`amount === null`, and `manualCheckReasons` has exactly one entry (§7.12.2).
+**Overstated by €83.00 today.** *(Rev 4 correction: this vector still said
+`manualCheckRequired` is `true`, the rev 2 value. Criterion 38 already had it
+right; the vector did not.)*
 
 ### Pure function (`combineTripTotal`, adapters) — T1
 
@@ -777,13 +912,20 @@ present. **Overstated by €83.00 today.**
     every **pre-existing** field of `antiCauchemar` equals today's output for
     the same input. `legRole` is the one permitted new field (§7.11). Existing
     `AntiCauchemarService` and `RyanairService` tests pass unchanged.
-34. An unsupported `leg` value (e.g. `BOTH`, `''`) returns `400` with code
-    **`VALIDATION_ERROR`** and a per-field detail entry for `leg` — the
-    `HandlerMethodValidationException` shape from `GlobalExceptionHandler`
-    L49–62, not the `BAD_REQUEST` shape at L65–69 — and makes no provider call.
+34. **(corrected in rev 4 — see §7.11.1.)** An unsupported `leg` value (e.g.
+    `BOTH`, `''`) returns `400` with code **`BAD_REQUEST`** and message
+    **`getFlights.leg: leg must be OUTBOUND or RETURN`**, and makes no provider
+    call. This is the `ConstraintViolationException` shape from
+    `GlobalExceptionHandler` L65–68, carrying **no `details` key** — the same
+    shape `origin` and `destination` already produce on this controller.
+    Rev 3 asserted `VALIDATION_ERROR` with per-field details; that shape is
+    unreachable here and the assertion was never satisfiable.
 35. **D2 fixed.** V3's return leg has `airportShuttleEstimate === 0.00` and
-    `realCost === 65.99`; the `Arrival transfer (home airport)` breakdown line
-    is present with amount `0.0` and status `EXACT`.
+    `realCost === 65.99`; `priceBreakdown.shuttleFee` is present with
+    `amount === 0.0`, `status === 'EXACT'` and the §7.13 note. *(Rev 4: this
+    criterion named an `Arrival transfer (home airport)` **line label**, a rev 2
+    leftover. `CostLine` has no label field — rev 3's §7.13 reused the named
+    `shuttleFee` slot instead. Same assertion, addressable shape.)*
 36. **D1 fixed.** V3's return leg has `hiddenCostPenalty === 0.00`,
     `timePenaltyMinutes === 0` and `auditedTotalCost === 65.99` — asserted
     against the value today's code produces for the same input, `88.99`.
@@ -804,8 +946,16 @@ present. **Overstated by €83.00 today.**
 41. `realWorldEntryPrice === antiCauchemar.realCost` on both legs; for V3's
     return that is `65.99`. The formula is unchanged; only the shuttle input
     moved.
-42. `docs/openapi.yaml` and `docs/openapi-lite.yaml` document the `leg`
-    parameter and the `legRole` field (`AGENTS.md` invariant 6).
+42. **(extended in rev 4.)** `docs/openapi.yaml` and `docs/openapi-lite.yaml`
+    document the `leg` parameter and the `legRole` field, and
+    `docs/slumber-api.postman_collection.json`'s existing **Cached Flights**
+    request (L152) carries a `leg` query entry with value `RETURN` and
+    `"disabled": true`, so the default request is byte-identical to today's.
+    All three files are named by the same slumber `AGENTS.md` invariant 6 this
+    criterion already cites, so the collection was always in its scope; rev 4
+    only makes it explicit. Verified by parsing each file, not by eye — see
+    F19 for why parsing `openapi-lite.yaml` currently fails for an unrelated
+    reason.
 
 ### Date coherence (§7.14) — T2 / T3
 
@@ -867,6 +1017,18 @@ present. **Overstated by €83.00 today.**
     `lines[0]` / `lines[1]`. Verified by the absence of numeric line indexing
     in both files.
 
+### Added at rev 4
+
+52. (T4) **`manualCheckReasons` on a return** (§7.12.2). A `RETURN` landing at
+    `14:00` has `manualCheckReasons` empty. V4's return (landing `23:40`) has
+    **exactly one** entry, and that entry contains no `MANUAL_CHECK_REQUIRED:`
+    prefix. A `RETURN` with an unknown landing time has exactly one entry. The
+    `BCN` carve-out case of criterion 49 has it **empty**. In every case the
+    list is non-empty **if and only if**
+    `priceBreakdown.lateArrivalMarkup.status === 'MANUAL_CHECK_REQUIRED'` —
+    assert the biconditional, not the two cases separately, so the two
+    renderings of the caveat cannot drift apart.
+
 ## 9. Task split
 
 Contract = §7.1–7.14.
@@ -876,15 +1038,15 @@ Contract = §7.1–7.14.
 | R1 | Contract review. **Done on rev 2: backend and frontend objected, sdet agreed with conditions. All accepted in rev 3.** Reviewers re-confirm rev 3 only — no fresh round. | backend, frontend, sdet | — | — |
 | T0 | **Pre-step, blocks T1 and T2.** Convert positional line assertions to a `lineByKind()` lookup in `src/services/tripTotal.test.ts` (L90, L99, L305–308, L335) and `src/components/TripTotalCard.test.tsx` (L212), and add a `returnFlight` slot to the `v1Input` / `flight()` / `stay()` fixture helpers. Rev 3 moves stay from `lines[1]` to `lines[2]`, so without this T1 goes red on merge rather than on a real regression. | sdet | contract | 51 |
 | BE1 | `AntiCauchemarService.buildAnalysis` gains a leg role; §7.12 rules; `legRole` on `AntiCauchemarAnalysis`; the two `priceBreakdown` lines. Thread `leg` through `RyanairService.getFlights` and `RyanairController` `GET /api/flights`. **Default/absent must be byte-identical to today.** Do not change `DEFAULT_CABIN_BAG_EUR` or the outbound path. | backend | R1 | 33–41 |
-| BE2 | Update `docs/openapi.yaml` and `docs/openapi-lite.yaml` | backend | BE1 | 42 |
+| BE2 | Update `docs/openapi.yaml`, `docs/openapi-lite.yaml` **and `docs/slumber-api.postman_collection.json`**. **Reopened at rev 4** for the collection only: add a `leg` query entry (value `RETURN`, `"disabled": true`) to the existing **Cached Flights** request at L152. Do **not** fix the pre-existing YAML parse error while in the file — that is F19. | backend | BE1 | 42 |
 | FE1 | `src/services/tripTotal.ts`: `'return-flight'` kind, `returnFlight` input, `departureDate` on `TotalComponent` (§7.1) set by both flight adapters, `headlineLabel`, `returnFromFlight`, 3-line `combineTripTotal`, conditional excluded list, generalised `allInPrefix` | frontend | contract | 1–10 |
 | FE2 | `src/components/TripTotalCard.tsx`: return-flight copy maps, headline from `total.headlineLabel`, both-flight "bags unknown" check, date-coherence note (§7.14), `data-testid` per line (§7.7) | frontend | FE1 | 11–20, 43–44, 50 |
 | FE3 | `src/SpotDetailPage.tsx`: `tripReturn` state, `pickTripReturn`, `removeTripLine`, `combineTripTotal` call. Return flights section fetching with `leg: 'RETURN'`, with the §7.8 `data-testid` hooks. `FlightSearchParams.leg` and `AntiCauchemarAnalysis.legRole` in `src/services/api.ts`. **Do not touch `antiCauchemarPricing.ts`** — §7.12.1 depends on its current disjunction. | frontend | FE1, FE2, **BE1** | 21–31, 50 |
 | T1 | `src/services/tripTotal.test.ts`: V1/V2, adapter and `departureDate` tests | sdet | **T0** | 1–10 |
 | T2 | `src/components/TripTotalCard.test.tsx`: 3-line fixtures, date coherence, testid hooks | sdet | **T0** | 11–20, 43–44, 50 |
 | T3 | `cypress/e2e/spot-return-flight.cy.ts`: mock `GET /api/flights` for both directions (the return mock keyed on `leg=RETURN`). Intercept + alias only — no `cy.wait(ms)`. | sdet | contract; green after FE3 | 21–31, 50 |
-| T4 | Backend tests for §7.12: V3/V4 vectors, no-regression, `MRS→STN`, unknown home airport, **the sort case (46)**, the three travel-time/confidence fields, verdict text, BCN carve-out, `legRole`, the 400 | sdet | contract; green after BE1 | 33–41, 45–49 |
-| V1 | Verify: run T1–T4 plus gates, report per criterion | sdet | BE1–BE2, FE1–FE3, T0–T4 | 1–51 |
+| T4 | Backend tests for §7.12: V3/V4 vectors, no-regression, `MRS→STN`, unknown home airport, **the sort case (46)**, the three travel-time/confidence fields, verdict text, BCN carve-out, `legRole`, **the 400 (criterion 34 — assert `BAD_REQUEST` and the message, not `VALIDATION_ERROR`; §7.11.1)**, **`manualCheckReasons` (52)** | sdet | contract; green after BE1 | 33–41, 45–49, 52 |
+| V1 | Verify: run T1–T4 plus gates, report per criterion | sdet | BE1–BE2, FE1–FE3, T0–T4 | 1–52 |
 | A1 | Acceptance check per criterion, citing file/test | pm | V1 | all |
 
 **Parallelism.** BE1, FE1 and T0 can all start at once. FE2 follows FE1; T1 and
