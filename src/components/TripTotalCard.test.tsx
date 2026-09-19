@@ -55,6 +55,20 @@ const notChosen = (kind: TotalLineKind, quantity: number): TripTotalLine => ({
     kind, state: 'not-chosen', component: null, quantity, amountCents: null, allInCents: null,
 });
 
+/**
+ * Kind-based line lookup, so fixtures built off V1 survive the line-order /
+ * line-count changes coming with the return-flight slice (docs/specs/
+ * return-flight-in-trip-total.md §7.4: outbound-flight, return-flight, stay).
+ * Throws with the actual kinds present rather than returning undefined.
+ */
+const lineByKind = (total: TripTotal, kind: TotalLineKind): TripTotalLine => {
+    const line = total.lines.find((candidate) => candidate.kind === kind);
+    if (!line) {
+        throw new Error(`no '${kind}' line in [${total.lines.map((candidate) => candidate.kind).join(', ')}]`);
+    }
+    return line;
+};
+
 /** V1: €49.99 × 2 (all-in €74.99 × 2) + €149.89 × 3. */
 const V1: TripTotal = {
     currency: 'EUR',
@@ -209,7 +223,7 @@ describe('TripTotalCard', () => {
             ['priced', V1],
             ['unpriced', {
                 ...V1,
-                lines: [V1.lines[0], notSummed(stay({ unitAmount: null, basis: 'manual-check' }), 'unpriced', 3)],
+                lines: [lineByKind(V1, 'outbound-flight'), notSummed(stay({ unitAmount: null, basis: 'manual-check' }), 'unpriced', 3)],
                 totalCents: 9998,
                 allInCents: 14998,
                 prefix: 'from ',
@@ -227,7 +241,7 @@ describe('TripTotalCard', () => {
         it('shows an unpriced stay with the check-the-rate text and no amount', () => {
             const { card } = renderCard({
                 ...V1,
-                lines: [V1.lines[0], notSummed(stay({ unitAmount: null, basis: 'manual-check' }), 'unpriced', 3)],
+                lines: [lineByKind(V1, 'outbound-flight'), notSummed(stay({ unitAmount: null, basis: 'manual-check' }), 'unpriced', 3)],
                 totalCents: 9998,
                 allInCents: 14998,
                 prefix: 'from ',
@@ -242,7 +256,7 @@ describe('TripTotalCard', () => {
         it('shows a GBP stay at its unit amount in pounds, marked as not in the total', () => {
             const { card } = renderCard({
                 ...V1,
-                lines: [V1.lines[0], notSummed(stay({ currency: 'GBP', unitAmount: 150 }), 'not-converted', 3)],
+                lines: [lineByKind(V1, 'outbound-flight'), notSummed(stay({ currency: 'GBP', unitAmount: 150 }), 'not-converted', 3)],
                 totalCents: 9998,
                 allInCents: 14998,
                 prefix: 'from ',
@@ -256,7 +270,7 @@ describe('TripTotalCard', () => {
         it('badges a flight the backend could not validate', () => {
             renderCard({
                 ...V1,
-                lines: [included(flight({ manualCheck: true }), 2, 9998, 14998), V1.lines[1]],
+                lines: [included(flight({ manualCheck: true }), 2, 9998, 14998), lineByKind(V1, 'stay')],
                 allInPrefix: 'from ',
             });
 
@@ -296,7 +310,7 @@ describe('TripTotalCard', () => {
     describe('C20: the stale-fare note', () => {
         it('shows the priceDisclaimer under the flight line', () => {
             const note = 'Estimated (Cached): this fare was fetched more than 12 hours ago.';
-            renderCard({ ...V1, lines: [included(flight({ note }), 2, 9998, 14998), V1.lines[1]] });
+            renderCard({ ...V1, lines: [included(flight({ note }), 2, 9998, 14998), lineByKind(V1, 'stay')] });
 
             expect(screen.getByText(note)).toBeInTheDocument();
         });
@@ -311,7 +325,7 @@ describe('TripTotalCard', () => {
     it('C21: says when the flight all-in is unknown, and the all-in figure starts with "from"', () => {
         renderCard({
             ...V1,
-            lines: [included(flight({ allInUnitAmount: null }), 2, 9998, 9998), V1.lines[1]],
+            lines: [included(flight({ allInUnitAmount: null }), 2, 9998, 9998), lineByKind(V1, 'stay')],
             allInCents: 54965,
             allInPrefix: 'from ',
         });
@@ -383,7 +397,7 @@ describe('TripTotalCard', () => {
         it('shows "Not chosen yet" and no remove button on a line that is not chosen', () => {
             renderCard({
                 ...V1,
-                lines: [notChosen('outbound-flight', 2), V1.lines[1]],
+                lines: [notChosen('outbound-flight', 2), lineByKind(V1, 'stay')],
                 totalCents: 44967,
                 allInCents: 44967,
                 prefix: 'from ',

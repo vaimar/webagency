@@ -9,13 +9,28 @@
 import { describe, expect, it } from 'vitest';
 import type { FlightAvailable } from './api';
 import type { NearbyStay } from './stayGuide';
-import type { TotalComponent, TripTotalInput } from './tripTotal';
+import type { TotalLineKind, TotalComponent, TripTotal, TripTotalInput, TripTotalLine } from './tripTotal';
 import {
     combineTripTotal,
     flightPickId,
     outboundFromFlight,
     stayFromNearby,
 } from './tripTotal';
+
+/**
+ * Kind-based line lookup, so assertions survive the line-order / line-count
+ * changes coming with the return-flight slice (docs/specs/return-flight-in-trip-total.md
+ * §7.4: outbound-flight, return-flight, stay). Throws with the actual kinds
+ * present rather than returning undefined, so a real regression fails loudly
+ * instead of as a confusing "Cannot read properties of undefined".
+ */
+const lineByKind = (total: TripTotal, kind: TotalLineKind): TripTotalLine => {
+    const line = total.lines.find((candidate) => candidate.kind === kind);
+    if (!line) {
+        throw new Error(`no '${kind}' line in [${total.lines.map((candidate) => candidate.kind).join(', ')}]`);
+    }
+    return line;
+};
 
 const v1Flight = (overrides: Partial<FlightAvailable> = {}): FlightAvailable => ({
     origin: 'DUB',
@@ -41,13 +56,25 @@ const v1Stay = (overrides: Partial<NearbyStay> = {}): NearbyStay => ({
     ...overrides,
 });
 
-const v1Input = (overrides: Partial<TripTotalInput> = {}): TripTotalInput => ({
+/**
+ * T0 prep for the return-flight slice: `returnFlight` isn't a `TripTotalInput`
+ * field yet (that lands with FE1, contract §7.1) so it is carried as an inert
+ * extra property here rather than threaded into `TripTotalInput` itself.
+ * `combineTripTotal` ignores properties it doesn't destructure, so this has
+ * zero effect on today's 2-line output — existing vectors keep their current
+ * meaning. Once FE1 lands, `returnFlight` becomes a real field and this type
+ * collapses back to plain `TripTotalInput`.
+ */
+type V1InputOverrides = Partial<TripTotalInput> & { returnFlight?: TotalComponent | null };
+
+const v1Input = (overrides: V1InputOverrides = {}): TripTotalInput & { returnFlight: TotalComponent | null } => ({
     outbound: outboundFromFlight(v1Flight()),
     stay: stayFromNearby(v1Stay()),
     nights: 3,
     travellers: 2,
     arrivalAirport: 'NCE',
     hasTariff: true,
+    returnFlight: null,
     ...overrides,
 });
 
@@ -87,7 +114,7 @@ describe('combineTripTotal', () => {
         it('leaves the flight out of both sums and marks the total a floor', () => {
             const total = combineTripTotal(v1Input({ outbound: null }));
 
-            expect(total.lines[0]).toMatchObject({ kind: 'outbound-flight', state: 'not-chosen', component: null, amountCents: null, allInCents: null });
+            expect(lineByKind(total, 'outbound-flight')).toMatchObject({ state: 'not-chosen', component: null, amountCents: null, allInCents: null });
             expect(total.totalCents).toBe(44967);
             expect(total.allInCents).toBe(44967);
             expect(total.prefix).toBe('from ');
@@ -96,7 +123,7 @@ describe('combineTripTotal', () => {
         it('leaves the stay out of both sums and marks the total a floor', () => {
             const total = combineTripTotal(v1Input({ stay: null }));
 
-            expect(total.lines[1]).toMatchObject({ kind: 'stay', state: 'not-chosen', component: null, amountCents: null, allInCents: null });
+            expect(lineByKind(total, 'stay')).toMatchObject({ state: 'not-chosen', component: null, amountCents: null, allInCents: null });
             expect(total.totalCents).toBe(9998);
             expect(total.allInCents).toBe(14998);
             expect(total.prefix).toBe('from ');
@@ -123,7 +150,7 @@ describe('combineTripTotal', () => {
             expect(stay.unitAmount).toBeNull();
 
             const total = combineTripTotal(v1Input({ stay }));
-            expect(total.lines[1]).toMatchObject({ state: 'unpriced', amountCents: null, allInCents: null });
+            expect(lineByKind(total, 'stay')).toMatchObject({ state: 'unpriced', amountCents: null, allInCents: null });
             // Only the flight is in either sum: no nightly amount was substituted.
             expect(total.totalCents).toBe(9998);
             expect(total.allInCents).toBe(14998);
@@ -135,7 +162,7 @@ describe('combineTripTotal', () => {
         it.each(['GBP', 'CHF'])('a priced %s stay is not converted and stays out of both sums', (currency) => {
             const total = combineTripTotal(v1Input({ stay: handBuiltStay({ currency, unitAmount: 150 }) }));
 
-            expect(total.lines[1]).toMatchObject({ state: 'not-converted', amountCents: null, allInCents: null });
+            expect(lineByKind(total, 'stay')).toMatchObject({ state: 'not-converted', amountCents: null, allInCents: null });
             expect(total.totalCents).toBe(9998);
             expect(total.allInCents).toBe(14998);
             expect(total.prefix).toBe('from ');
@@ -144,7 +171,7 @@ describe('combineTripTotal', () => {
         it('a GBP flight is excluded from the all-in too, not only the headline', () => {
             const total = combineTripTotal(v1Input({ outbound: outboundFromFlight(v1Flight({ currency: 'GBP' })) }));
 
-            expect(total.lines[0].state).toBe('not-converted');
+            expect(lineByKind(total, 'outbound-flight').state).toBe('not-converted');
             expect(total.totalCents).toBe(44967);
             expect(total.allInCents).toBe(44967);
             expect(total.prefix).toBe('from ');
@@ -158,21 +185,22 @@ describe('combineTripTotal', () => {
             expect(stay.currency).toBe('EUR');
 
             const total = combineTripTotal(v1Input({ outbound, stay }));
-            expect(total.lines.map((line) => line.state)).toEqual(['included', 'included']);
+            expect(lineByKind(total, 'outbound-flight').state).toBe('included');
+            expect(lineByKind(total, 'stay').state).toBe('included');
             expect(total.totalCents).toBe(54965);
         });
 
         it('sums a hand-built component with currency "" as EUR', () => {
             const total = combineTripTotal(v1Input({ stay: handBuiltStay({ currency: '' }) }));
 
-            expect(total.lines[1].state).toBe('included');
+            expect(lineByKind(total, 'stay').state).toBe('included');
             expect(total.totalCents).toBe(54965);
         });
 
         it('compares currency case-insensitively', () => {
             const total = combineTripTotal(v1Input({ stay: handBuiltStay({ currency: 'eur' }) }));
 
-            expect(total.lines[1].state).toBe('included');
+            expect(lineByKind(total, 'stay').state).toBe('included');
         });
 
         it('takes the flight currency from flight.currency, never from antiCauchemar.currency', () => {
@@ -195,7 +223,7 @@ describe('combineTripTotal', () => {
         expect(outbound.unitAmount).toBe(49.99);
         expect(outbound.allInUnitAmount).toBe(74.99);
 
-        const flightLine = combineTripTotal(v1Input()).lines[0];
+        const flightLine = lineByKind(combineTripTotal(v1Input()), 'outbound-flight');
         expect(flightLine.amountCents).toBe(9998);
         expect(flightLine.amountCents).not.toBe(14998);
         expect(flightLine.allInCents).toBe(14998);
@@ -208,7 +236,7 @@ describe('combineTripTotal', () => {
             }));
 
             expect(outbound.allInUnitAmount).toBeCloseTo(78.99, 9);
-            expect(combineTripTotal(v1Input({ outbound })).lines[0].allInCents).toBe(7899 * 2);
+            expect(lineByKind(combineTripTotal(v1Input({ outbound })), 'outbound-flight').allInCents).toBe(7899 * 2);
         });
 
         it('never uses doorToTripPrice, even when it is present', () => {
@@ -218,7 +246,7 @@ describe('combineTripTotal', () => {
             }));
 
             expect(outbound.allInUnitAmount).toBe(74.99);
-            expect(combineTripTotal(v1Input({ outbound })).lines[0].allInCents).toBe(14998);
+            expect(lineByKind(combineTripTotal(v1Input({ outbound })), 'outbound-flight').allInCents).toBe(14998);
         });
     });
 
@@ -227,7 +255,8 @@ describe('combineTripTotal', () => {
         expect(outbound.allInUnitAmount).toBeNull();
 
         const total = combineTripTotal(v1Input({ outbound }));
-        expect(total.lines[0].allInCents).toBe(total.lines[0].amountCents);
+        const outboundLine = lineByKind(total, 'outbound-flight');
+        expect(outboundLine.allInCents).toBe(outboundLine.amountCents);
         expect(total.allInCents).toBe(9998 + 44967);
         expect(total.prefix).toBe('≈ ');
         expect(total.allInPrefix).toBe('from ');
@@ -302,10 +331,12 @@ describe('combineTripTotal', () => {
 
             expect(total.nights).toBe(nights);
             expect(total.travellers).toBe(travellers);
-            expect(total.lines[0].quantity).toBe(travellers);
-            expect(total.lines[1].quantity).toBe(nights);
-            expect(total.lines[0].amountCents).toBe(4999 * travellers);
-            expect(total.lines[1].amountCents).toBe(14989 * nights);
+            const outboundLine = lineByKind(total, 'outbound-flight');
+            const stayLine = lineByKind(total, 'stay');
+            expect(outboundLine.quantity).toBe(travellers);
+            expect(stayLine.quantity).toBe(nights);
+            expect(outboundLine.amountCents).toBe(4999 * travellers);
+            expect(stayLine.amountCents).toBe(14989 * nights);
         });
     });
 
@@ -332,14 +363,14 @@ describe('combineTripTotal', () => {
             expect(outbound.unitAmount).toBe(49.99);
 
             const total = combineTripTotal(v1Input({ outbound }));
-            expect(total.lines[0]).toMatchObject({ state: 'included', amountCents: 9998 });
+            expect(lineByKind(total, 'outbound-flight')).toMatchObject({ state: 'included', amountCents: 9998 });
         });
 
         it('treats an unparseable price as no price, so the line is unpriced', () => {
             const outbound = outboundFromFlight(v1Flight({ price: 'call us' }));
             expect(outbound.unitAmount).toBeNull();
 
-            expect(combineTripTotal(v1Input({ outbound })).lines[0].state).toBe('unpriced');
+            expect(lineByKind(combineTripTotal(v1Input({ outbound })), 'outbound-flight').state).toBe('unpriced');
         });
     });
 });
@@ -382,6 +413,6 @@ describe('C13: adapters, label and precedence', () => {
     it('calls a GBP component with no amount unpriced, not not-converted', () => {
         const total = combineTripTotal(v1Input({ stay: handBuiltStay({ currency: 'GBP', unitAmount: null }) }));
 
-        expect(total.lines[1].state).toBe('unpriced');
+        expect(lineByKind(total, 'stay').state).toBe('unpriced');
     });
 });
