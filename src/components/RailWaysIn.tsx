@@ -36,6 +36,10 @@ export interface RailWaysInProps {
         | { kind: 'loading' }
         | { kind: 'error' }
         | { kind: 'loaded'; data: RailWaysInResponse };
+    /** F0: which journey is drawn on the map, by `departure|arrival` identity; null when none. */
+    tracedJourneyKey?: string | null;
+    /** F0: toggle a journey's map trace. Absent keys/values mean "no trace control on this surface". */
+    onToggleTrace?: (journey: RailJourney | null) => void;
 }
 
 /** Statuses that render nothing at all — not even the heading (8.3). */
@@ -61,13 +65,24 @@ const ORIGIN_STATUS_TEXT: Record<string, string> = {
 const ALIGHTING_NOTE = 'Getting off earlier can leave you farther from the spot. '
     + 'Onward travel from any of these stations is not included.';
 
-const Journey: React.FC<{ journey: RailJourney; stationName: string; bookingUrl: string }> = ({
-    journey, stationName, bookingUrl,
-}) => {
+export const journeyKey = (journey: RailJourney): string => `${journey.departure}|${journey.arrival}`;
+
+const Journey: React.FC<{
+    journey: RailJourney;
+    stationName: string;
+    bookingUrl: string;
+    tracedKey?: string | null;
+    onToggleTrace?: (journey: RailJourney | null) => void;
+}> = ({ journey, stationName, bookingUrl, tracedKey, onToggleTrace }) => {
     const options = journey.alightingOptions ?? [];
     // One option is not a choice, so it gets no heading and no warning — just
     // the line saying where this train leaves you.
     const offersChoice = options.length > 1;
+    // F0: no button when the surface cannot draw (no handler) or the journey
+    // has no geometry to draw.
+    const canTrace = onToggleTrace != null
+        && journey.legs.some((leg) => Array.isArray(leg.geometry) && leg.geometry.length > 0);
+    const isTraced = canTrace && tracedKey === journeyKey(journey);
 
     return (
         <li className="rail-ways-in__journey">
@@ -111,21 +126,37 @@ const Journey: React.FC<{ journey: RailJourney; stationName: string; bookingUrl:
                 </div>
             )}
 
-            <a
-                className="rail-ways-in__link"
-                href={bookingUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-            >
-                Check fares on SNCF Connect
-            </a>
+            <div className="rail-ways-in__journey-actions">
+                <a
+                    className="rail-ways-in__link"
+                    href={bookingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    Check fares on SNCF Connect
+                </a>
+                {canTrace && (
+                    <button
+                        type="button"
+                        className="rail-ways-in__trace"
+                        aria-pressed={isTraced}
+                        onClick={() => onToggleTrace(isTraced ? null : journey)}
+                    >
+                        {isTraced ? 'Hide from map' : 'Show on map'}
+                    </button>
+                )}
+            </div>
         </li>
     );
 };
 
-const Origin: React.FC<{ origin: RailOrigin; stationName: string; bookingUrl: string }> = ({
-    origin, stationName, bookingUrl,
-}) => (
+const Origin: React.FC<{
+    origin: RailOrigin;
+    stationName: string;
+    bookingUrl: string;
+    tracedKey?: string | null;
+    onToggleTrace?: (journey: RailJourney | null) => void;
+}> = ({ origin, stationName, bookingUrl, tracedKey, onToggleTrace }) => (
     <li className="rail-ways-in__origin">
         <h4 className="rail-ways-in__origin-title">
             {origin.kind === 'AIRPORT' ? `From ${origin.label} (${origin.code})` : `From ${origin.label}`}
@@ -139,6 +170,8 @@ const Origin: React.FC<{ origin: RailOrigin; stationName: string; bookingUrl: st
                         journey={journey}
                         stationName={stationName}
                         bookingUrl={bookingUrl}
+                        tracedKey={tracedKey}
+                        onToggleTrace={onToggleTrace}
                     />
                 ))}
             </ul>
@@ -177,7 +210,7 @@ const dateLineText = (data: RailWaysInResponse): string | null => {
     return null;
 };
 
-const RailWaysIn: React.FC<RailWaysInProps> = ({ state }) => {
+const RailWaysIn: React.FC<RailWaysInProps> = ({ state, tracedJourneyKey, onToggleTrace }) => {
     const headingId = useId();
 
     if (state.kind === 'loaded' && SILENT_STATUSES.has(state.data.status)) return null;
@@ -248,6 +281,8 @@ const RailWaysIn: React.FC<RailWaysInProps> = ({ state }) => {
                                 origin={origin}
                                 stationName={station.name}
                                 bookingUrl={data.bookingUrl}
+                                tracedKey={tracedJourneyKey}
+                                onToggleTrace={onToggleTrace}
                             />
                         ))}
                     </ul>

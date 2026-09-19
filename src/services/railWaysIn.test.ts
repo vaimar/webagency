@@ -20,6 +20,7 @@ import {
     fetchRailWaysIn,
     formatDistanceKm,
     legName,
+    railTraceFeatures,
     waitText,
 } from './railWaysIn';
 import { arnageOption, leMansOption, railEnvelope, v1Journey } from './railWaysIn.fixtures';
@@ -214,5 +215,59 @@ describe('fetchRailWaysIn failures (the block renders these as PROVIDER_UNAVAILA
         }) as unknown as typeof fetch;
 
         await expect(fetchRailWaysIn('wake-paradise-spay-fr')).rejects.toThrow(SyntaxError);
+    });
+});
+
+// ── F0 (criterion 41): railTraceFeatures ────────────────────────────────────
+
+describe('railTraceFeatures (F0, criterion 41)', () => {
+    const legWith = (geometry: [number, number][] | null) => ({
+        mode: 'TGV INOUI', line: null, trainNumber: '5210',
+        from: 'Aéroport CDG 2 TGV', to: 'Le Mans',
+        departure: '2026-10-03T08:48:00+02:00', arrival: '2026-10-03T10:30:00+02:00',
+        geometry,
+    });
+    const journey = (legs: ReturnType<typeof legWith>[]) => ({
+        departure: '2026-10-03T08:48:00+02:00', arrival: '2026-10-03T13:25:00+02:00',
+        durationMinutes: 277, changes: 1, legs,
+        alightingOptions: [], fare: null,
+    });
+    const station = {
+        id: 'stop_area:SNCF:87396549', name: 'Arnage', distanceKm: 2.0,
+        latitude: 47.928541, longitude: 0.189882,
+    };
+    const spot = { latitude: 47.934, longitude: 0.165 };
+
+    it('returns one rail feature per leg with geometry plus the dashed last mile', () => {
+        const trace = railTraceFeatures(journey([
+            legWith([[2.2, 48.9], [1.0, 48.2], [0.19, 48.0]]),
+            legWith([[0.19, 48.0], [0.189, 47.93]]),
+        ]), station, spot);
+
+        expect(trace).not.toBeNull();
+        expect(trace!.features).toHaveLength(3);
+        expect(trace!.features[0].properties.kind).toBe('rail');
+        expect(trace!.features[0].geometry.coordinates).toEqual([[2.2, 48.9], [1.0, 48.2], [0.19, 48.0]]);
+        expect(trace!.features[1].properties.kind).toBe('rail');
+        expect(trace!.features[2].properties.kind).toBe('last-mile');
+        expect(trace!.features[2].geometry.coordinates).toEqual([
+            [0.189882, 47.928541],
+            [0.165, 47.934],
+        ]);
+    });
+
+    it('skips legs without geometry but keeps the journey traceable', () => {
+        const trace = railTraceFeatures(journey([
+            legWith(null),
+            legWith([[0.19, 48.0], [0.189, 47.93]]),
+        ]), station, spot);
+
+        expect(trace!.features).toHaveLength(2);
+        expect(trace!.features[0].properties.kind).toBe('rail');
+        expect(trace!.features[1].properties.kind).toBe('last-mile');
+    });
+
+    it('returns null when every leg has no geometry — the journey gets no button', () => {
+        expect(railTraceFeatures(journey([legWith(null), legWith(null)]), station, spot)).toBeNull();
     });
 });

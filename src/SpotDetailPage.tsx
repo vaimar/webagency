@@ -16,7 +16,11 @@ import { getAntiCauchemarPricingSummary } from './services/antiCauchemarPricing'
 import {
     combineTripTotal, flightPickId, outboundFromFlight, stayFromNearby, TotalComponent, TotalLineKind,
 } from './services/tripTotal';
-import { fetchRailWaysIn, RailWaysInResponse } from './services/railWaysIn';
+import {
+    fetchRailWaysIn, RailJourney, RailStation, RailTraceFeatureCollection, RailWaysInResponse,
+    railTraceFeatures,
+} from './services/railWaysIn';
+import { journeyKey } from './components/RailWaysIn';
 import { nextScheduleProbeDate } from './hooks/routeSearchDates';
 import { useDepartureOrigin } from './hooks/useDepartureOrigin';
 import { DEPARTURES } from './services/departureOrigin';
@@ -224,6 +228,8 @@ interface DetailMapProps {
     activeTab: SpotTab;
     airports: NearbyAirport[];
     selectedAirport: NearbyAirport | null;
+    /** F0: the pressed rail journey's trace; wins over the airport route. */
+    railTrace?: RailTraceFeatureCollection | null;
     stays?: NearbyStay[];
     pois: MapPoi[];
 }
@@ -249,7 +255,7 @@ const ROUTE_LAYER = 'route-line-layer';
 const ROUTE_CASING = 'route-line-casing';
 
 const DetailMap: React.FC<DetailMapProps> = ({
-    lat, lon, label, activeTab, airports, selectedAirport, stays = [], pois,
+    lat, lon, label, activeTab, airports, selectedAirport, railTrace = null, stays = [], pois,
 }) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const mapRef = useRef<maplibregl.Map | null>(null);
@@ -369,7 +375,9 @@ const DetailMap: React.FC<DetailMapProps> = ({
         }
     }, [activeTab, airports, stays, pois, lat, lon]);
 
-    // Route line for selected airport
+    // Route line for the selected airport — or, when a rail journey is pressed,
+    // its trace (F0, 7.9). Rail wins: pressing a journey clears the airport
+    // route, and pressing an airport un-presses the journey.
     useEffect(() => {
         const map = mapRef.current;
         if (!map || !mapLoadedRef.current) return;
@@ -380,6 +388,36 @@ const DetailMap: React.FC<DetailMapProps> = ({
             if (map.getSource(ROUTE_SOURCE)) map.removeSource(ROUTE_SOURCE);
         };
         clearRoute();
+
+        if (railTrace) {
+            map.addSource(ROUTE_SOURCE, { type: 'geojson', data: railTrace });
+            map.addLayer({
+                id: ROUTE_CASING,
+                type: 'line',
+                source: ROUTE_SOURCE,
+                filter: ['==', ['get', 'kind'], 'rail'],
+                paint: { 'line-color': '#7c3aed', 'line-width': 6, 'line-opacity': 0.25 },
+                layout: { 'line-cap': 'round', 'line-join': 'round' },
+            });
+            map.addLayer({
+                id: ROUTE_LAYER,
+                type: 'line',
+                source: ROUTE_SOURCE,
+                paint: {
+                    'line-color': '#7c3aed',
+                    'line-width': 3,
+                    // The last-mile leg is dashed; the rail legs are solid.
+                    'line-dasharray': ['case', ['==', ['get', 'kind'], 'last-mile'], ['literal', [2, 2]], ['literal', [1, 0]]],
+                },
+                layout: { 'line-cap': 'round', 'line-join': 'round' },
+            });
+            const bounds = new maplibregl.LngLatBounds([lon, lat], [lon, lat]);
+            railTrace.features.forEach((feature) => {
+                feature.geometry.coordinates.forEach(([lng, lt]) => bounds.extend([lng, lt]));
+            });
+            map.fitBounds(bounds, { padding: 60, maxZoom: 12, duration: 600 });
+            return;
+        }
 
         if (!selectedAirport) return;
 
@@ -412,7 +450,7 @@ const DetailMap: React.FC<DetailMapProps> = ({
             [lon, lat],
         );
         map.fitBounds(bounds, { padding: 60, maxZoom: 12, duration: 600 });
-    }, [selectedAirport, lat, lon]);
+    }, [selectedAirport, railTrace, lat, lon]);
 
     return (
         <div className="spot-map-wrap">
@@ -692,6 +730,13 @@ export default function SpotDetailPage() {
     const [notFound, setNotFound] = useState(false);
     const [activeTab, setActiveTab] = useState<SpotTab>('getting-there');
     const [selectedAirport, setSelectedAirport] = useState<NearbyAirport | null>(null);
+    // F0: the journey drawn on the map, and the station/spot pair it needs.
+    // Held at page level so the map and the rail block agree, and so the
+    // airport route and the rail trace can un-pick each other (7.9).
+    const [tracedJourney, setTracedJourney] = useState<{
+        key: string;
+        trace: RailTraceFeatureCollection;
+    } | null>(null);
     const tabsRef = useRef<HTMLElement | null>(null);
 
     // Rough trip cost: one fare, one stay, page-local and never persisted. The
@@ -726,6 +771,7 @@ export default function SpotDetailPage() {
         setTripTravellers(1);
         setPickedFlight(null);
         setRailByKey({});
+        setTracedJourney(null);
     }
 
     const pickTripFlight = (flight: FlightAvailable): void => {
@@ -808,6 +854,15 @@ export default function SpotDetailPage() {
         }
         return railByKey[railKey(slug)] ?? { kind: 'loading' };
     })();
+
+    // A trace belongs to one rail answer: switch to another response (a flight
+    // pick, an un-pick) and the pressed journey's coordinates no longer match
+    // the journeys on screen, so the trace is dropped.
+    useEffect(() => {
+        setTracedJourney(null);
+        // railView's identity changes on every render; key on what it shows.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [railView?.kind === 'loaded' ? railView.data : railView?.kind]);
 
     /**
      * Switch tabs, and bring the tab you just pressed fully into view.
@@ -914,6 +969,22 @@ export default function SpotDetailPage() {
 
     const handleAirportClick = (airport: NearbyAirport) => {
         setSelectedAirport((prev) => prev?.iata === airport.iata ? null : airport);
+        // An airport route and a rail trace never share the map (7.9).
+        setTracedJourney(null);
+    };
+
+    /** F0: press a journey's "Show on map"; pressing the traced one un-presses it. */
+    const handleToggleRailTrace = (journey: RailJourney | null): void => {
+        if (journey === null) {
+            setTracedJourney(null);
+            return;
+        }
+        if (railView?.kind !== 'loaded' || railView.data.station == null || lat == null || lon == null) return;
+        const station: RailStation = railView.data.station;
+        const trace = railTraceFeatures(journey, station, { latitude: lat, longitude: lon });
+        if (!trace) return; // no geometry: the button should not exist, but never draw nothing
+        setSelectedAirport(null); // mutual exclusion with the airport route (7.9)
+        setTracedJourney((current) => (current?.key === journeyKey(journey) ? null : { key: journeyKey(journey), trace }));
     };
 
     // Started as soon as the coordinates land, not when the tab is clicked.
@@ -1161,6 +1232,7 @@ export default function SpotDetailPage() {
                         activeTab={activeTab}
                         airports={allAirports}
                         selectedAirport={selectedAirport}
+                        railTrace={tracedJourney?.trace ?? null}
                         stays={stays}
                         pois={pois}
                     />
@@ -1314,7 +1386,13 @@ export default function SpotDetailPage() {
                                 </p>
                             )}
 
-                            {railView && <RailWaysIn state={railView} />}
+                            {railView && (
+                                <RailWaysIn
+                                    state={railView}
+                                    tracedJourneyKey={tracedJourney?.key ?? null}
+                                    onToggleTrace={handleToggleRailTrace}
+                                />
+                            )}
                         </div>
                     )}
 

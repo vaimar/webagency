@@ -239,3 +239,26 @@
 .rail-ways-in__link:focus-visible {
     color: var(--primary-dark);
 }
+
+.rail-ways-in__journey-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.rail-ways-in__trace {
+    background: none;
+    border: 1px solid var(--color-border, #c9c4bb);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+    color: var(--color-text, inherit);
+}
+
+.rail-ways-in__trace[aria-pressed="true"] {
+    border-color: #7c3aed;
+    color: #7c3aed;
+}

@@ -574,8 +574,69 @@ describe('spot-rail-ways-in', () => {
       railRegion().should(($region) => {
         expect(countButtonsNamed($region, 'Add to trip cost'), 'Add to trip cost buttons').to.eq(0);
         expect(countButtonsNamed($region, 'In trip cost'), 'In trip cost buttons').to.eq(0);
-        expect($region.find('button[aria-pressed]'), 'pick toggles').to.have.length(0);
+        // Pick toggles only — the F0 trace toggle is aria-pressed but is not a
+        // trip-cost pick. This stub carries no journeys, so no trace button is
+        // rendered here at all.
+        expect(countButtonsNamed($region, 'Show on map'), 'trace toggles (no journeys)').to.eq(0);
       });
+    });
+  });
+
+  describe('C42 (F0): the Show on map toggle', () => {
+    /** V1 with geojson-style geometry on one journey's legs. */
+    const railV1Traced = (slug: string) => {
+      const body = railV1(slug);
+      const journey = body.origins[0].journeys[0];
+      journey.legs[0].geometry = [[2.35, 48.85], [1.5, 48.3], [0.19, 48.0]];
+      journey.legs[1].geometry = [[0.19, 48.0], [0.189882, 47.928541]];
+      return body;
+    };
+
+    it('C42: pressing Show on map toggles aria-pressed and the label; an airport Show route un-presses it; no /api request is sent', () => {
+      stubSpotPage({
+        slug: FR_SLUG,
+        country: 'FR',
+        label: 'Nice Wake Park',
+        arrival: arrivalWithStation(),
+        railBody: railV1Traced(FR_SLUG),
+      });
+      visitResolvedSpot(FR_SLUG, 'Nice Wake Park');
+      cy.wait('@rail');
+      cy.wait('@arrival');
+
+      const traceButton = () => railRegion().find('button[aria-pressed]').first();
+
+      traceButton().should('contain.text', 'Show on map')
+        .and('have.attr', 'aria-pressed', 'false');
+
+      expectNoRailRequest('Show on map', () => {
+        traceButton().click();
+      });
+
+      railRegion().find('button[aria-pressed="true"]').should('contain.text', 'Hide from map');
+      // Only one journey is pressed at a time.
+      railRegion().find('button[aria-pressed="true"]').should('have.length', 1);
+
+      // Pressing an airport "Show route" un-presses the rail journey (7.9).
+      cy.contains('button', 'Show route').first().click();
+      railRegion().find('button[aria-pressed="true"]').should('not.exist');
+      railRegion().find('button[aria-pressed]').first()
+        .should('contain.text', 'Show on map')
+        .and('have.attr', 'aria-pressed', 'false');
+    });
+
+    it('C42: a journey with no leg geometry renders no Show on map button', () => {
+      stubSpotPage({
+        slug: FR_SLUG,
+        country: 'FR',
+        label: 'Nice Wake Park',
+        railBody: railV1(FR_SLUG), // no geometry on any leg
+      });
+      visitResolvedSpot(FR_SLUG, 'Nice Wake Park');
+      cy.wait('@rail');
+
+      railRegion().should('contain.text', 'TGV INOUI');
+      railRegion().find('button').should('not.exist');
     });
   });
 

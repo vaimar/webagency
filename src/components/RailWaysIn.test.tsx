@@ -15,8 +15,9 @@
  *     component ever derives them instead, the assertion fails.
  */
 import React from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import RailWaysIn from './RailWaysIn';
 import type { RailWaysInResponse } from '../services/railWaysIn';
 import {
@@ -382,5 +383,70 @@ describe('C31: chained copy, and the date is sliced rather than parsed', () => {
             expect(regionText()).toContain('on Sat 3 Oct');
             expect(regionText()).not.toContain('on Sun 4 Oct');
         });
+    });
+});
+
+// ── F0 (criterion 42, component half): the Show on map toggle ───────────────
+
+describe('F0 map trace toggle', () => {
+    const withGeometry = (data: RailWaysInResponse): RailWaysInResponse => ({
+        ...data,
+        origins: data.origins.map((origin) => ({
+            ...origin,
+            journeys: origin.journeys.map((journey) => ({
+                ...journey,
+                legs: journey.legs.map((leg) => ({
+                    ...leg,
+                    geometry: [[2.2, 48.9], [0.189, 47.93]] as [number, number][],
+                })),
+            })),
+        })),
+    });
+
+    it('renders no Show on map button without a trace handler, even with geometry', () => {
+        loaded(withGeometry(v1Response()));
+
+        expect(screen.queryByRole('button', { name: 'Show on map' })).toBeNull();
+    });
+
+    it('renders no button when no leg carries geometry', async () => {
+        const onToggleTrace = vi.fn();
+        render(<RailWaysIn
+            state={{ kind: 'loaded', data: v1Response() }}
+            tracedJourneyKey={null}
+            onToggleTrace={onToggleTrace}
+        />);
+
+        expect(screen.queryByRole('button', { name: 'Show on map' })).toBeNull();
+    });
+
+    it('toggles aria-pressed and the label, and reports the journey up', async () => {
+        const user = userEvent.setup();
+        const onToggleTrace = vi.fn();
+        const data = withGeometry(v1Response());
+        const journey = data.origins[0].journeys[0];
+        const key = `${journey.departure}|${journey.arrival}`;
+        const { rerender } = render(<RailWaysIn
+            state={{ kind: 'loaded', data }}
+            tracedJourneyKey={null}
+            onToggleTrace={onToggleTrace}
+        />);
+
+        const button = screen.getAllByRole('button', { name: 'Show on map' })[0];
+        expect(button).toHaveAttribute('aria-pressed', 'false');
+
+        await user.click(button);
+        expect(onToggleTrace).toHaveBeenCalledWith(journey);
+
+        rerender(<RailWaysIn
+            state={{ kind: 'loaded', data }}
+            tracedJourneyKey={key}
+            onToggleTrace={onToggleTrace}
+        />);
+        const pressed = screen.getByRole('button', { name: 'Hide from map' });
+        expect(pressed).toHaveAttribute('aria-pressed', 'true');
+
+        await user.click(pressed);
+        expect(onToggleTrace).toHaveBeenLastCalledWith(null);
     });
 });

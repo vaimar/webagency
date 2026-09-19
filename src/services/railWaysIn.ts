@@ -83,6 +83,12 @@ export interface RailLeg {
     /** ISO-8601 with the Europe/Paris offset. */
     departure: string;
     arrival: string;
+    /**
+     * F0: the section's geojson LineString as [lon, lat] pairs, simplified to
+     * ≤ 100 points with first and last kept. Null when the provider sent no
+     * geometry for the leg — in which case the leg draws nothing on the map.
+     */
+    geometry?: [number, number][] | null;
 }
 
 /**
@@ -232,6 +238,57 @@ export const changeMinutes = (prev: RailLeg, next: RailLeg): number => (
  * Throws on a network failure, a non-200 or an unparseable body — the block
  * renders all three the same way it renders PROVIDER_UNAVAILABLE (8.3).
  */
+// ── F0: map trace ────────────────────────────────────────────────────────────
+
+export interface RailTraceSpot {
+    latitude: number;
+    longitude: number;
+}
+
+export interface RailTraceFeature {
+    type: 'Feature';
+    properties: { kind: 'rail' | 'last-mile' };
+    geometry: { type: 'LineString'; coordinates: [number, number][] };
+}
+
+export interface RailTraceFeatureCollection {
+    type: 'FeatureCollection';
+    features: RailTraceFeature[];
+}
+
+/**
+ * The pressed journey as map features (spec 7.9, criterion 41): one LineString
+ * per leg that has geometry, plus one straight dashed LineString from the
+ * station to the spot. `null` when no leg has geometry — the caller then
+ * renders no "Show on map" button at all.
+ */
+export const railTraceFeatures = (
+    journey: RailJourney,
+    station: RailStation,
+    spot: RailTraceSpot,
+): RailTraceFeatureCollection | null => {
+    const rail: RailTraceFeature[] = journey.legs
+        .filter((leg) => Array.isArray(leg.geometry) && leg.geometry.length > 0)
+        .map((leg) => ({
+            type: 'Feature',
+            properties: { kind: 'rail' as const },
+            geometry: { type: 'LineString', coordinates: leg.geometry as [number, number][] },
+        }));
+    if (rail.length === 0) return null;
+    rail.push({
+        type: 'Feature',
+        properties: { kind: 'last-mile' },
+        geometry: {
+            type: 'LineString',
+            coordinates: [
+                [station.longitude, station.latitude],
+                [spot.longitude, spot.latitude],
+            ],
+        },
+    });
+    return { type: 'FeatureCollection', features: rail };
+};
+
 export const fetchRailWaysIn = async (
     slug: string,
     arrival?: { airport: string; time: string },
