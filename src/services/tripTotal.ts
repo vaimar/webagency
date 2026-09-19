@@ -270,7 +270,16 @@ export const combineTripTotal = (input: TripTotalInput): TripTotal => {
         included.length > 0 ? included.reduce((total, line) => total + (pick(line) ?? 0), 0) : null
     );
 
-    const prefix: TotalPrefix = included.length === lines.length ? '≈ ' : 'from ';
+    // "Exact" requires every OFFERED line to be included, not every line that
+    // exists in the fixed 3-line shape. A return that was never chosen is not
+    // an incomplete pick — it simply is not part of this trip yet — so it
+    // must not downgrade an otherwise-complete outbound+stay total to "from"
+    // (§7.1: "No figure, prefix or state changes for outbound or stay when
+    // returnFlight is null"). The outbound and stay lines are always
+    // required; the return line only joins that requirement once a return
+    // has actually been chosen.
+    const requiredLines = input.returnFlight != null ? lines : [outboundLine, stayLine];
+    const prefix: TotalPrefix = requiredLines.every((line) => line.state === 'included') ? '≈ ' : 'from ';
     // The all-in is a floor too when either included flight's extras are
     // unknown, or when the backend left an unvalidated cost out of
     // auditedTotalCost (§7.6 — generalises the single-flight rule to two).

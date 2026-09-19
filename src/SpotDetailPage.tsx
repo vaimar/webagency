@@ -14,7 +14,8 @@ import { fetchHackerRoutes, HackerItinerary } from './services/hackerRoutes';
 import { formatCents, formatClock, formatDuration, formatShortDate } from './services/flightFormat';
 import { getAntiCauchemarPricingSummary } from './services/antiCauchemarPricing';
 import {
-    combineTripTotal, flightPickId, outboundFromFlight, stayFromNearby, TotalComponent, TotalLineKind,
+    combineTripTotal, flightPickId, outboundFromFlight, returnFromFlight, stayFromNearby, TotalComponent,
+    TotalLineKind,
 } from './services/tripTotal';
 import {
     fetchRailWaysIn, RailJourney, RailStation, RailTraceFeatureCollection, RailWaysInResponse,
@@ -700,6 +701,129 @@ const FlightTeaser: React.FC<FlightTeaserProps> = ({ arrivalAirport, departure, 
     );
 };
 
+interface ReturnFlightTeaserProps {
+    /** The rider's home airport — the return's destination. */
+    originIata: string;
+    /** The spot's arrival airport — the return's origin. */
+    arrivalAirport: string;
+    originCity: string;
+    /** `flightPickId` of the return fare in the trip cost card, if any. */
+    pickedFlightId: string | null;
+    /** The picked fare again un-picks it, another replaces it (§7.10). */
+    onPickFlight: (flight: FlightAvailable) => void;
+}
+
+/**
+ * "Flight home" — up to 3 return fares, fetched independently of the outbound
+ * teaser above with `leg: 'RETURN'` (§7.8). Deliberately simpler than
+ * `FlightTeaser`: no Route Hacker schedule fallback for the return direction
+ * (spec §4), so there are only three states — fares, empty and error.
+ */
+const ReturnFlightTeaser: React.FC<ReturnFlightTeaserProps> = ({
+    originIata, arrivalAirport, originCity, pickedFlightId, onPickFlight,
+}) => {
+    type ReturnWaysIn =
+        | { kind: 'loading' }
+        | { kind: 'fares'; flights: FlightAvailable[] }
+        | { kind: 'empty' }
+        | { kind: 'error' };
+
+    const [waysIn, setWaysIn] = useState<ReturnWaysIn>({ kind: 'loading' });
+
+    useEffect(() => {
+        let cancelled = false;
+        setWaysIn({ kind: 'loading' });
+
+        const resolve = async () => {
+            try {
+                const result = await searchFlights({ origin: arrivalAirport, destination: originIata, leg: 'RETURN' });
+                if (cancelled) return;
+                const flights = result.flights.slice(0, 3);
+                setWaysIn(flights.length > 0 ? { kind: 'fares', flights } : { kind: 'empty' });
+            } catch {
+                if (!cancelled) setWaysIn({ kind: 'error' });
+            }
+        };
+
+        void resolve();
+        return () => { cancelled = true; };
+    }, [arrivalAirport, originIata]);
+
+    return (
+        <div className="sdp-section" data-testid="return-flights">
+            <h3 className="sdp-section__title">
+                <FontAwesomeIcon icon={faPlane} /> Flight home
+            </h3>
+            <p className="spot-finder__muted">{arrivalAirport} to {originCity}</p>
+
+            {waysIn.kind === 'loading' && (
+                <p className="spot-finder__muted">Checking return fares...</p>
+            )}
+
+            {waysIn.kind === 'empty' && (
+                <p className="spot-finder__muted">
+                    No cached fares for the return. Check fares on the airline&apos;s site.
+                </p>
+            )}
+
+            {waysIn.kind === 'error' && (
+                <p className="spot-finder__muted">Couldn&apos;t check return fares.</p>
+            )}
+
+            {waysIn.kind === 'fares' && (
+                <div className="sdp-flights">
+                    {waysIn.flights.map((flight, i) => {
+                        const price = typeof flight.price === 'number' ? flight.price : parseFloat(String(flight.price));
+                        const currency = flight.currency ?? 'EUR';
+                        // Same all-in source the trip cost card uses, so this
+                        // row and the card never disagree about one flight.
+                        const allIn = getAntiCauchemarPricingSummary(flight.price, flight.antiCauchemar).estimatedEntryPrice;
+                        const priceCents = Number.isFinite(price) ? Math.round(price * 100) : null;
+                        const allInCents = typeof allIn === 'number' && Number.isFinite(allIn) ? Math.round(allIn * 100) : null;
+                        const dateLabel = formatShortDate(flight.departureDate);
+                        const pickId = flightPickId(flight);
+                        const picked = pickedFlightId === pickId;
+                        return (
+                            <div
+                                key={`${pickId}-${i}`}
+                                className="sdp-flight"
+                                data-testid="return-flight-row"
+                                data-flight-id={pickId}
+                            >
+                                <div className="sdp-flight__info">
+                                    {dateLabel && <span className="sdp-flight__date">{dateLabel}</span>}
+                                    {flight.airline && <span className="sdp-flight__airline">{flight.airline}</span>}
+                                    {flight.priceLabel && (
+                                        <span className="sdp-flight__label">{flight.priceLabel}</span>
+                                    )}
+                                </div>
+                                <div className="sdp-flight__prices">
+                                    {priceCents != null && (
+                                        <span className="sdp-flight__price">{formatCents(priceCents, currency)}</span>
+                                    )}
+                                    {allInCents != null && allInCents !== priceCents && (
+                                        <span className="sdp-flight__honest">
+                                            honest {formatCents(allInCents, currency)}
+                                        </span>
+                                    )}
+                                    <button
+                                        type="button"
+                                        className={`btn btn--sm ${picked ? 'btn--primary' : 'btn--secondary'} sdp-pick`}
+                                        aria-pressed={picked}
+                                        onClick={() => onPickFlight(flight)}
+                                    >
+                                        {picked ? 'In trip cost' : 'Add to trip cost'}
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+};
+
 /** What the "By train" block is showing: still coming, failed, or an answer. */
 type RailView =
     | { kind: 'loading' }
@@ -743,6 +867,7 @@ export default function SpotDetailPage() {
     // picks are held here rather than in FlightTeaser, which unmounts and
     // refetches on every tab switch.
     const [tripOutbound, setTripOutbound] = useState<TotalComponent | null>(null);
+    const [tripReturn, setTripReturn] = useState<TotalComponent | null>(null);
     const [tripStay, setTripStay] = useState<TotalComponent | null>(null);
     const [tripNights, setTripNights] = useState(2);
     const [tripTravellers, setTripTravellers] = useState(1);
@@ -766,6 +891,7 @@ export default function SpotDetailPage() {
     if (tripSlug !== slug) {
         setTripSlug(slug);
         setTripOutbound(null);
+        setTripReturn(null);
         setTripStay(null);
         setTripNights(2);
         setTripTravellers(1);
@@ -782,6 +908,11 @@ export default function SpotDetailPage() {
         setPickedFlight((current) => (current && flightPickId(current) === next.id ? null : flight));
     };
 
+    const pickTripReturn = (flight: FlightAvailable): void => {
+        const next = returnFromFlight(flight);
+        setTripReturn((current) => (current?.id === next.id ? null : next));
+    };
+
     const pickTripStay = (stay: NearbyStay): void => {
         const next = stayFromNearby(stay);
         setTripStay((current) => (current?.id === next.id ? null : next));
@@ -789,6 +920,7 @@ export default function SpotDetailPage() {
 
     const removeTripLine = (kind: TotalLineKind): void => {
         if (kind === 'stay') setTripStay(null);
+        else if (kind === 'return-flight') setTripReturn(null);
         else {
             setTripOutbound(null);
             setPickedFlight(null);
@@ -1566,6 +1698,13 @@ export default function SpotDetailPage() {
                                 pickedFlightId={tripOutbound?.id ?? null}
                                 onPickFlight={pickTripFlight}
                             />
+                            <ReturnFlightTeaser
+                                originIata={resolveOriginAirport(departure)}
+                                arrivalAirport={arrivalAirport}
+                                originCity={departure.split(',')[0]}
+                                pickedFlightId={tripReturn?.id ?? null}
+                                onPickFlight={pickTripReturn}
+                            />
                         </div>
                     )}
                 </div>
@@ -1580,6 +1719,7 @@ export default function SpotDetailPage() {
                     <TripTotalCard
                         total={combineTripTotal({
                             outbound: tripOutbound,
+                            returnFlight: tripReturn,
                             stay: tripStay,
                             nights: tripNights,
                             travellers: tripTravellers,

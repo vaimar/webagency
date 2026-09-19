@@ -324,6 +324,14 @@ export interface AntiCauchemarAnalysis {
     firstMileAccess?: FirstMileAccess;
     /** auditedTotalCost + firstMileAccess.amount. Null when firstMileAccess is not supplied. */
     doorToTripPrice?: number | null;
+    /**
+     * Which leg this analysis was computed for. Non-null only on
+     * GET /api/flights, where `leg` is a real request parameter — every other
+     * producer (analyzeScheduledFlight, TripPlannerService, Route Hacker)
+     * passes no leg context and this is null.
+     * Spec: docs/specs/return-flight-in-trip-total.md §7.13.
+     */
+    legRole?: 'OUTBOUND' | 'RETURN' | null;
 }
 
 /**
@@ -1022,6 +1030,13 @@ export interface FlightSearchParams {
     origin: string;
     destination: string;
     date?: string;
+    /**
+     * Which leg to search. Absent = OUTBOUND (unchanged behaviour). Only
+     * appended to the query when present, so every existing call is
+     * byte-identical to today's request.
+     * Spec: docs/specs/return-flight-in-trip-total.md §7.11.
+     */
+    leg?: 'OUTBOUND' | 'RETURN';
 }
 
 /** Optional first-mile access query params for flight endpoints. */
@@ -1078,6 +1093,7 @@ const fetchFlightsFromPath = async (
     const query: Record<string, string> = {
         origin: params.origin.toUpperCase(),
         destination: params.destination.toUpperCase(),
+        ...(params.leg ? { leg: params.leg } : {}),
         ...buildFirstMileQuery(firstMile),
     };
     const url = buildApiUrl(path, query);
