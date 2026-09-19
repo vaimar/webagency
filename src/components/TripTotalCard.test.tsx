@@ -69,14 +69,21 @@ const lineByKind = (total: TripTotal, kind: TotalLineKind): TripTotalLine => {
     return line;
 };
 
-/** V1: €49.99 × 2 (all-in €74.99 × 2) + €149.89 × 3. */
+/**
+ * V1: €49.99 × 2 (all-in €74.99 × 2) + €149.89 × 3. No return chosen — every
+ * fixture below carries a not-chosen return-flight line (return-flight-in-
+ * trip-total.md §7.4's fixed 3-line order) purely for shape; these criteria
+ * (14–23) predate that slice and are unaffected by it, so headlineLabel stays
+ * the pre-existing "Flight out + stay" text (§7.3 table, row 3).
+ */
 const V1: TripTotal = {
     currency: 'EUR',
-    lines: [included(flight(), 2, 9998, 14998), included(stay(), 3, 44967)],
+    lines: [included(flight(), 2, 9998, 14998), notChosen('return-flight', 2), included(stay(), 3, 44967)],
     totalCents: 54965,
     allInCents: 59965,
     prefix: '≈ ',
     allInPrefix: '≈ ',
+    headlineLabel: 'Flight out + stay',
     excluded: EXCLUDED,
     nights: 3,
     travellers: 2,
@@ -87,6 +94,7 @@ const V2: TripTotal = {
     ...V1,
     lines: [
         included(flight({ unitAmount: 10.4, allInUnitAmount: 10.4 }), 1, 1040),
+        notChosen('return-flight', 1),
         included(stay({ unitAmount: 10.4 }), 1, 1040),
     ],
     totalCents: 2080,
@@ -97,11 +105,12 @@ const V2: TripTotal = {
 
 const EMPTY: TripTotal = {
     ...V1,
-    lines: [notChosen('outbound-flight', 1), notChosen('stay', 2)],
+    lines: [notChosen('outbound-flight', 1), notChosen('return-flight', 1), notChosen('stay', 2)],
     totalCents: null,
     allInCents: null,
     prefix: 'from ',
     allInPrefix: 'from ',
+    headlineLabel: '',
     nights: 2,
     travellers: 1,
 };
@@ -109,7 +118,7 @@ const EMPTY: TripTotal = {
 /** V1 at the lower bounds: one traveller, one night. */
 const ONE_AND_ONE: TripTotal = {
     ...V1,
-    lines: [included(flight(), 1, 4999, 7499), included(stay(), 1, 14989)],
+    lines: [included(flight(), 1, 4999, 7499), notChosen('return-flight', 1), included(stay(), 1, 14989)],
     totalCents: 19988,
     allInCents: 22488,
     nights: 1,
@@ -119,7 +128,7 @@ const ONE_AND_ONE: TripTotal = {
 /** V1 at the upper bounds: nine travellers, fourteen nights. */
 const AT_MAX: TripTotal = {
     ...V1,
-    lines: [included(flight(), 9, 44991, 67491), included(stay(), 14, 209846)],
+    lines: [included(flight(), 9, 44991, 67491), notChosen('return-flight', 9), included(stay(), 14, 209846)],
     totalCents: 254837,
     allInCents: 277337,
     nights: 14,
@@ -159,6 +168,328 @@ describe('TripTotalCard', () => {
         expect(within(card).queryAllByRole('button')).toHaveLength(0);
     });
 
+    // ── Return flight in trip total — criteria 11–20, 43–44, 50 of ──────────
+    // docs/specs/return-flight-in-trip-total.md (rev 3), the card half (T2).
+    // Written from the spec's own contract (§7.3–7.8, §7.14), not from FE2's
+    // implementation, which is landing concurrently on this branch — these
+    // are expected to be red (no 'return-flight' KIND_HEADING/REMOVE_LABEL/
+    // UNPRICED_NOTE, no headlineLabel read, no data-testid, no date-coherence
+    // note) until FE1/FE2 land. Per the standing rule, line/row lookups go
+    // through data-testid ("trip-total-line-{kind}", spec criterion 50)
+    // rather than role or text queries.
+
+    describe('RF11–RF20, RF43–RF44, RF50 (return flight in trip total)', () => {
+        const rfFlight = (overrides: Partial<TotalComponent> = {}): TotalComponent => ({
+            id: 'DUB|NCE|2026-10-03T07:00:00|Ryanair',
+            kind: 'outbound-flight',
+            label: 'Ryanair DUB → NCE · Sat 3 Oct',
+            unitAmount: 49.99,
+            currency: 'EUR',
+            basis: 'estimate',
+            allInUnitAmount: 74.99,
+            manualCheck: false,
+            note: null,
+            departureDate: '2026-10-03T07:00:00',
+            ...overrides,
+        });
+
+        const rfReturn = (overrides: Partial<TotalComponent> = {}): TotalComponent => ({
+            id: 'NCE|DUB|2026-10-06T18:00:00|Ryanair',
+            kind: 'return-flight',
+            label: 'Ryanair NCE → DUB · Tue 6 Oct',
+            unitAmount: 39.99,
+            currency: 'EUR',
+            basis: 'estimate',
+            allInUnitAmount: 63.99,
+            manualCheck: false,
+            note: null,
+            departureDate: '2026-10-06T18:00:00',
+            ...overrides,
+        });
+
+        const rfStay = (overrides: Partial<TotalComponent> = {}): TotalComponent => ({
+            id: 'g1-d2',
+            kind: 'stay',
+            label: 'Hôtel Le Lac',
+            unitAmount: 149.89,
+            currency: 'EUR',
+            basis: 'estimate',
+            note: null,
+            departureDate: null,
+            ...overrides,
+        });
+
+        const EXCLUDED_NO_RETURN = [
+            'Flight home',
+            'Getting from NCE to the spot',
+            'Riding (see the tariff above)',
+            'Food and gear hire',
+        ];
+        const EXCLUDED_WITH_RETURN = [
+            'Getting from NCE to the spot',
+            'Riding (see the tariff above)',
+            'Food and gear hire',
+        ];
+
+        /** V1: outbound 49.99×2 (9998/14998), return 39.99×2 (7998/12798), stay 149.89×3 (44967). */
+        const V1_RF: TripTotal & { headlineLabel: string } = {
+            currency: 'EUR',
+            lines: [
+                included(rfFlight(), 2, 9998, 14998),
+                included(rfReturn(), 2, 7998, 12798),
+                included(rfStay(), 3, 44967),
+            ],
+            totalCents: 62963,
+            allInCents: 72763,
+            prefix: '≈ ',
+            allInPrefix: '≈ ',
+            headlineLabel: 'Flights + stay',
+            excluded: EXCLUDED_WITH_RETURN,
+            nights: 3,
+            travellers: 2,
+        } as TripTotal & { headlineLabel: string };
+
+        /** Only outbound and stay chosen — headlineLabel stays "Flight out + stay" (shipped behaviour). */
+        const OUTBOUND_AND_STAY_ONLY: TripTotal & { headlineLabel: string } = {
+            ...V1_RF,
+            lines: [
+                included(rfFlight(), 2, 9998, 14998),
+                notChosen('return-flight', 2),
+                included(rfStay(), 3, 44967),
+            ],
+            totalCents: 54965,
+            allInCents: 59965,
+            headlineLabel: 'Flight out + stay',
+            excluded: EXCLUDED_NO_RETURN,
+        };
+
+        const testIdOf = (kind: string) => `trip-total-line-${kind}`;
+
+        it('RF50 (criterion 50): the three card lines expose data-testid="trip-total-line-{kind}"', () => {
+            renderCard(V1_RF);
+
+            expect(screen.getByTestId('trip-total-line-outbound-flight')).toBeInTheDocument();
+            expect(screen.getByTestId('trip-total-line-return-flight')).toBeInTheDocument();
+            expect(screen.getByTestId('trip-total-line-stay')).toBeInTheDocument();
+        });
+
+        it('RF11 (criterion 11): V1 headline row reads "Flights + stay" / "≈ €629.63"; all-in row reads "With bags and airport extras" / "≈ €727.63"', () => {
+            const { card } = renderCard(V1_RF);
+
+            const headline = rowOf('Flights + stay');
+            expect(headline).toHaveTextContent('Flights + stay');
+            expect(headline).toHaveTextContent('≈ €629.63');
+
+            const allIn = rowOf('With bags and airport extras');
+            expect(within(card).getByText('With bags and airport extras')).toBeInTheDocument();
+            expect(allIn).toHaveTextContent('≈ €727.63');
+        });
+
+        it('RF12 (criterion 12): three lines render in order — Flight out €99.98, Flight home €79.98, Stay €449.67', () => {
+            renderCard(V1_RF);
+
+            const outboundLine = screen.getByTestId(testIdOf('outbound-flight'));
+            const returnLine = screen.getByTestId(testIdOf('return-flight'));
+            const stayLine = screen.getByTestId(testIdOf('stay'));
+
+            expect(within(outboundLine).getByText('Flight out')).toBeInTheDocument();
+            expect(outboundLine).toHaveTextContent('€99.98');
+            expect(within(returnLine).getByText('Flight home')).toBeInTheDocument();
+            expect(returnLine).toHaveTextContent('€79.98');
+            expect(within(stayLine).getByText('Stay')).toBeInTheDocument();
+            expect(stayLine).toHaveTextContent('€449.67');
+
+            // Order: outbound, return, stay (spec §7.4).
+            const order = outboundLine.compareDocumentPosition(returnLine);
+            expect(order & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+            const order2 = returnLine.compareDocumentPosition(stayLine);
+            expect(order2 & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        });
+
+        it('RF13 (criterion 13): return quantity text is "× 2 travellers" for V1', () => {
+            renderCard(V1_RF);
+            expect(screen.getByTestId(testIdOf('return-flight'))).toHaveTextContent('× 2 travellers');
+        });
+
+        it('RF13 (criterion 13): return quantity text is "× 1 traveller" for one', () => {
+            renderCard({
+                ...V1_RF,
+                lines: [included(rfFlight(), 1, 4999, 7499), included(rfReturn(), 1, 3999, 6399), included(rfStay(), 3, 44967)],
+                travellers: 1,
+            });
+            expect(screen.getByTestId(testIdOf('return-flight'))).toHaveTextContent('× 1 traveller');
+        });
+
+        it('RF14 (criterion 14): headline label reads "Flights + stay" with both flights chosen', () => {
+            const { card } = renderCard(V1_RF);
+            expect(within(card).getByText('Flights + stay')).toBeInTheDocument();
+        });
+
+        it('RF14 (criterion 14): headline label reads "Flight out + stay" with only outbound and stay chosen', () => {
+            const { card } = renderCard(OUTBOUND_AND_STAY_ONLY);
+            expect(within(card).getByText('Flight out + stay')).toBeInTheDocument();
+        });
+
+        it('RF15 (criterion 15): "Not in this total" omits "Flight home" when a return is chosen; other items stay in §7.5 order', () => {
+            const { card } = renderCard(V1_RF);
+
+            const heading = within(card).getByText('Not in this total');
+            const list = heading.nextElementSibling as HTMLElement;
+            expect(within(list).getAllByRole('listitem').map((item) => item.textContent)).toEqual(EXCLUDED_WITH_RETURN);
+            expect(within(list).queryByText('Flight home')).not.toBeInTheDocument();
+        });
+
+        it('RF16 (criterion 16): "Not in this total" lists "Flight home" first when no return is chosen', () => {
+            const { card } = renderCard(OUTBOUND_AND_STAY_ONLY);
+
+            const heading = within(card).getByText('Not in this total');
+            const list = heading.nextElementSibling as HTMLElement;
+            const items = within(list).getAllByRole('listitem').map((item) => item.textContent);
+            expect(items[0]).toBe('Flight home');
+            expect(items).toEqual(EXCLUDED_NO_RETURN);
+        });
+
+        describe('RF17 (criterion 17): the return line\'s remove control and not-chosen state', () => {
+            it('a chosen return has "Remove return flight from trip cost" calling onRemove(\'return-flight\')', async () => {
+                const user = userEvent.setup();
+                const { onRemove } = renderCard(V1_RF);
+
+                const returnLine = screen.getByTestId(testIdOf('return-flight'));
+                await user.click(within(returnLine).getByRole('button', { name: 'Remove return flight from trip cost' }));
+                expect(onRemove).toHaveBeenLastCalledWith('return-flight');
+            });
+
+            it('a not-chosen return shows the "Flight home" heading, "Not chosen yet", and no remove button', () => {
+                renderCard(OUTBOUND_AND_STAY_ONLY);
+
+                const returnLine = screen.getByTestId(testIdOf('return-flight'));
+                expect(within(returnLine).getByText('Flight home')).toBeInTheDocument();
+                expect(within(returnLine).getByText('Not chosen yet')).toBeInTheDocument();
+                expect(within(returnLine).queryByRole('button')).not.toBeInTheDocument();
+            });
+        });
+
+        it('RF18 (criterion 18): "Bags and airport extras not known for this flight." renders when the return\'s extras are unknown and the outbound\'s are known', () => {
+            const { card } = renderCard({
+                ...V1_RF,
+                lines: [
+                    included(rfFlight(), 2, 9998, 14998),
+                    included(rfReturn({ allInUnitAmount: null }), 2, 7998, 7998),
+                    included(rfStay(), 3, 44967),
+                ],
+                allInCents: 9998 + 44967 + 7998,
+                allInPrefix: 'from ',
+            });
+
+            expect(within(card).getByText('Bags and airport extras not known for this flight.')).toBeInTheDocument();
+        });
+
+        it('RF19 (criterion 19): an unpriced return shows "No usable fare. Check the fare before booking." and no amount', () => {
+            renderCard({
+                ...V1_RF,
+                lines: [
+                    included(rfFlight(), 2, 9998, 14998),
+                    notSummed(rfReturn({ unitAmount: null, basis: 'manual-check' }), 'unpriced', 2),
+                    included(rfStay(), 3, 44967),
+                ],
+                totalCents: 9998 + 44967,
+                allInCents: 14998 + 44967,
+                prefix: 'from ',
+                allInPrefix: 'from ',
+            });
+
+            const returnLine = screen.getByTestId(testIdOf('return-flight'));
+            expect(within(returnLine).getByText('No usable fare. Check the fare before booking.')).toBeInTheDocument();
+            expect(returnLine).not.toHaveTextContent('€79.98');
+        });
+
+        it('RF20 (criterion 20): a not-converted return at unit 150 GBP with 2 travellers shows "£150.00 · In GBP, not converted, not in this total" — the unit, not 300', () => {
+            renderCard({
+                ...V1_RF,
+                lines: [
+                    included(rfFlight(), 2, 9998, 14998),
+                    notSummed(rfReturn({ currency: 'GBP', unitAmount: 150, allInUnitAmount: null }), 'not-converted', 2),
+                    included(rfStay(), 3, 44967),
+                ],
+                totalCents: 9998 + 44967,
+                allInCents: 14998 + 44967,
+                prefix: 'from ',
+                allInPrefix: 'from ',
+            });
+
+            const returnLine = screen.getByTestId(testIdOf('return-flight'));
+            expect(returnLine).toHaveTextContent('£150.00 · In GBP, not converted, not in this total');
+            expect(returnLine).not.toHaveTextContent('£300.00');
+        });
+
+        it('Late-landing return (coordinator check, §7.12.1): badge and "from " prefix come from component.manualCheck, never from a raw top-level boolean — the card layer only ever sees the already-disjuncted flag', () => {
+            const { card } = renderCard({
+                ...V1_RF,
+                lines: [
+                    included(rfFlight(), 2, 9998, 14998),
+                    included(rfReturn({ manualCheck: true }), 2, 7998, 12798),
+                    included(rfStay(), 3, 44967),
+                ],
+                allInPrefix: 'from ',
+            });
+
+            const returnLine = screen.getByTestId(testIdOf('return-flight'));
+            expect(within(returnLine).getByText('Manual check')).toBeInTheDocument();
+            expect(within(card).getByText('Flights + stay')).toBeInTheDocument();
+            expect(rowOf('With bags and airport extras')).toHaveTextContent('from €727.63');
+        });
+
+        describe('RF43–RF44 (criteria 43–44): date coherence (§7.14)', () => {
+            const withDates = (outboundDate: string | null, returnDate: string | null) => ({
+                ...V1_RF,
+                lines: [
+                    included(rfFlight({ departureDate: outboundDate }), 2, 9998, 14998),
+                    included(rfReturn({ departureDate: returnDate }), 2, 7998, 12798),
+                    included(rfStay(), 3, 44967),
+                ],
+            });
+
+            const COHERENCE_NOTE = "These two fares aren't a round trip — the flight home leaves before the flight out. Check dates before booking.";
+
+            it('RF43: shows the note when the return departs on or before the outbound, and the figures still render', () => {
+                const { card } = renderCard(withDates('2026-10-06T07:00:00', '2026-10-06T07:00:00'));
+                expect(within(card).getByText(COHERENCE_NOTE)).toBeInTheDocument();
+                expect(within(card).getByText('Flights + stay')).toBeInTheDocument();
+                expect(rowOf('Flights + stay')).toHaveTextContent('€629.63');
+            });
+
+            it('RF43b: shows the note when the return departs strictly before the outbound', () => {
+                const { card } = renderCard(withDates('2026-10-06T07:00:00', '2026-10-03T07:00:00'));
+                expect(within(card).getByText(COHERENCE_NOTE)).toBeInTheDocument();
+            });
+
+            it('RF44: V1 dates (return after outbound) show no note', () => {
+                const { card } = renderCard(V1_RF);
+                expect(within(card).queryByText(COHERENCE_NOTE)).not.toBeInTheDocument();
+            });
+
+            it('RF44b: no note when either flight is not chosen', () => {
+                const { card } = renderCard(OUTBOUND_AND_STAY_ONLY);
+                expect(within(card).queryByText(COHERENCE_NOTE)).not.toBeInTheDocument();
+            });
+
+            it('RF44c: no note when the outbound departureDate is missing', () => {
+                const { card } = renderCard(withDates(null, '2026-10-06T18:00:00'));
+                expect(within(card).queryByText(COHERENCE_NOTE)).not.toBeInTheDocument();
+            });
+
+            it('RF44c: no note when the return departureDate is unparseable', () => {
+                const { card } = renderCard(withDates('2026-10-03T07:00:00', 'not a date'));
+                expect(within(card).queryByText(COHERENCE_NOTE)).not.toBeInTheDocument();
+            });
+
+            it('RF44d (the New Year pin): outbound 2026-12-28 → return 2027-01-04 shows NO note — a formatted-label compare would get this wrong because flightLabel drops the year', () => {
+                const { card } = renderCard(withDates('2026-12-28T07:00:00', '2027-01-04T18:00:00'));
+                expect(within(card).queryByText(COHERENCE_NOTE)).not.toBeInTheDocument();
+            });
+        });
+    });
+
     it('C15: shows the V1 headline, all-in and line figures, and the excluded list in the open', () => {
         const { card } = renderCard(V1);
 
@@ -173,9 +504,13 @@ describe('TripTotalCard', () => {
         expect(within(card).getByText('€99.98')).toBeInTheDocument();
         expect(within(card).getByText('€449.67')).toBeInTheDocument();
 
+        // 'Flight home' now also appears as the not-chosen return line's own
+        // heading (KIND_HEADING['return-flight']), so the excluded list has
+        // to be located via its heading's sibling, not by the text inside it.
         const heading = within(card).getByText('Not in this total');
-        const list = within(card).getByText('Flight home').closest('ul') as HTMLElement;
+        const list = heading.nextElementSibling as HTMLElement;
         expect(list).not.toBeNull();
+        expect(list.tagName).toBe('UL');
         expect(heading.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
         expect(within(list).getAllByRole('listitem').map((item) => item.textContent)).toEqual(EXCLUDED);
         expect(card.querySelector('details')).toBeNull();
