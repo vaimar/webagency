@@ -25,6 +25,13 @@
     font-size: var(--text-sm);
 }
 
+/* Date-coherence caveat (§7.14 of the return-flight spec): the two picked
+   fares are independent cheapest-per-day rows, not a booked round trip. */
+.trip-total__note--warn {
+    color: var(--truth-warn);
+    font-weight: 600;
+}
+
 /* ── Figures ─────────────────────────────────────────────────────────────── */
 
 .trip-total__figures {

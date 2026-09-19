@@ -29,30 +29,50 @@ export interface TripTotalCardProps {
 
 const KIND_HEADING: Record<TotalLineKind, string> = {
     'outbound-flight': 'Flight out',
+    'return-flight': 'Flight home',
     stay: 'Stay',
 };
 
 const REMOVE_LABEL: Record<TotalLineKind, string> = {
     'outbound-flight': 'Remove flight from trip cost',
+    'return-flight': 'Remove return flight from trip cost',
     stay: 'Remove stay from trip cost',
 };
 
 const UNPRICED_NOTE: Record<TotalLineKind, string> = {
     'outbound-flight': 'No usable fare. Check the fare before booking.',
+    'return-flight': 'No usable fare. Check the fare before booking.',
     stay: 'No live rate. Check the rate before booking.',
 };
 
+/** A stay is quantified in nights; both flight kinds share the traveller form. */
 const quantityText = (line: TripTotalLine): string => {
     const n = line.quantity;
-    return line.kind === 'outbound-flight'
-        ? `× ${n} ${n === 1 ? 'traveller' : 'travellers'}`
-        : `× ${n} ${n === 1 ? 'night' : 'nights'}, 1 room`;
+    return line.kind === 'stay'
+        ? `× ${n} ${n === 1 ? 'night' : 'nights'}, 1 room`
+        : `× ${n} ${n === 1 ? 'traveller' : 'travellers'}`;
 };
 
 const hasUsableAllIn = (line: TripTotalLine): boolean => {
     const value = line.component?.allInUnitAmount;
     return typeof value === 'number' && Number.isFinite(value) && value > 0;
 };
+
+const isFlightKind = (kind: TotalLineKind): boolean => kind === 'outbound-flight' || kind === 'return-flight';
+
+/**
+ * §7.14 — the fares are undated cheapest-per-day rows, not a booked round
+ * trip. Parses to a timestamp for a real date compare; `label` already
+ * dropped the year formatting for display, so it cannot be used here (a
+ * Dec-to-Jan round trip would compare wrong as strings).
+ */
+const parseDeparture = (iso: string | null | undefined): number | null => {
+    if (!iso) return null;
+    const time = Date.parse(iso);
+    return Number.isFinite(time) ? time : null;
+};
+
+const DATE_COHERENCE_NOTE = "These two fares aren't a round trip — the flight home leaves before the flight out. Check dates before booking.";
 
 const LineAmount: React.FC<{ line: TripTotalLine }> = ({ line }) => {
     const { component } = line;
@@ -81,9 +101,11 @@ const LineAmount: React.FC<{ line: TripTotalLine }> = ({ line }) => {
 const TotalLineRow: React.FC<{ line: TripTotalLine; onRemove: (kind: TotalLineKind) => void }> = ({ line, onRemove }) => {
     const { component } = line;
 
+    const testId = `trip-total-line-${line.kind}`;
+
     if (!component) {
         return (
-            <li className="trip-total__line trip-total__line--empty">
+            <li className="trip-total__line trip-total__line--empty" data-testid={testId}>
                 <span className="trip-total__line-kind">{KIND_HEADING[line.kind]}</span>
                 <span className="trip-total__line-muted">Not chosen yet</span>
             </li>
@@ -91,7 +113,7 @@ const TotalLineRow: React.FC<{ line: TripTotalLine; onRemove: (kind: TotalLineKi
     }
 
     return (
-        <li className={`trip-total__line trip-total__line--${line.state}`}>
+        <li className={`trip-total__line trip-total__line--${line.state}`} data-testid={testId}>
             <div className="trip-total__line-head">
                 <span className="trip-total__line-kind">{KIND_HEADING[line.kind]}</span>
                 {component.manualCheck && <span className="badge badge--danger">Manual check</span>}
@@ -109,7 +131,7 @@ const TotalLineRow: React.FC<{ line: TripTotalLine; onRemove: (kind: TotalLineKi
                 <span className="trip-total__line-quantity">{quantityText(line)}</span>
                 <LineAmount line={line} />
             </div>
-            {line.kind === 'outbound-flight' && component.note && (
+            {isFlightKind(line.kind) && component.note && (
                 <p className="trip-total__note">{component.note}</p>
             )}
             {line.kind === 'stay' && (
@@ -164,8 +186,20 @@ const TripTotalCard: React.FC<TripTotalCardProps> = ({ total, onNightsChange, on
     const headingId = useId();
     const excludedId = useId();
     const hasPicks = total.lines.some((line) => line.component != null);
-    const flightLine = total.lines.find((line) => line.kind === 'outbound-flight');
-    const flightAllInUnknown = flightLine?.state === 'included' && !hasUsableAllIn(flightLine);
+    const flightLines = total.lines.filter((line) => isFlightKind(line.kind));
+    // Any included flight line with unknown extras trips the note — outbound
+    // or return, text stays singular either way (§7.7).
+    const flightAllInUnknown = flightLines.some((line) => line.state === 'included' && !hasUsableAllIn(line));
+
+    const outboundComponent = total.lines.find((line) => line.kind === 'outbound-flight')?.component ?? null;
+    const returnComponent = total.lines.find((line) => line.kind === 'return-flight')?.component ?? null;
+    const outboundDeparture = parseDeparture(outboundComponent?.departureDate);
+    const returnDeparture = parseDeparture(returnComponent?.departureDate);
+    // §7.14 — only when both fares are picked and both dates are usable; a
+    // missing/unparseable date on either side says nothing about coherence.
+    const showDateCoherenceNote = outboundComponent != null && returnComponent != null
+        && outboundDeparture != null && returnDeparture != null
+        && returnDeparture <= outboundDeparture;
 
     return (
         <section className="panel trip-total" aria-labelledby={headingId}>
@@ -179,7 +213,7 @@ const TripTotalCard: React.FC<TripTotalCardProps> = ({ total, onNightsChange, on
                         {total.totalCents != null && total.allInCents != null ? (
                             <>
                                 <div className="trip-total__row trip-total__row--headline">
-                                    <span className="trip-total__row-label">Flight out + stay</span>
+                                    <span className="trip-total__row-label">{total.headlineLabel}</span>
                                     <strong className="trip-total__figure">
                                         {`${total.prefix}${formatCents(total.totalCents, 'EUR')}`}
                                     </strong>
@@ -192,6 +226,9 @@ const TripTotalCard: React.FC<TripTotalCardProps> = ({ total, onNightsChange, on
                                 </div>
                                 {flightAllInUnknown && (
                                     <p className="trip-total__note">Bags and airport extras not known for this flight.</p>
+                                )}
+                                {showDateCoherenceNote && (
+                                    <p className="trip-total__note trip-total__note--warn">{DATE_COHERENCE_NOTE}</p>
                                 )}
                             </>
                         ) : (

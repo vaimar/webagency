@@ -1,6 +1,8 @@
-// Rough trip cost — one outbound fare and one stay, summed for a group.
+// Rough trip cost — an outbound fare, an optional return fare and a stay,
+// summed for a group.
 //
-// Spec: docs/specs/combined-trip-total.md (rev 4.1), sections 7.1–7.10.
+// Spec: docs/specs/combined-trip-total.md (rev 4.1), sections 7.1–7.10, plus
+// docs/specs/return-flight-in-trip-total.md (rev 3), sections 7.1–7.6.
 //
 // The two honest-total rules this module exists to keep:
 //
@@ -27,7 +29,7 @@ export type LineBasis =
     | 'floor' // cheapest on the route that day, may belong to another departure
     | 'manual-check'; // picked, but no usable price: amount null, not summed
 
-export type TotalLineKind = 'outbound-flight' | 'stay';
+export type TotalLineKind = 'outbound-flight' | 'return-flight' | 'stay';
 
 export interface TotalComponent {
     /**
@@ -51,11 +53,20 @@ export interface TotalComponent {
     manualCheck?: boolean;
     /** Caveat shown under the line. Flight: priceDisclaimer ?? null. Stay: null. */
     note?: string | null;
+    /**
+     * Raw ISO departure date-time, exactly as the flight carried it.
+     * Flights only; null on a stay. `label` is already formatted to
+     * "Sat 3 Oct" by `flightLabel`, which drops the year, so this is what the
+     * §7.14 date-coherence check compares instead of the formatted label.
+     */
+    departureDate?: string | null;
 }
 
 export interface TripTotalInput {
     /** null = not chosen */
     outbound: TotalComponent | null;
+    /** null = not chosen */
+    returnFlight: TotalComponent | null;
     /** null = not chosen */
     stay: TotalComponent | null;
     /** Clamped to 1..NIGHTS_MAX, see `clampCount`. */
@@ -86,7 +97,7 @@ export type TotalPrefix = '≈ ' | 'from ';
 
 export interface TripTotal {
     currency: 'EUR';
-    /** Always two lines, fixed order: outbound-flight, stay. */
+    /** Three lines, fixed order: outbound-flight, return-flight, stay. */
     lines: TripTotalLine[];
     /** Sum of included amountCents. null when no line is included. */
     totalCents: number | null;
@@ -95,6 +106,8 @@ export interface TripTotal {
     /** Never '' in this slice: nothing here is paid or exact. */
     prefix: TotalPrefix;
     allInPrefix: TotalPrefix;
+    /** Derived from which components are chosen, not their line states. See §7.3. */
+    headlineLabel: string;
     /** Always present, in this order. */
     excluded: string[];
     /** The clamped values actually used — the card renders these. */
@@ -147,12 +160,13 @@ const parseFare = (price: FlightAvailable['price']): number | null => {
     return Number.isFinite(value) ? value : null;
 };
 
-export const outboundFromFlight = (flight: FlightAvailable): TotalComponent => {
+/** Shared by both flight adapters — they differ only in `kind` (§7.2). */
+const flightComponentFrom = (kind: 'outbound-flight' | 'return-flight', flight: FlightAvailable): TotalComponent => {
     const summary = getAntiCauchemarPricingSummary(flight.price, flight.antiCauchemar);
     const allIn = summary.estimatedEntryPrice;
     return {
         id: flightPickId(flight),
-        kind: 'outbound-flight',
+        kind,
         label: flightLabel(flight),
         unitAmount: parseFare(flight.price),
         // The field the teaser row formats with; antiCauchemar.currency is not read.
@@ -166,8 +180,19 @@ export const outboundFromFlight = (flight: FlightAvailable): TotalComponent => {
             : null,
         manualCheck: summary.hasManualCheckRequired,
         note: flight.priceDisclaimer ?? null,
+        // Raw ISO date, for the §7.14 date-coherence check — `label` already
+        // dropped the year formatting it for display.
+        departureDate: flight.departureDate ?? null,
     };
 };
+
+export const outboundFromFlight = (flight: FlightAvailable): TotalComponent => (
+    flightComponentFrom('outbound-flight', flight)
+);
+
+export const returnFromFlight = (flight: FlightAvailable): TotalComponent => (
+    flightComponentFrom('return-flight', flight)
+);
 
 export const stayFromNearby = (stay: NearbyStay): TotalComponent => {
     const rate = usableAmount(stay.pricePerNight);
@@ -179,6 +204,7 @@ export const stayFromNearby = (stay: NearbyStay): TotalComponent => {
         currency: stay.priceCurrency || 'EUR',
         basis: rate != null ? 'estimate' : 'manual-check',
         note: null,
+        departureDate: null,
     };
 };
 
@@ -212,20 +238,32 @@ const buildLine = (kind: TotalLineKind, component: TotalComponent | null, quanti
     };
 };
 
-const excludedItems = (arrivalAirport: string, hasTariff: boolean): string[] => [
-    'Flight home',
+const excludedItems = (arrivalAirport: string, hasTariff: boolean, returnChosen: boolean): string[] => [
+    // Any chosen return (included, unpriced or not-converted) removes this
+    // item — the rider picked a way home, even if we can't price it (§7.5).
+    ...(returnChosen ? [] : ['Flight home']),
     `Getting from ${arrivalAirport} to the spot`,
     hasTariff ? 'Riding (see the tariff above)' : 'Riding (no tariff on file yet)',
     'Food and gear hire',
 ];
 
+/** §7.3 — derived from which components are chosen (non-null), not line state. */
+const headlineLabelFor = (outboundChosen: boolean, returnChosen: boolean, stayChosen: boolean): string => {
+    if (outboundChosen && returnChosen) return stayChosen ? 'Flights + stay' : 'Flights';
+    if (outboundChosen) return stayChosen ? 'Flight out + stay' : 'Flight out';
+    if (returnChosen) return stayChosen ? 'Flight home + stay' : 'Flight home';
+    if (stayChosen) return 'Stay';
+    return '';
+};
+
 export const combineTripTotal = (input: TripTotalInput): TripTotal => {
     const nights = clampCount(input.nights, NIGHTS_MAX);
     const travellers = clampCount(input.travellers, TRAVELLERS_MAX);
 
-    const flightLine = buildLine('outbound-flight', input.outbound, travellers);
+    const outboundLine = buildLine('outbound-flight', input.outbound, travellers);
+    const returnLine = buildLine('return-flight', input.returnFlight, travellers);
     const stayLine = buildLine('stay', input.stay, nights);
-    const lines = [flightLine, stayLine];
+    const lines = [outboundLine, returnLine, stayLine];
     const included = lines.filter((line) => line.state === 'included');
 
     const sum = (pick: (line: TripTotalLine) => number | null): number | null => (
@@ -233,10 +271,13 @@ export const combineTripTotal = (input: TripTotalInput): TripTotal => {
     );
 
     const prefix: TotalPrefix = included.length === lines.length ? '≈ ' : 'from ';
-    // The all-in is a floor too when the flight's extras are unknown, or when
-    // the backend left an unvalidated cost out of auditedTotalCost.
-    const flightExtrasUnsure = flightLine.state === 'included'
-        && (usableAmount(flightLine.component?.allInUnitAmount) == null || flightLine.component?.manualCheck === true);
+    // The all-in is a floor too when either included flight's extras are
+    // unknown, or when the backend left an unvalidated cost out of
+    // auditedTotalCost (§7.6 — generalises the single-flight rule to two).
+    const includedFlightLines = [outboundLine, returnLine].filter((line) => line.state === 'included');
+    const flightExtrasUnsure = includedFlightLines.some((line) => (
+        usableAmount(line.component?.allInUnitAmount) == null || line.component?.manualCheck === true
+    ));
     const allInPrefix: TotalPrefix = prefix === 'from ' || flightExtrasUnsure ? 'from ' : '≈ ';
 
     return {
@@ -246,7 +287,8 @@ export const combineTripTotal = (input: TripTotalInput): TripTotal => {
         allInCents: sum((line) => line.allInCents),
         prefix,
         allInPrefix,
-        excluded: excludedItems(input.arrivalAirport, input.hasTariff),
+        headlineLabel: headlineLabelFor(input.outbound != null, input.returnFlight != null, input.stay != null),
+        excluded: excludedItems(input.arrivalAirport, input.hasTariff, input.returnFlight != null),
         nights,
         travellers,
     };
